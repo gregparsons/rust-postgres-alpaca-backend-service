@@ -334,6 +334,84 @@
     },
     "query": "\n            select\n                user_id, username, password\n            from users\n            where username = $1\n        "
   },
+  "dd2340bf5da4420932f8aca37cb66b3acddb3b083efd0eafbc32433f2e3b6c41": {
+    "describe": {
+      "columns": [
+        {
+          "name": "dtg!",
+          "ordinal": 0,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "alpaca_paper_id!",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "alpaca_paper_secret!",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "alpaca_live_id!",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "alpaca_live_secret!",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "trade_size!",
+          "ordinal": 5,
+          "type_info": "Int4"
+        },
+        {
+          "name": "trade_enable_buy!",
+          "ordinal": 6,
+          "type_info": "Bool"
+        },
+        {
+          "name": "trade_ema_small_size!",
+          "ordinal": 7,
+          "type_info": "Int4"
+        },
+        {
+          "name": "trade_ema_large_size!",
+          "ordinal": 8,
+          "type_info": "Int4"
+        },
+        {
+          "name": "trade_sell_high_per_cent_multiplier!",
+          "ordinal": 9,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "trade_sell_high_upper_limit_cents!",
+          "ordinal": 10,
+          "type_info": "Numeric"
+        }
+      ],
+      "nullable": [
+        true,
+        true,
+        null,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                select\n                    dtg as \"dtg!\"\n                    , alpaca_paper_id as \"alpaca_paper_id!\"\n                    , '' as \"alpaca_paper_secret!\"\n                    , alpaca_live_id as \"alpaca_live_id!\"\n                    , alpaca_live_secret as \"alpaca_live_secret!\"\n                    , trade_size as \"trade_size!\"\n                    , trade_enable_buy as \"trade_enable_buy!\"\n                    , trade_ema_small_size as \"trade_ema_small_size!\"\n                    , trade_ema_large_size as \"trade_ema_large_size!\"\n                    , trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\"\n                    , trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                from v_settings;\n            "
+  },
   "df1a05a59de21bb01d1e97502da28e26a0453bdc134c2c36a113a2e2e1bbf4a9": {
     "describe": {
       "columns": [

@@ -9,12 +9,6 @@ backend:
 sqlx:
 	# https://lib.rs/crates/sqlx-cli (is out of date about --workspace)
 	cargo sqlx prepare --merged
-sqlx_frontend:
-	cd frontend;cargo sqlx prepare -- --lib
-sqlx_backend:
-	cd backend;cargo sqlx prepare -- --lib
-sqlx_backend_rest:
-	cd backend;cargo sqlx prepare -- --lib
 maintenance:
 	cargo fmt
 	cargo clippy
