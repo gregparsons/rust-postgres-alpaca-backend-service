@@ -9,3 +9,4 @@ pub mod profit;
 pub mod account;
 pub mod symbols;
 pub mod activities;
+pub mod edit_settings;

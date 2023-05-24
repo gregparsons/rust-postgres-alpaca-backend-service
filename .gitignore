@@ -1,6 +1,6 @@
 # .gitignore
 .env
-/target
+target
 .DS_Store
 all.sh
 run.sh

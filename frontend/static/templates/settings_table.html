@@ -1,0 +1,34 @@
+{{#*inline "page"}}
+<h2><p>{{title}}</p></h2>
+<p>{{message}}</p>
+<style>
+    table {
+        font-family: arial, sans-serif;
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    td, th {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+    }
+
+    tr:nth-child(even) {
+        background-color: #dddddd;
+    }
+</style>
+<br>
+<table>
+    <tr><td>dtg</td><td>{{data.dtg}}</td><tr>
+    <tr><td>alpaca_paper_id</td><td>{{data.alpaca_paper_id}}</td><tr>
+    <tr><td>alpaca_live_id</td><td>{{data.alpaca_live_id}}</td><tr>
+    <tr><td>trade_size</td><td>{{data.trade_size}}</td><tr>
+    <tr><td>trade_enable_buy</td><td>{{data.trade_enable_buy}}</td><tr>
+    <tr><td>trade_ema_small_size</td><td>{{data.trade_ema_small_size}}</td><tr>
+    <tr><td>trade_ema_large_size</td><td>{{data.trade_ema_large_size}}</td><tr>
+    <tr><td>trade_sell_high_per_cent_multiplier</td><td>{{data.trade_sell_high_per_cent_multiplier}}</td><tr>
+    <tr><td>trade_sell_high_upper_limit_cents</td><td>{{data.trade_sell_high_upper_limit_cents}}</td><tr>
+</table>
+{{/inline}}
+{{> (lookup this "parent")}}

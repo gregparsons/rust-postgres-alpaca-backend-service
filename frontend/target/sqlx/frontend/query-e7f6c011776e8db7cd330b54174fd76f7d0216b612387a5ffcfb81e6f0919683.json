@@ -1,0 +1,25 @@
+{
+  "query": "\n            select\n                symbol as \"symbol!\"\n             , active as \"active!\"\n            from t_symbol\n            order by symbol\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "symbol!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "active!",
+        "type_info": "Bool"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "12039850688b33f617cc71a021e20d8fae6c5673d88b8f958323ef2920ffa84f"
+}

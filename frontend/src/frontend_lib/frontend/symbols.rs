@@ -21,6 +21,7 @@ use common_lib::common_structs::SESSION_USERNAME;
 pub async fn post_symbols(form: Form<ActiveSymbol>, pool: web::Data<PgPool>, hb: web::Data<Handlebars<'_>>, session:Session) -> HttpResponse {
 
     tracing::debug!("[post_symbols]");
+
     // require login
     if let Ok(Some(_session_username)) = session.get::<String>(SESSION_USERNAME) {
         let ActiveSymbol{ symbol, active }  = form.into_inner();
@@ -44,7 +45,6 @@ pub async fn post_symbols(form: Form<ActiveSymbol>, pool: web::Data<PgPool>, hb:
         // not logged in
         redirect_home().await
     }
-
 
 }
 
@@ -137,5 +137,4 @@ async fn save_symbol_active(pool: &PgPool, symbol:&str, active:bool) -> Option<s
             Some(e)
         }
     }
-
 }
