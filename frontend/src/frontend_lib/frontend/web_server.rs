@@ -12,6 +12,7 @@ use crate::frontend::metrics::{get_avg, get_chart};
 use crate::frontend::account::get_account;
 use crate::frontend::activities::get_activities;
 use crate::frontend::edit_settings::get_settings;
+use crate::frontend::positions::get_positions;
 use crate::frontend::profit::get_profit;
 use crate::frontend::symbols::{get_symbols, post_symbols};
 use crate::frontend::utils::*;
@@ -102,6 +103,7 @@ impl WebServer {
                 .route("/symbols", web::post().to(post_symbols))
                 .route("/activity", web::get().to(get_activities))
                 .route("/settings", web::get().to(get_settings))
+                .route("/positions", web::get().to(get_positions))
 
         }).bind(("0.0.0.0", web_port))?
             .workers(2)
