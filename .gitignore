@@ -7,3 +7,6 @@ run.sh
 configuration.yaml
 /.idea
 Cargo.lock
+push_frontend.sh
+push_backend.sh
+
