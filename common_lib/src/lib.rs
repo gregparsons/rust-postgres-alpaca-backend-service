@@ -8,6 +8,5 @@ pub mod symbol_list;
 pub mod trade_struct;
 pub mod init;
 pub mod position;
-pub mod remote_position;
 
 

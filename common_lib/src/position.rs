@@ -6,6 +6,7 @@
 use std::fmt;
 use serde::{Serialize, Deserialize};
 use bigdecimal::BigDecimal;
+use crate::settings::Settings;
 
 ///
 /// curl -X GET \
@@ -59,6 +60,34 @@ pub struct Position {
     pub current_price: BigDecimal,
     pub lastday_price: BigDecimal,
     pub change_today: BigDecimal,
+}
+
+impl Position{
+    /// Call the Alpaca API to get the remote position snapshot
+    ///
+    /// populate the positions hashmap
+    pub async fn get_remote(settings:&Settings) -> Result<Vec<Position>, reqwest::Error> {
+
+        let mut headers = reqwest::header::HeaderMap::new();
+
+        // TODO: add a setting for USE_PAPER_OR_LIVE
+        let api_key_id = settings.alpaca_paper_id.clone();
+        let api_secret = settings.alpaca_paper_secret.clone();
+
+        headers.insert("APCA-API-KEY-ID", api_key_id.parse().unwrap());
+        headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
+
+        // get the position list from the positions API
+        let client = reqwest::Client::new();
+        let remote_positions:Vec<Position> = client.get("https://paper-api.alpaca.markets/v2/positions")
+            .headers(headers)
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        Ok(remote_positions)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]

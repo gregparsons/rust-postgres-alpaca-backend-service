@@ -9,7 +9,7 @@ use serde_json::json;
 use sqlx::PgPool;
 use common_lib::http::redirect_home;
 use common_lib::common_structs::SESSION_USERNAME;
-use common_lib::remote_position::RemotePosition;
+use common_lib::position::Position;
 use common_lib::settings::Settings;
 
 /// GET /positions
@@ -24,7 +24,7 @@ async fn get_positions_with_message(pool: web::Data<PgPool>, hb: web::Data<Handl
 
         match Settings::load(&pool).await{
             Ok(settings)=>{
-                let position_vec_result = RemotePosition::refresh_remote_positions(&settings).await;
+                let position_vec_result = Position::get_remote(&settings).await;
 
                 match position_vec_result {
                     Ok(position_vec) => {
