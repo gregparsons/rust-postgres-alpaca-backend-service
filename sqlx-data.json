@@ -1,5 +1,85 @@
 {
   "db": "PostgreSQL",
+  "084aff39b0d4621bc64feebf8c7b2fa092a45239cb0d1221fc52b699ae7ac8f9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "dtg!",
+          "ordinal": 0,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "alpaca_paper_id!",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "alpaca_paper_secret!",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "alpaca_live_id!",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "alpaca_live_secret!",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "trade_size!",
+          "ordinal": 5,
+          "type_info": "Int4"
+        },
+        {
+          "name": "trade_enable_buy!",
+          "ordinal": 6,
+          "type_info": "Bool"
+        },
+        {
+          "name": "trade_ema_small_size!",
+          "ordinal": 7,
+          "type_info": "Int4"
+        },
+        {
+          "name": "trade_ema_large_size!",
+          "ordinal": 8,
+          "type_info": "Int4"
+        },
+        {
+          "name": "trade_sell_high_per_cent_multiplier!",
+          "ordinal": 9,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "trade_sell_high_upper_limit_cents!",
+          "ordinal": 10,
+          "type_info": "Numeric"
+        }
+      ],
+      "nullable": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar"
+        ]
+      }
+    },
+    "query": "\n                select\n                    dtg as \"dtg!\"\n                    , alpaca_paper_id as \"alpaca_paper_id!\"\n                    , '' as \"alpaca_paper_secret!\"\n                    , alpaca_live_id as \"alpaca_live_id!\"\n                    , '' as \"alpaca_live_secret!\"\n                    , trade_size as \"trade_size!\"\n                    , trade_enable_buy as \"trade_enable_buy!\"\n                    , trade_ema_small_size as \"trade_ema_small_size!\"\n                    , trade_ema_large_size as \"trade_ema_large_size!\"\n                    , trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\"\n                    , trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                from fn_set_trade_settings($1);\n            "
+  },
   "12039850688b33f617cc71a021e20d8fae6c5673d88b8f958323ef2920ffa84f": {
     "describe": {
       "columns": [
@@ -302,39 +382,7 @@
     },
     "query": "\n            select\n                dtg as \"dtg!\",\n                coalesce(symbol, '') as \"symbol!\",\n                price as \"price!\",\n                size as \"size!\",\n                exchange as \"exchange\"\n            from\n                v_trade_minute\n            order by dtg desc\n            limit 1000\n        "
   },
-  "c7db98645f2c87a75c8daea86b4d69a6a28987f084eb765a6632aaf1716185c9": {
-    "describe": {
-      "columns": [
-        {
-          "name": "user_id",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "username",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "password",
-          "ordinal": 2,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      }
-    },
-    "query": "\n            select\n                user_id, username, password\n            from users\n            where username = $1\n        "
-  },
-  "dd2340bf5da4420932f8aca37cb66b3acddb3b083efd0eafbc32433f2e3b6c41": {
+  "b1b266cecbb2297cecdfdf7191e4e0ef878f12f4c822c5a665ccecf3505c59d7": {
     "describe": {
       "columns": [
         {
@@ -360,7 +408,7 @@
         {
           "name": "alpaca_live_secret!",
           "ordinal": 4,
-          "type_info": "Varchar"
+          "type_info": "Text"
         },
         {
           "name": "trade_size!",
@@ -398,7 +446,7 @@
         true,
         null,
         true,
-        true,
+        null,
         true,
         true,
         true,
@@ -410,7 +458,39 @@
         "Left": []
       }
     },
-    "query": "\n                select\n                    dtg as \"dtg!\"\n                    , alpaca_paper_id as \"alpaca_paper_id!\"\n                    , '' as \"alpaca_paper_secret!\"\n                    , alpaca_live_id as \"alpaca_live_id!\"\n                    , alpaca_live_secret as \"alpaca_live_secret!\"\n                    , trade_size as \"trade_size!\"\n                    , trade_enable_buy as \"trade_enable_buy!\"\n                    , trade_ema_small_size as \"trade_ema_small_size!\"\n                    , trade_ema_large_size as \"trade_ema_large_size!\"\n                    , trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\"\n                    , trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                from v_settings;\n            "
+    "query": "\n                select\n                    dtg as \"dtg!\"\n                    , alpaca_paper_id as \"alpaca_paper_id!\"\n                    , '' as \"alpaca_paper_secret!\"\n                    , alpaca_live_id as \"alpaca_live_id!\"\n                    , '' as \"alpaca_live_secret!\"\n                    , trade_size as \"trade_size!\"\n                    , trade_enable_buy as \"trade_enable_buy!\"\n                    , trade_ema_small_size as \"trade_ema_small_size!\"\n                    , trade_ema_large_size as \"trade_ema_large_size!\"\n                    , trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\"\n                    , trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                from v_settings;\n            "
+  },
+  "c7db98645f2c87a75c8daea86b4d69a6a28987f084eb765a6632aaf1716185c9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "user_id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n            select\n                user_id, username, password\n            from users\n            where username = $1\n        "
   },
   "df1a05a59de21bb01d1e97502da28e26a0453bdc134c2c36a113a2e2e1bbf4a9": {
     "describe": {
