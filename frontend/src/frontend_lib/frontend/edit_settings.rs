@@ -24,7 +24,7 @@ async fn get_settings_with_message(pool: web::Data<PgPool>, hb: web::Data<Handle
         match setting_result {
             Ok(settings) => {
                 let data = json!({
-                    "title": "Symbols",
+                    "title": "Settings",
                     "parent": "base0",
                     "is_logged_in": true,
                     "session_username": &session_username,
