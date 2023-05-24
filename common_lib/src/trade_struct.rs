@@ -45,9 +45,6 @@ pub enum TimeInForce{
     // Immediate or Cancel
     #[serde(rename = "ioc")]
     Ioc,
-
-
-
 }
 
 #[derive(Debug, Serialize, Deserialize)]

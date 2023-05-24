@@ -6,6 +6,8 @@ use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use serde::{Deserialize, Serialize};
+use crate::trade_setting_profile::SettingsProfile;
+
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Settings {
@@ -65,7 +67,7 @@ impl Settings {
                     , alpaca_paper_id as "alpaca_paper_id!"
                     , '' as "alpaca_paper_secret!"
                     , alpaca_live_id as "alpaca_live_id!"
-                    , alpaca_live_secret as "alpaca_live_secret!"
+                    , '' as "alpaca_live_secret!"
                     , trade_size as "trade_size!"
                     , trade_enable_buy as "trade_enable_buy!"
                     , trade_ema_small_size as "trade_ema_small_size!"
@@ -74,6 +76,35 @@ impl Settings {
                     , trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
                 from v_settings;
             "#
+        ).fetch_one(pool).await;
+        settings_result
+    }
+
+    /// change the settings and return blank secret for front-end type uses
+    pub async fn change_trade_profile(trade_settings_profile:&SettingsProfile, pool:&PgPool)->Result<Settings, sqlx::Error>{
+
+        let trade_settings_profile_as_str = trade_settings_profile.clone();
+        let trade_settings_profile_as_str = trade_settings_profile_as_str.to_string(); // .as_str();
+
+        // SQL injection is avoided here by using an enum; failure upon parsing would've happened at the api level
+        let settings_result = sqlx::query_as!(
+            Settings,
+            r#"
+                select
+                    dtg as "dtg!"
+                    , alpaca_paper_id as "alpaca_paper_id!"
+                    , '' as "alpaca_paper_secret!"
+                    , alpaca_live_id as "alpaca_live_id!"
+                    , '' as "alpaca_live_secret!"
+                    , trade_size as "trade_size!"
+                    , trade_enable_buy as "trade_enable_buy!"
+                    , trade_ema_small_size as "trade_ema_small_size!"
+                    , trade_ema_large_size as "trade_ema_large_size!"
+                    , trade_sell_high_per_cent_multiplier as "trade_sell_high_per_cent_multiplier!"
+                    , trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
+                from fn_set_trade_settings($1);
+            "#,
+            &trade_settings_profile_as_str
         ).fetch_one(pool).await;
         settings_result
     }
