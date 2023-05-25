@@ -19,8 +19,9 @@ use reqwest::header::HeaderMap;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use sqlx::postgres::PgQueryResult;
-use common_lib::settings::Settings;
-use common_lib::trade_struct::TradeSide;
+use crate::settings::Settings;
+use crate::trade_struct::TradeSide;
+
 
 
 /// load all the most recent activities

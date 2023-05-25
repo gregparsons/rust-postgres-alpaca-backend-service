@@ -4,12 +4,12 @@ version = "0.2.0"
 authors = ["gp <github@swimr.com>"]
 edition = "2021"
 
-[lib]
-path= "src/frontend_lib/mod.rs"
+# [lib]
+# path= "src/frontend_lib/mod.rs"
 
-[[bin]]
-path="src/main.rs"
-name="frontend"
+# [[bin]]
+# path="src/main.rs"
+# name="frontend"
 
 [dependencies]
 common_lib = { path="../common_lib"}

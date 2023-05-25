@@ -6,17 +6,16 @@ use handlebars::Handlebars;
 use sqlx::PgPool;
 use actix_session::SessionMiddleware;
 use actix_session::storage::CookieSessionStore;
-use crate::frontend::signup::{get_signup, post_signup};
-use crate::frontend::login::{get_login, get_logout, post_login};
-use crate::frontend::metrics::{get_avg, get_chart};
-use crate::frontend::account::get_account;
-use crate::frontend::activities::get_activities;
-use crate::frontend::edit_settings::{get_settings, get_settings_button};
-use crate::frontend::positions::get_positions;
-use crate::frontend::profit::get_profit;
-use crate::frontend::symbols::{get_symbols, post_symbols};
-use crate::frontend::utils::*;
-// use crate::settings::STATIC_FILE_DIR;
+use crate::signup::{get_signup, post_signup};
+use crate::login::{get_login, get_logout, post_login};
+use crate::metrics::{get_avg, get_chart};
+use crate::account::get_account;
+use crate::activities::get_activities;
+use crate::edit_settings::{get_settings, get_settings_button};
+use crate::positions::get_positions;
+use crate::profit::get_profit;
+use crate::symbols::{get_symbols, post_symbols};
+use crate::utils::*;
 
 // this corresponds to the Dockerfile "COPY static /app/frontend/static"
 // static STATIC_FILE_DIR:&'static str = "./frontend/static/templates";

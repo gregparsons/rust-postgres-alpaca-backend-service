@@ -2,7 +2,6 @@
 //!
 //! web form to edit settings
 
-use std::fmt;
 use actix_session::Session;
 use actix_web::{HttpResponse, web};
 use handlebars::{Handlebars};

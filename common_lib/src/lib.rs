@@ -9,5 +9,6 @@ pub mod trade_struct;
 pub mod init;
 pub mod position;
 pub mod trade_setting_profile;
+pub mod alpaca_activity;
 
 
