@@ -15,12 +15,9 @@ create table if not exists alpaca_activity
 
 );
 
-alter table alpaca_activity
-    owner to postgres;
+alter table alpaca_activity owner to postgres;
 
-create index if not exists idx_order_id
-    on alpaca_activity (id);-- Add migration script here
+create index if not exists idx_order_id on alpaca_activity (id);
 
-ALTER TABLE alpaca_activity
-    ADD CONSTRAINT alpaca_activity_id_unique
-        UNIQUE (id) ;
+alter table alpaca_activity drop constraint if exists alpaca_activity_id_unique;
+ALTER TABLE alpaca_activity ADD CONSTRAINT alpaca_activity_id_unique UNIQUE (id);
