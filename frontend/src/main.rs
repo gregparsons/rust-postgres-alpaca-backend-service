@@ -13,6 +13,7 @@ mod signup;
 mod symbols;
 mod utils;
 mod web_server;
+mod dashboard;
 
 use common_lib::init::init;
 
