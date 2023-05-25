@@ -3,10 +3,12 @@
 //! Restful Alpaca Poller
 
 
+use actix_web::cookie::Expiration::DateTime;
 use chrono::{Utc};
 use crate::alpaca_activity::get_activity_api;
 use crate::common::{MARKET_OPEN_TIME, MARKET_CLOSE_TIME};
 use tokio::runtime::Handle;
+use common_lib::position::Position;
 use common_lib::settings::Settings;
 use common_lib::sqlx_pool::create_sqlx_pg_pool;
 
@@ -52,10 +54,33 @@ pub async fn run() {
                     // refresh settings from the database
                     match Settings::load(&pool3).await {
                         Ok(settings)=>{
-                            let _ = get_activity_api(pool3, &settings).await;
+
+
+                            // update alpaca activities
+                            let _ = get_activity_api(&pool3, &settings).await;
+
+
+                            // get alpaca positions
+                            match Position::get_remote(&settings).await {
+                                Ok(positions)=>{
+                                    // use the same insert date for all the positions
+                                    let now = Utc::now();
+                                    for position in positions.iter() {
+                                        let _ = position.save_to_db(now, &pool3).await;
+                                    }
+                                    tracing::debug!("[alpaca_position] updated positions at {:?}", &now);
+                                },
+                                Err(e) => {
+                                    tracing::debug!("[alpaca_position] could not load positions from Alpaca web API: {:?}", &e);
+                                }
+                            }
+
+
+
+
                         },
                         Err(e) => {
-                            tracing::debug!("[run] couldn't load settings in loop to update activities: {:?}", &e);
+                            tracing::debug!("[run] couldn't load settings in loop to update activities/positions: {:?}", &e);
                         }
                     }
                 });

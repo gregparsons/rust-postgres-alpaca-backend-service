@@ -129,7 +129,7 @@ impl fmt::Display for ActivitySubtype {
 ///
 /// https://alpaca.markets/docs/api-references/trading-api/account-activities/#properties
 ///
-pub async fn get_activity_api(pool: PgPool, settings: &Settings) ->Result<(), reqwest::Error> {
+pub async fn get_activity_api(pool: &PgPool, settings: &Settings) ->Result<(), reqwest::Error> {
 
     // 1. database call to get most recent activity
 
