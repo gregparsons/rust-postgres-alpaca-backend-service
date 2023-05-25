@@ -6,6 +6,8 @@
 use std::fmt;
 use serde::{Serialize, Deserialize};
 use bigdecimal::BigDecimal;
+use sqlx::PgPool;
+use sqlx::postgres::PgQueryResult;
 use crate::settings::Settings;
 
 ///
@@ -62,6 +64,10 @@ pub struct Position {
     pub change_today: BigDecimal,
 }
 
+use std::fmt::{Debug, Display};
+use chrono::{DateTime, Utc};
+
+
 impl Position{
     /// Call the Alpaca API to get the remote position snapshot
     ///
@@ -88,6 +94,31 @@ impl Position{
 
         Ok(remote_positions)
     }
+
+
+    /// save a single position to the database; not ideal to not insert the result of the alpaca api call as a bulk insert but not rocket science at the moment
+    pub async fn save_to_db(&self, timestamp: DateTime<Utc>, pool: &PgPool)-> Result<PgQueryResult, sqlx::Error> {
+        tracing::debug!("[save_to_db]");
+        let result = sqlx::query!(
+            r#"
+                insert into alpaca_position(dtg, symbol, exchange, asset_class, avg_entry_price, qty, qty_available, side, market_value
+                    , cost_basis, unrealized_pl, unrealized_plpc, current_price, lastday_price, change_today, asset_id)
+                values
+                    (
+                        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, $12, $13, $14, $15, $16
+                    )"#,
+            timestamp,
+            self.symbol, self.exchange, self.asset_class, self.avg_entry_price, self.qty, self.qty_available,
+            self.side.to_string(), self.market_value, self.cost_basis, self.unrealized_pl, self.unrealized_plpc, self.current_price,
+            self.lastday_price, self.change_today, self.asset_id
+        ).execute(pool).await;
+
+        tracing::debug!("[activity::save_to_db] insert result: {:?}", &result);
+        result
+    }
+
+
+
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -98,6 +129,15 @@ pub enum PositionSide{
     Short
 
 }
+
+impl Display for PositionSide {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+        // or, alternatively:
+        // fmt::Debug::fmt(self, f)
+    }
+}
+
 
 impl fmt::Display for Position {
 

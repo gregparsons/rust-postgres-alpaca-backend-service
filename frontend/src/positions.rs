@@ -4,6 +4,7 @@
 
 use actix_session::Session;
 use actix_web::{HttpResponse, web};
+use chrono::{DateTime, NaiveDate, Utc};
 use handlebars::Handlebars;
 use serde_json::json;
 use sqlx::PgPool;
@@ -26,8 +27,22 @@ async fn get_positions_with_message(pool: web::Data<PgPool>, hb: web::Data<Handl
             Ok(settings)=>{
                 let position_vec_result = Position::get_remote(&settings).await;
 
+
                 match position_vec_result {
                     Ok(position_vec) => {
+
+
+
+
+                        // TODO: save to database test
+                        // this is just proof of concept; move this to a timer or event-triggered in backend
+                        // and have the frontend load from our database vice relying on Alpaca's API (and limits)
+                        // to load our frontend
+                        let now = chrono::Utc::now();
+                        for posn in position_vec.clone().iter() {
+                            let _result = posn.save_to_db(now, &pool).await;
+                        }
+
                         let data = json!({
                             "title": "Positions",
                             "parent": "base0",
