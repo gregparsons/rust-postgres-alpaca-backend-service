@@ -262,6 +262,33 @@
     },
     "query": "\n            update t_symbol set active = $2 where symbol = $1\n        "
   },
+  "4b83115f8f0ec54061af8a6c01c0b250474fe44691032338d2ea115e567c1616": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamptz",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Varchar",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "\n                insert into alpaca_position(dtg, symbol, exchange, asset_class, avg_entry_price, qty, qty_available, side, market_value\n                    , cost_basis, unrealized_pl, unrealized_plpc, current_price, lastday_price, change_today, asset_id)\n                values\n                    (\n                        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, $12, $13, $14, $15, $16\n                    )"
+  },
   "63cd399a7a6ddae29f88c4c89285c6867d2e5dca354c39188d9fcb70908a93e3": {
     "describe": {
       "columns": [

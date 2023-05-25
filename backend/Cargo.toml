@@ -14,16 +14,14 @@ name="backend"
 
 [dependencies]
 common_lib = { path="../common_lib"}
-#dotenvy = "0.15.6"
 tracing = "0.1.37"
-#tracing-subscriber = {version = "0.3.16", features=[ "std", "registry", "env-filter", "fmt"]}
 tokio = { version = "1.24.1", features = ["rt-multi-thread"] }
 crossbeam = "0.8.2"
 crossbeam-channel = "0.5.6"
 tokio-postgres = { version = "0.7.7", features = ["with-chrono-0_4"]}
 # https://github.com/sdroege/async-tungstenite/blob/master/Cargo.toml
-#async-tungstenite = { version = "0.10.0", features = ["tokio-openssl"]}
-tungstenite = {version = "0.18.0", features = ["native-tls"]}
+#tungstenite = {version = "0.18.0", features = ["native-tls"]}
+tungstenite = {version = "0.18.0", features = ["rustls-tls-webpki-roots"]}
 futures-util = { version = "0.3.21", default-features = false, features = ["sink", "std"] }
 url = "2.2.2"
 
