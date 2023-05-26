@@ -17,7 +17,7 @@
 use std::str::FromStr;
 use sqlx::PgPool;
 use common_lib::settings::Settings;
-use common_lib::symbol_list::get_active_symbols;
+use common_lib::symbol_list::SymbolList;
 use crate::websocket_service::AlpacaStream;
 
 pub struct DataCollector {}
@@ -44,7 +44,7 @@ impl DataCollector {
             let ws_pool = pool.clone();
 
             let settings2 = (*settings).clone();
-            match get_active_symbols(&ws_pool).await{
+            match SymbolList::get_active_symbols(&ws_pool).await{
                 Ok(symbols) => {
                     let _ = std::thread::spawn(move || {
 

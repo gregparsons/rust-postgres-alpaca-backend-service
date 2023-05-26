@@ -13,6 +13,7 @@ use crate::account::get_account;
 use crate::activities::get_activities;
 use crate::dashboard::{get_dashboard, get_dashboard_with_symbol};
 use crate::edit_settings::{get_settings, get_settings_button};
+use crate::order::get_orders;
 use crate::positions::get_positions;
 use crate::profit::get_profit;
 use crate::symbols::{get_symbols, post_symbols};
@@ -107,7 +108,9 @@ impl WebServer {
                 .route("/settings/button/{name}", web::get().to(get_settings_button))
                 .route("/dashboard", web::get().to(get_dashboard))
                 .route("/dashboard/{symbol}", web::get().to(get_dashboard_with_symbol))
-                // .route("/dashboard", web::post().to(post_dashboard_with_symbol))
+                .route("/order", web::get().to(get_orders))
+                // .route("/order/{symbol}", web::get().to(get_orders))
+
 
         }).bind(("0.0.0.0", web_port))?
             .workers(2)

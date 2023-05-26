@@ -70,7 +70,6 @@ use chrono::{DateTime, Utc};
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TempPosition {
-    pub dtg: DateTime<Utc>,
     pub asset_id: String,
     pub symbol: String,
     pub exchange: String,
