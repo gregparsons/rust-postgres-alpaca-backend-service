@@ -157,32 +157,32 @@ impl Position{
 
     }
 
-    /// Call the Alpaca API to get the remote position snapshot
-    // pub async fn get_remote(settings:&Settings) -> Result<Vec<Position>, reqwest::Error> {
-    //
-    //     let mut headers = reqwest::header::HeaderMap::new();
-    //
-    //     // TODO: add a setting for USE_PAPER_OR_LIVE
-    //     let api_key_id = settings.alpaca_paper_id.clone();
-    //     let api_secret = settings.alpaca_paper_secret.clone();
-    //
-    //     headers.insert("APCA-API-KEY-ID", api_key_id.parse().unwrap());
-    //     headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
-    //
-    //     // get the position list from the positions API
-    //     let client = reqwest::Client::new();
-    //     let remote_positions:Vec<TempPosition> = client.get("https://paper-api.alpaca.markets/v2/positions")
-    //         .headers(headers)
-    //         .send()
-    //         .await?
-    //         .json()
-    //         .await?;
-    //
-    //     let now = Utc::now();
-    //     let remote_positions = remote_positions.iter().map(move |x| Position::from_temp(now, x.clone())).collect();
-    //
-    //     Ok(remote_positions)
-    // }
+    // Call the Alpaca API to get the remote position snapshot
+    pub async fn get_remote(settings:&Settings) -> Result<Vec<Position>, reqwest::Error> {
+
+        let mut headers = reqwest::header::HeaderMap::new();
+
+        // TODO: add a setting for USE_PAPER_OR_LIVE
+        let api_key_id = settings.alpaca_paper_id.clone();
+        let api_secret = settings.alpaca_paper_secret.clone();
+
+        headers.insert("APCA-API-KEY-ID", api_key_id.parse().unwrap());
+        headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
+
+        // get the position list from the positions API
+        let client = reqwest::Client::new();
+        let remote_positions:Vec<TempPosition> = client.get("https://paper-api.alpaca.markets/v2/positions")
+            .headers(headers)
+            .send()
+            .await?
+            .json()
+            .await?;
+
+        let now = Utc::now();
+        let remote_positions = remote_positions.iter().map(move |x| Position::from_temp(now, x.clone())).collect();
+
+        Ok(remote_positions)
+    }
 
 
     /// save a single position to the database; not ideal to not insert the result of the alpaca api call as a bulk insert but not rocket science at the moment

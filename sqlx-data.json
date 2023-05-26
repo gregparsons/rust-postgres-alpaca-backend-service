@@ -519,6 +519,126 @@
     },
     "query": "\n            select\n                user_id, username, password\n            from users\n            where username = $1\n        "
   },
+  "dadc07176d510ad89c2f6bb00e08c20b08c34acc1e4dc7a46be534fc6eac449f": {
+    "describe": {
+      "columns": [
+        {
+          "name": "dtg!",
+          "ordinal": 0,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "symbol!",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "exchange!",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "asset_class!",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "avg_entry_price!",
+          "ordinal": 4,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty!",
+          "ordinal": 5,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty_available!",
+          "ordinal": 6,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "side!:PositionSide",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "market_value!",
+          "ordinal": 8,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "cost_basis!",
+          "ordinal": 9,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_pl!",
+          "ordinal": 10,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_plpc!",
+          "ordinal": 11,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_intraday_pl!",
+          "ordinal": 12,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_intraday_plpc!",
+          "ordinal": 13,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "current_price!",
+          "ordinal": 14,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "lastday_price!",
+          "ordinal": 15,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "change_today!",
+          "ordinal": 16,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "asset_id!",
+          "ordinal": 17,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        null,
+        false,
+        true,
+        true,
+        null,
+        null,
+        null,
+        true,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                select\n                    a.dtg as \"dtg!\"\n                    ,symbol as \"symbol!\"\n                    ,exchange as \"exchange!\"\n                    ,asset_class as \"asset_class!\"\n                    ,coalesce(avg_entry_price, 0.0) as \"avg_entry_price!\"\n                    ,coalesce(qty,0.0) as \"qty!\"\n                    ,coalesce(qty_available,0.0) as \"qty_available!\"\n                    ,side as \"side!:PositionSide\"\n                    ,coalesce(market_value,0.0) as \"market_value!\"\n                    ,coalesce(cost_basis,0.0) as \"cost_basis!\"\n                    ,coalesce(unrealized_pl,0.0) as \"unrealized_pl!\"\n                    ,coalesce(unrealized_plpc,0.0) as \"unrealized_plpc!\"\n                    ,coalesce(unrealized_intraday_pl,0.0) as \"unrealized_intraday_pl!\"\n                    ,coalesce(unrealized_intraday_plpc,0.0) as \"unrealized_intraday_plpc!\"\n                    ,coalesce(current_price,0.0) as \"current_price!\"\n                    ,coalesce(lastday_price,0.0) as \"lastday_price!\"\n                    ,coalesce(change_today,0.0) as \"change_today!\"\n                    ,asset_id as \"asset_id!\"\n                from\n                (select max(dtg) as dtg from alpaca_position) a\n                join\n                alpaca_position b on a.dtg = b.dtg\n                order by symbol\n            "
+  },
   "df1a05a59de21bb01d1e97502da28e26a0453bdc134c2c36a113a2e2e1bbf4a9": {
     "describe": {
       "columns": [

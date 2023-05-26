@@ -4,14 +4,12 @@
 
 use actix_session::Session;
 use actix_web::{HttpResponse, web};
-use chrono::{DateTime, NaiveDate, Utc};
 use handlebars::Handlebars;
 use serde_json::json;
 use sqlx::PgPool;
 use common_lib::http::redirect_home;
 use common_lib::common_structs::SESSION_USERNAME;
 use common_lib::position::Position;
-use common_lib::settings::Settings;
 
 /// GET /positions
 pub async fn get_positions(pool: web::Data<PgPool>, hb: web::Data<Handlebars<'_>>, session:Session) -> HttpResponse {
@@ -23,8 +21,8 @@ async fn get_positions_with_message(pool: web::Data<PgPool>, hb: web::Data<Handl
     // require login
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
 
-        match Settings::load(&pool).await{
-            Ok(settings)=>{
+        // match Settings::load(&pool).await{
+        //     Ok(_settings)=>{
 
                 // get positions from the postgres database (already synced from Alpaca by the backend)
                 let position_vec_result = Position::get_open_positions_from_db(&pool).await;
@@ -53,13 +51,13 @@ async fn get_positions_with_message(pool: web::Data<PgPool>, hb: web::Data<Handl
                         tracing::debug!("[get_positions] error getting symbols: {:?}", &e);
                         redirect_home().await
                     }
-                }
+                // }
 
-            },
-            Err(e)=>{
-                tracing::debug!("[get_positions] error getting settings from database: {:?}", &e);
-                redirect_home().await
-            }
+            // },
+            // Err(e)=>{
+            //     tracing::debug!("[get_positions] error getting settings from database: {:?}", &e);
+            //     redirect_home().await
+            // }
         }
     } else {
         redirect_home().await

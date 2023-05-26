@@ -50,7 +50,7 @@ pub struct DashboardForm {
 }
 
 /// POST /dashboard?symbol_select=aapl
-pub async fn post_dashboard_with_symbol(symbol_form: web::Form<DashboardForm>, pool: web::Data<PgPool>, hb: web::Data<Handlebars<'_>>, session:Session) -> impl Responder {
+pub async fn post_dashboard_with_symbol(symbol_form: web::Form<DashboardForm>, _pool: web::Data<PgPool>, _hb: web::Data<Handlebars<'_>>, _session:Session) -> impl Responder {
     tracing::debug!("[post_dashboard_with_symbol] symbol: {}", &symbol_form.symbol);
     format!("post_dashboard_with_symbol: {}", symbol_form.into_inner().symbol)
 
