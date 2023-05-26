@@ -12,6 +12,7 @@ use common_lib::settings::Settings;
 
 pub async fn get_orders(pool: web::Data<PgPool>, hb: web::Data<Handlebars<'_>>, session:Session) -> HttpResponse {
     // require login
+    tracing::debug!("[get_orders]");
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
         let setting_result = Settings::load_no_secret(&pool).await;
         match setting_result {
@@ -19,12 +20,17 @@ pub async fn get_orders(pool: web::Data<PgPool>, hb: web::Data<Handlebars<'_>>, 
 
                 let orders = Order::get_unfilled_orders_from_db(&pool).await;
 
+                // tracing::debug!("[get_orders] orders: {:?}", &orders);
+
                 let (message, orders) = match orders {
                     Ok(orders)=>{
+                        tracing::debug!("[get_orders] orders: {:?}", &orders);
                         ("Got orders".to_string(), orders)
                     }
                     Err(e) => {
+                        tracing::debug!("[get_orders] db error getting orders: {:?}", &e);
                         tracing::debug!("[get_orders] error getting orders from db: {:?}", &e);
+
                         ("Error getting orders from database".to_string(), vec![])
                     }
                 };

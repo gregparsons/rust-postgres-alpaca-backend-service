@@ -21,6 +21,7 @@ use chrono::{DateTime, Utc};
 use reqwest::header::HeaderMap;
 use sqlx::PgPool;
 use crate::settings::Settings;
+use crate::trade_struct::{OrderType, TimeInForce, TradeSide};
 
 ///
 ///
@@ -96,9 +97,9 @@ pub struct Order {
     // deprecated (so they could use "type" screw up every programming language reserved keyword SERDE)
     // order_type: String,
     #[serde(rename = "type")]
-    pub order_type_v2: String,
-    pub side: String,
-    pub time_in_force: String,
+    pub order_type_v2: OrderType,
+    pub side: TradeSide,
+    pub time_in_force: TimeInForce,
     pub limit_price: Option<BigDecimal>,
     pub stop_price: Option<BigDecimal>,
     pub status: String,
@@ -153,17 +154,17 @@ select
     , replaced_at
     , replaced_by
     , replaces
-    , asset_id as "asset_id!Option<BigDecimal>"
-    , symbol as "symbol!Option<String>"
-    , asset_class
-    , notional
-    , coalesce(qty, 0.0) as "qty!"
-    , coalesce(filled_qty, 0.0) as "filled_qty!"
+    , asset_id as "asset_id!:Option<String>"
+    , symbol as "symbol!:String"
+    , asset_class as "asset_class!:Option<String>"
+    , notional as "notional!:Option<BigDecimal>"
+    , coalesce(qty, 0.0) as "qty!:BigDecimal"
+    , filled_qty as "filled_qty!:Option<BigDecimal>"
     , filled_avg_price as "filled_avg_price!:Option<BigDecimal>"
-    , order_class as "order_class!"
-    , order_type_v2 as "order_type_v2!"
-    , side as "side!"
-    , time_in_force as "time_in_force!"
+    , order_class as "order_class!:Option<String>"
+    , order_type_v2 as "order_type_v2!:OrderType"
+    , side as "side!:TradeSide"
+    , time_in_force as "time_in_force!:TimeInForce"
     , limit_price as "limit_price!:Option<BigDecimal>"
     , stop_price as "stop_price!:Option<BigDecimal>"
     , status as "status!"
@@ -230,8 +231,8 @@ order by updated_at desc
                 )
             values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)"#,
             self.id, self.client_order_id, self.created_at, self.updated_at, self.submitted_at, self.filled_at,
-            self.symbol, self.qty, self.filled_qty, self.filled_avg_price, self.order_type_v2,
-            self.side, self.time_in_force, self.limit_price, self.stop_price, self.status
+            self.symbol, self.qty, self.filled_qty, self.filled_avg_price, self.order_type_v2.to_string(),
+            self.side.to_string(), self.time_in_force.to_string(), self.limit_price, self.stop_price, self.status
 
         ).execute(pool).await;
         println!("[save_to_db] result: {:?}", result);

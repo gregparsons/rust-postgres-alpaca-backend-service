@@ -23,8 +23,7 @@
         <td>Side</td>
         <td>Qty</td>
         <td>Price</td>
-        <td>Pacific</td>
-        <td>UTC</td>
+        <td>updated_at</td>
     <tr>
     {{#each orders}}
     <tr>
@@ -32,8 +31,7 @@
         <td>{{this.side}}</td>
         <td>{{this.qty}}</td>
         <td>${{this.price}}</td>
-        <td>{{this.dtg_pacific}}</td>
-        <td>{{this.dtg_utc}}</td>
+        <td>{{this.updated_at}}</td>
     </tr>
     {{/each}}
 </table>
