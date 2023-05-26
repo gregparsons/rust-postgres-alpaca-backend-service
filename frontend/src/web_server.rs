@@ -11,7 +11,7 @@ use crate::login::{get_login, get_logout, post_login};
 use crate::metrics::{get_avg, get_chart};
 use crate::account::get_account;
 use crate::activities::get_activities;
-use crate::dashboard::{get_dashboard, get_dashboard_with_symbol, post_dashboard_with_symbol};
+use crate::dashboard::{get_dashboard, get_dashboard_with_symbol};
 use crate::edit_settings::{get_settings, get_settings_button};
 use crate::positions::get_positions;
 use crate::profit::get_profit;
@@ -107,7 +107,7 @@ impl WebServer {
                 .route("/settings/button/{name}", web::get().to(get_settings_button))
                 .route("/dashboard", web::get().to(get_dashboard))
                 .route("/dashboard/{symbol}", web::get().to(get_dashboard_with_symbol))
-                .route("/dashboard", web::post().to(post_dashboard_with_symbol))
+                // .route("/dashboard", web::post().to(post_dashboard_with_symbol))
 
         }).bind(("0.0.0.0", web_port))?
             .workers(2)

@@ -2,8 +2,6 @@
 //!
 //! Restful Alpaca Poller
 
-
-use actix_web::cookie::Expiration::DateTime;
 use chrono::{Utc};
 use crate::alpaca_activity::get_activity_api;
 use crate::common::{MARKET_OPEN_TIME, MARKET_CLOSE_TIME};
