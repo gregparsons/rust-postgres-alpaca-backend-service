@@ -104,6 +104,56 @@
     },
     "query": "\n            select\n                symbol as \"symbol!\"\n             , active as \"active!\"\n            from t_symbol\n            order by symbol\n        "
   },
+  "15c27c09a68a0304bd5882a015bcedcbd91d77233e81ed3b8ef5cac3e0628203": {
+    "describe": {
+      "columns": [
+        {
+          "name": "dtg_utc!",
+          "ordinal": 0,
+          "type_info": "Timestamp"
+        },
+        {
+          "name": "dtg_pacific!",
+          "ordinal": 1,
+          "type_info": "Timestamp"
+        },
+        {
+          "name": "symbol!",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "side!:TradeSide",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "qty!",
+          "ordinal": 4,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price!",
+          "ordinal": 5,
+          "type_info": "Numeric"
+        }
+      ],
+      "nullable": [
+        null,
+        null,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                select\n                    transaction_time::timestamp as \"dtg_utc!\"\n                    ,timezone('US/Pacific', transaction_time) as \"dtg_pacific!\"\n                    ,symbol as \"symbol!\"\n                    ,side as \"side!:TradeSide\"\n                    ,qty as \"qty!\"\n                    ,price as \"price!\"\n                from alpaca_activity\n                where symbol = upper($1)\n                order by transaction_time desc\n            "
+  },
   "1a2c4b80fe410e7b89375023d8532e131d0f1c7b9072bae5b61840e60ac9601e": {
     "describe": {
       "columns": [
@@ -230,6 +280,24 @@
       }
     },
     "query": "\n            with rows as (\n                insert into users (\n                    user_id, username, password\n                )\n                values (gen_random_uuid(), $1, $2)\n                returning user_id\n            ) select user_id from rows\n        "
+  },
+  "30f255854809dabc1008f3e29350fef9db68cbd1a7bf935d60c99c0b1e267339": {
+    "describe": {
+      "columns": [
+        {
+          "name": "symbol!",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "select symbol as \"symbol!\" from t_symbol order by symbol"
   },
   "41e310b7a132e9b1fe68c9c9549392df44f6206231105591f371d00e75d6342b": {
     "describe": {
@@ -366,6 +434,54 @@
       }
     },
     "query": "\n                select\n                    dtg as \"dtg!\"\n                    , alpaca_paper_id as \"alpaca_paper_id!\"\n                    , alpaca_paper_secret as \"alpaca_paper_secret!\"\n                    , alpaca_live_id as \"alpaca_live_id!\"\n                    , alpaca_live_secret as \"alpaca_live_secret!\"\n                    , trade_size as \"trade_size!\"\n                    , trade_enable_buy as \"trade_enable_buy!\"\n                    , trade_ema_small_size as \"trade_ema_small_size!\"\n                    , trade_ema_large_size as \"trade_ema_large_size!\"\n                    , trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\"\n                    , trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                from v_settings;\n            "
+  },
+  "710ae47c144dd8b3c04c82c821dde0c9e728394b19c640d41dec25288a19eb4b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "dtg_utc!",
+          "ordinal": 0,
+          "type_info": "Timestamp"
+        },
+        {
+          "name": "dtg_pacific!",
+          "ordinal": 1,
+          "type_info": "Timestamp"
+        },
+        {
+          "name": "symbol!",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "side!:TradeSide",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "qty!",
+          "ordinal": 4,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price!",
+          "ordinal": 5,
+          "type_info": "Numeric"
+        }
+      ],
+      "nullable": [
+        null,
+        null,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                select\n                    transaction_time::timestamp as \"dtg_utc!\"\n                    ,timezone('US/Pacific', transaction_time) as \"dtg_pacific!\"\n                    ,symbol as \"symbol!\"\n                    ,side as \"side!:TradeSide\"\n                    ,qty as \"qty!\"\n                    ,price as \"price!\"\n                from alpaca_activity\n                order by transaction_time desc\n            "
   },
   "9ef773649821c43cdbdf0104e584d934e0f42ea731da38c4b66c9657e3a87500": {
     "describe": {
@@ -638,53 +754,5 @@
       }
     },
     "query": "\n                select\n                    a.dtg as \"dtg!\"\n                    ,symbol as \"symbol!\"\n                    ,exchange as \"exchange!\"\n                    ,asset_class as \"asset_class!\"\n                    ,coalesce(avg_entry_price, 0.0) as \"avg_entry_price!\"\n                    ,coalesce(qty,0.0) as \"qty!\"\n                    ,coalesce(qty_available,0.0) as \"qty_available!\"\n                    ,side as \"side!:PositionSide\"\n                    ,coalesce(market_value,0.0) as \"market_value!\"\n                    ,coalesce(cost_basis,0.0) as \"cost_basis!\"\n                    ,coalesce(unrealized_pl,0.0) as \"unrealized_pl!\"\n                    ,coalesce(unrealized_plpc,0.0) as \"unrealized_plpc!\"\n                    ,coalesce(unrealized_intraday_pl,0.0) as \"unrealized_intraday_pl!\"\n                    ,coalesce(unrealized_intraday_plpc,0.0) as \"unrealized_intraday_plpc!\"\n                    ,coalesce(current_price,0.0) as \"current_price!\"\n                    ,coalesce(lastday_price,0.0) as \"lastday_price!\"\n                    ,coalesce(change_today,0.0) as \"change_today!\"\n                    ,asset_id as \"asset_id!\"\n                from\n                (select max(dtg) as dtg from alpaca_position) a\n                join\n                alpaca_position b on a.dtg = b.dtg\n                order by symbol\n            "
-  },
-  "df1a05a59de21bb01d1e97502da28e26a0453bdc134c2c36a113a2e2e1bbf4a9": {
-    "describe": {
-      "columns": [
-        {
-          "name": "dtg_utc!",
-          "ordinal": 0,
-          "type_info": "Timestamp"
-        },
-        {
-          "name": "dtg_pacific!",
-          "ordinal": 1,
-          "type_info": "Timestamp"
-        },
-        {
-          "name": "symbol!",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "side!:TradeSide",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "qty!",
-          "ordinal": 4,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price!",
-          "ordinal": 5,
-          "type_info": "Numeric"
-        }
-      ],
-      "nullable": [
-        null,
-        null,
-        true,
-        true,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n            select\n                transaction_time::timestamp as \"dtg_utc!\"\n                ,timezone('US/Pacific', transaction_time) as \"dtg_pacific!\"\n                ,symbol as \"symbol!\"\n                ,side as \"side!:TradeSide\"\n                ,qty as \"qty!\"\n                ,price as \"price!\"\n            from alpaca_activity\n            order by transaction_time desc\n        "
   }
 }
