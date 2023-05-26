@@ -14,6 +14,7 @@ mod symbols;
 mod utils;
 mod web_server;
 mod dashboard;
+pub mod order;
 
 use common_lib::init::init;
 

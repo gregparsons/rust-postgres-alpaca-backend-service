@@ -19,6 +19,7 @@ use serde::{Serialize, Deserialize};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use reqwest::header::HeaderMap;
+use sqlx::PgPool;
 use crate::settings::Settings;
 
 ///
@@ -84,14 +85,14 @@ pub struct Order {
     pub replaced_at: Option<DateTime<Utc>>,
     pub replaced_by: Option<DateTime<Utc>>,
     pub replaces: Option<String>,
-    pub asset_id: String,
+    pub asset_id: Option<String>,
     pub symbol: String,
-    pub asset_class: String,
+    pub asset_class: Option<String>,
     pub notional: Option<BigDecimal>,
     pub qty: BigDecimal,
-    pub filled_qty: BigDecimal,
+    pub filled_qty: Option<BigDecimal>,
     pub filled_avg_price: Option<BigDecimal>,
-    pub order_class: String,
+    pub order_class: Option<String>,
     // deprecated (so they could use "type" screw up every programming language reserved keyword SERDE)
     // order_type: String,
     #[serde(rename = "type")]
@@ -102,10 +103,10 @@ pub struct Order {
     pub stop_price: Option<BigDecimal>,
     pub status: String,
     pub extended_hours: bool,
-    pub legs: Option<String>,
+    // pub legs: Option<String>,
     pub trail_percent: Option<BigDecimal>,
     pub trail_price: Option<BigDecimal>,
-    pub hwm: Option<String>,
+    pub hwm: Option<BigDecimal>,
 
 }
 
@@ -129,6 +130,55 @@ impl Order {
             .await?;
 
         Ok(result_vec)
+    }
+
+    /// Get the most recent list of positions from the database
+    pub async fn get_unfilled_orders_from_db(pool:&PgPool) -> Result<Vec<Order>, sqlx::Error> {
+
+        // Assume the latest batch was inserted at the same time; get the most recent timestamp, get the most recent matching positions
+        // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
+        let result_vec = sqlx::query_as!(
+            Order,
+            r#"
+select
+    id as "id!"
+    , client_order_id as "client_order_id!"
+    , created_at as "created_at!"
+    , updated_at as "updated_at!"
+    , submitted_at as "submitted_at!"
+    , filled_at
+    , expired_at
+    , canceled_at
+    , failed_at
+    , replaced_at
+    , replaced_by
+    , replaces
+    , asset_id as "asset_id!Option<BigDecimal>"
+    , symbol as "symbol!Option<String>"
+    , asset_class
+    , notional
+    , coalesce(qty, 0.0) as "qty!"
+    , coalesce(filled_qty, 0.0) as "filled_qty!"
+    , filled_avg_price as "filled_avg_price!:Option<BigDecimal>"
+    , order_class as "order_class!"
+    , order_type_v2 as "order_type_v2!"
+    , side as "side!"
+    , time_in_force as "time_in_force!"
+    , limit_price as "limit_price!:Option<BigDecimal>"
+    , stop_price as "stop_price!:Option<BigDecimal>"
+    , status as "status!"
+    , coalesce(extended_hours, false) as "extended_hours!"
+    , trail_percent
+    , trail_price
+    , hwm
+from alpaca_order
+where filled_at is null
+order by updated_at desc
+            "#
+        ).fetch_all(pool).await;
+
+        result_vec
+
     }
 
 
@@ -168,7 +218,7 @@ impl Order {
                 -- order_class,
                 order_type_v2,
 
-                side,
+                side ,
                 time_in_force,
                 limit_price,
                 stop_price,
