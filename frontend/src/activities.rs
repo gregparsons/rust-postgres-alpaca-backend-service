@@ -5,15 +5,12 @@
 
 use actix_session::Session;
 use actix_web::{HttpResponse, web};
-use bigdecimal::BigDecimal;
-use chrono::{NaiveDateTime};
 use handlebars::Handlebars;
 use serde_json::json;
 use sqlx::PgPool;
 use common_lib::http::redirect_home;
-use serde::{Serialize,Deserialize};
+use common_lib::alpaca_activity::Activity;
 use common_lib::common_structs::SESSION_USERNAME;
-use common_lib::trade_struct::TradeSide;
 
 ///
 /// GET /symbols
@@ -26,7 +23,9 @@ async fn get_activities_with_message(pool: web::Data<PgPool>, hb: web::Data<Hand
 
     // require login
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
-        let activity_vec_result = get_activities_from_db(&pool).await;
+
+        let activity_vec_result = Activity::get_activities_from_db(&pool).await;
+
         match activity_vec_result {
             Ok(activity_vec) => {
 
@@ -58,64 +57,7 @@ async fn get_activities_with_message(pool: web::Data<PgPool>, hb: web::Data<Hand
 
 
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct ActivityQuery{
-    // pub id: String,
-    // pub activity_type: ActivityType,
-    // fill or partial_fill
-    // #[serde(rename="type")]
-    // pub activity_subtype: ActivitySubtype,
-    pub dtg_utc: NaiveDateTime,
-    pub dtg_pacific: NaiveDateTime,
-    pub symbol: String,
-    pub side: TradeSide,
-    pub qty: BigDecimal,
-    pub price: BigDecimal,
-    // pub cum_qty: BigDecimal,
-    // pub leaves_qty: BigDecimal,
-    // pub order_id: String,
-}
-
-#[derive(Deserialize, Serialize, Debug)]
-pub enum ActivityType{
-    #[serde(rename="FILL")]
-    Fill
-}
-#[derive(Deserialize, Serialize, Debug)]
-pub enum ActivitySubtype{
-    #[serde(rename="fill")]
-    Fill,
-    #[serde(rename="partial_fill")]
-    PartialFill
-}
 
 
 
-/// get a vec of alpaca trading activities from the postgres database (as a reflection of what's been
-/// synced from the Alpaca API)
-///
-/// TODO: probably already have a common function for this
-///
-async fn get_activities_from_db(pool:&PgPool) -> Result<Vec<ActivityQuery>,sqlx::Error>{
-
-    // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
-
-    sqlx::query_as!(
-    ActivityQuery,
-        r#"
-            select
-                transaction_time::timestamp as "dtg_utc!"
-                ,timezone('US/Pacific', transaction_time) as "dtg_pacific!"
-                ,symbol as "symbol!"
-                ,side as "side!:TradeSide"
-                ,qty as "qty!"
-                ,price as "price!"
-            from alpaca_activity
-            order by transaction_time desc
-        "#
-    )
-    .fetch_all(pool)
-    .await
-
-}
 

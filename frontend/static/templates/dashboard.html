@@ -1,14 +1,47 @@
 {{#*inline "page"}}
     <p>{{title}}</p>
-
-    <form action="/dashboard" method="post">
-        <select name="symbol">
-            {{#each symbols}}
-            <option value="{{this}}">{{this}}</option>
-            {{/each}}
-        </select>
-        <input type="submit" value="Select">
-    </form>
-    <p>{{data}}</p>
+<h4>
+{{#each symbols}}
+<a href="/dashboard/{{this}}">{{this}}</a>&nbsp
+{{/each}}
+</h4>
+<!--<form action="/dashboard" method="post">-->
+<!--    <select name="symbol">-->
+<!--        {{#each symbols}}-->
+<!--        <option value="{{this}}">{{this}}</option>-->
+<!--        {{/each}}-->
+<!--    </select>-->
+<!--    <input type="submit" value="Select">-->
+<!--</form>-->
+<p>{{message}}</p>
+<hr class="rounded">
+<h3>Chart</h3>
+<hr class="rounded">
+<h3>Positions</h3>
+<hr class="rounded">
+<h3>Orders</h3>
+<hr class="rounded">
+<h3>Activity</h3>
+<table>
+    <tr>
+        <td>Symbol</td>
+        <td>Side</td>
+        <td>Qty</td>
+        <td>Price</td>
+        <td>Pacific</td>
+        <td>UTC</td>
+    <tr>
+        {{#each activities}}
+    <tr>
+        <td><a href="https://www.google.com/finance/quote/{{this.symbol}}:NASDAQ">{{this.symbol}}</a></td>
+        <td>{{this.side}}</td>
+        <td>{{this.qty}}</td>
+        <td>${{this.price}}</td>
+        <td>{{this.dtg_pacific}}</td>
+        <td>{{this.dtg_utc}}</td>
+    </tr>
+    {{/each}}
+</table>
+<hr class="rounded">
 {{/inline}}
 {{> (lookup this "parent")}}

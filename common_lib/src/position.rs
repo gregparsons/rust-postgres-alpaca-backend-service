@@ -45,6 +45,7 @@ use crate::settings::Settings;
 ///
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Position {
+    pub dtg: DateTime<Utc>,
     pub asset_id: String,
     pub symbol: String,
     pub exchange: String,
@@ -67,11 +68,96 @@ pub struct Position {
 use std::fmt::{Debug, Display};
 use chrono::{DateTime, Utc};
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct TempPosition {
+    pub dtg: DateTime<Utc>,
+    pub asset_id: String,
+    pub symbol: String,
+    pub exchange: String,
+    pub asset_class: String,
+    pub avg_entry_price: BigDecimal,
+    pub qty: BigDecimal,
+    pub qty_available: BigDecimal,
+    pub side: PositionSide,
+    pub market_value: BigDecimal,
+    pub cost_basis: BigDecimal,
+    pub unrealized_pl: BigDecimal,
+    pub unrealized_plpc: BigDecimal,
+    pub unrealized_intraday_pl: BigDecimal,
+    pub unrealized_intraday_plpc: BigDecimal,
+    pub current_price: BigDecimal,
+    pub lastday_price: BigDecimal,
+    pub change_today: BigDecimal,
+}
+
 
 impl Position{
-    /// Call the Alpaca API to get the remote position snapshot
-    ///
-    /// populate the positions hashmap
+
+    fn from_temp(timestamp:DateTime<Utc>, t:TempPosition)->Position{
+        Position{
+            dtg: timestamp,
+            asset_id: t.asset_id,
+            symbol: t.symbol,
+            exchange: t.exchange,
+            asset_class: t.asset_class,
+            avg_entry_price: t.avg_entry_price,
+            qty: t.qty,
+            qty_available: t.qty_available,
+            side: t.side,
+            market_value: t.market_value,
+            cost_basis: t.cost_basis,
+            unrealized_pl: t.unrealized_pl,
+            unrealized_plpc: t.unrealized_plpc,
+            unrealized_intraday_pl: t.unrealized_intraday_pl,
+            unrealized_intraday_plpc: t.unrealized_intraday_plpc,
+            current_price: t.current_price,
+            lastday_price: t.lastday_price,
+            change_today: t.change_today,
+        }
+    }
+
+
+
+    /// Get the most recent list of positions from the database
+    pub async fn get_open_positions_from_db(pool:&PgPool) -> Result<Vec<Position>, sqlx::Error> {
+
+        // Assume the latest batch was inserted at the same time; get the most recent timestamp, get the most recent matching positions
+        // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
+        let result_vec = sqlx::query_as!(
+            Position,
+            r#"
+                select
+                    a.dtg as "dtg!"
+                    ,symbol as "symbol!"
+                    ,exchange as "exchange!"
+                    ,asset_class as "asset_class!"
+                    ,coalesce(avg_entry_price, 0.0) as "avg_entry_price!"
+                    ,coalesce(qty,0.0) as "qty!"
+                    ,coalesce(qty_available,0.0) as "qty_available!"
+                    ,side as "side!:PositionSide"
+                    ,coalesce(market_value,0.0) as "market_value!"
+                    ,coalesce(cost_basis,0.0) as "cost_basis!"
+                    ,coalesce(unrealized_pl,0.0) as "unrealized_pl!"
+                    ,coalesce(unrealized_plpc,0.0) as "unrealized_plpc!"
+                    ,coalesce(unrealized_intraday_pl,0.0) as "unrealized_intraday_pl!"
+                    ,coalesce(unrealized_intraday_plpc,0.0) as "unrealized_intraday_plpc!"
+                    ,coalesce(current_price,0.0) as "current_price!"
+                    ,coalesce(lastday_price,0.0) as "lastday_price!"
+                    ,coalesce(change_today,0.0) as "change_today!"
+                    ,asset_id as "asset_id!"
+                from
+                (select max(dtg) as dtg from alpaca_position) a
+                join
+                alpaca_position b on a.dtg = b.dtg
+                order by symbol
+            "#
+        ).fetch_all(pool).await;
+
+        result_vec
+
+    }
+
+    // Call the Alpaca API to get the remote position snapshot
     pub async fn get_remote(settings:&Settings) -> Result<Vec<Position>, reqwest::Error> {
 
         let mut headers = reqwest::header::HeaderMap::new();
@@ -85,12 +171,15 @@ impl Position{
 
         // get the position list from the positions API
         let client = reqwest::Client::new();
-        let remote_positions:Vec<Position> = client.get("https://paper-api.alpaca.markets/v2/positions")
+        let remote_positions:Vec<TempPosition> = client.get("https://paper-api.alpaca.markets/v2/positions")
             .headers(headers)
             .send()
             .await?
             .json()
             .await?;
+
+        let now = Utc::now();
+        let remote_positions = remote_positions.iter().map(move |x| Position::from_temp(now, x.clone())).collect();
 
         Ok(remote_positions)
     }
@@ -121,8 +210,8 @@ impl Position{
 
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Clone)]
-pub enum PositionSide{
+#[derive(sqlx::Type, Debug, Serialize, Deserialize, PartialEq, Clone)]
+pub enum PositionSide {
     #[serde(rename = "long")]
     Long,
     #[serde(rename = "short")]
@@ -146,3 +235,25 @@ impl fmt::Display for Position {
         write!(f, "{}\t{:?}\t{}\t{}\t{}", self.symbol, self.side, self.qty, self.cost_basis, self.asset_id)
     }
 }
+
+// #[derive(Debug, Serialize, Deserialize, Clone)]
+// pub struct QueryPosition {
+//     pub dtg: DateTime<Utc>,
+//     pub symbol: String,
+//     pub exchange: String,
+//     pub asset_class: String,
+//     pub avg_entry_price: BigDecimal,
+//     pub qty: BigDecimal,
+//     pub qty_available: BigDecimal,
+//     pub side: PositionSide,
+//     pub market_value: BigDecimal,
+//     pub cost_basis: BigDecimal,
+//     pub unrealized_pl: BigDecimal,
+//     pub unrealized_plpc: BigDecimal,
+//     pub unrealized_intraday_pl: BigDecimal,
+//     pub unrealized_intraday_plpc: BigDecimal,
+//     pub current_price: BigDecimal,
+//     pub lastday_price: BigDecimal,
+//     pub change_today: BigDecimal,
+//     pub asset_id: String,
+// }
