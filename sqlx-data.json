@@ -525,6 +525,198 @@
     },
     "query": "\n            select\n                dtg as \"dtg!\",\n                coalesce(symbol, '') as \"symbol!\",\n                price as \"price!\",\n                size as \"size!\",\n                exchange as \"exchange\"\n            from\n                v_trade_minute\n            order by dtg desc\n            limit 1000\n        "
   },
+  "b05e6174dd5a9c7c4678531c5d0b9987648f559c99858c696d1d113e52b71e1c": {
+    "describe": {
+      "columns": [
+        {
+          "name": "id!",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "client_order_id!",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "created_at!",
+          "ordinal": 2,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "updated_at!",
+          "ordinal": 3,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "submitted_at!",
+          "ordinal": 4,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "filled_at",
+          "ordinal": 5,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "expired_at",
+          "ordinal": 6,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "canceled_at",
+          "ordinal": 7,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "failed_at",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "replaced_at",
+          "ordinal": 9,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "replaced_by",
+          "ordinal": 10,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "replaces",
+          "ordinal": 11,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "asset_id!:Option<String>",
+          "ordinal": 12,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "symbol!:String",
+          "ordinal": 13,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "asset_class!:Option<String>",
+          "ordinal": 14,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "notional!:Option<BigDecimal>",
+          "ordinal": 15,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty!:BigDecimal",
+          "ordinal": 16,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "filled_qty!:Option<BigDecimal>",
+          "ordinal": 17,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "filled_avg_price!:Option<BigDecimal>",
+          "ordinal": 18,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "order_class!:Option<String>",
+          "ordinal": 19,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "order_type_v2!:OrderType",
+          "ordinal": 20,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "side!:TradeSide",
+          "ordinal": 21,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "time_in_force!:TimeInForce",
+          "ordinal": 22,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "limit_price!:Option<BigDecimal>",
+          "ordinal": 23,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "stop_price!:Option<BigDecimal>",
+          "ordinal": 24,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "status!",
+          "ordinal": 25,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "extended_hours!",
+          "ordinal": 26,
+          "type_info": "Bool"
+        },
+        {
+          "name": "trail_percent",
+          "ordinal": 27,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "trail_price",
+          "ordinal": 28,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "hwm",
+          "ordinal": 29,
+          "type_info": "Numeric"
+        }
+      ],
+      "nullable": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        null,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        null,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\nselect\n    id as \"id!\"\n    , client_order_id as \"client_order_id!\"\n    , created_at as \"created_at!\"\n    , updated_at as \"updated_at!\"\n    , submitted_at as \"submitted_at!\"\n    , filled_at\n    , expired_at\n    , canceled_at\n    , failed_at\n    , replaced_at\n    , replaced_by\n    , replaces\n    , asset_id as \"asset_id!:Option<String>\"\n    , symbol as \"symbol!:String\"\n    , asset_class as \"asset_class!:Option<String>\"\n    , notional as \"notional!:Option<BigDecimal>\"\n    , coalesce(qty, 0.0) as \"qty!:BigDecimal\"\n    , filled_qty as \"filled_qty!:Option<BigDecimal>\"\n    , filled_avg_price as \"filled_avg_price!:Option<BigDecimal>\"\n    , order_class as \"order_class!:Option<String>\"\n    , order_type_v2 as \"order_type_v2!:OrderType\"\n    , side as \"side!:TradeSide\"\n    , time_in_force as \"time_in_force!:TimeInForce\"\n    , limit_price as \"limit_price!:Option<BigDecimal>\"\n    , stop_price as \"stop_price!:Option<BigDecimal>\"\n    , status as \"status!\"\n    , coalesce(extended_hours, false) as \"extended_hours!\"\n    , trail_percent\n    , trail_price\n    , hwm\nfrom alpaca_order\nwhere filled_at is null\norder by updated_at desc\n            "
+  },
   "b1b266cecbb2297cecdfdf7191e4e0ef878f12f4c822c5a665ccecf3505c59d7": {
     "describe": {
       "columns": [
@@ -754,5 +946,32 @@
       }
     },
     "query": "\n                select\n                    a.dtg as \"dtg!\"\n                    ,symbol as \"symbol!\"\n                    ,exchange as \"exchange!\"\n                    ,asset_class as \"asset_class!\"\n                    ,coalesce(avg_entry_price, 0.0) as \"avg_entry_price!\"\n                    ,coalesce(qty,0.0) as \"qty!\"\n                    ,coalesce(qty_available,0.0) as \"qty_available!\"\n                    ,side as \"side!:PositionSide\"\n                    ,coalesce(market_value,0.0) as \"market_value!\"\n                    ,coalesce(cost_basis,0.0) as \"cost_basis!\"\n                    ,coalesce(unrealized_pl,0.0) as \"unrealized_pl!\"\n                    ,coalesce(unrealized_plpc,0.0) as \"unrealized_plpc!\"\n                    ,coalesce(unrealized_intraday_pl,0.0) as \"unrealized_intraday_pl!\"\n                    ,coalesce(unrealized_intraday_plpc,0.0) as \"unrealized_intraday_plpc!\"\n                    ,coalesce(current_price,0.0) as \"current_price!\"\n                    ,coalesce(lastday_price,0.0) as \"lastday_price!\"\n                    ,coalesce(change_today,0.0) as \"change_today!\"\n                    ,asset_id as \"asset_id!\"\n                from\n                (select max(dtg) as dtg from alpaca_position) a\n                join\n                alpaca_position b on a.dtg = b.dtg\n                order by symbol\n            "
+  },
+  "e2fef6315fa1bbb38eba3e386f1f688c1619b9c0279940615283874e9ef46627": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Timestamptz",
+          "Timestamptz",
+          "Timestamptz",
+          "Timestamptz",
+          "Varchar",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Numeric",
+          "Numeric",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "insert into alpaca_order(\n                id,\n                client_order_id,\n                created_at,\n                updated_at,\n                submitted_at,\n                filled_at,\n\n                -- expired_at,\n                -- canceled_at,\n                -- failed_at,\n                -- replaced_at,\n                -- replaced_by,\n                -- replaces,\n                -- asset_id,\n\n                symbol,\n                -- asset_class,\n                -- notional,\n                qty,\n                filled_qty,\n                filled_avg_price,\n                -- order_class,\n                order_type_v2,\n\n                side ,\n                time_in_force,\n                limit_price,\n                stop_price,\n                status\n                -- extended_hours,\n                -- trail_percent,\n                -- trail_price,\n                -- hwm\n                )\n            values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)"
   }
 }
