@@ -1,4 +1,4 @@
-//! edit_positions.rs
+//! frontend/edit_positions.rs
 //!
 //! web form to edit settings
 
@@ -25,23 +25,15 @@ async fn get_positions_with_message(pool: web::Data<PgPool>, hb: web::Data<Handl
 
         match Settings::load(&pool).await{
             Ok(settings)=>{
-                let position_vec_result = Position::get_remote(&settings).await;
 
+                // get positions from the postgres database (already synced from Alpaca by the backend)
+                let position_vec_result = Position::get_open_positions_from_db(&pool).await;
+
+                // get positions from the Alpaca web api
+                // let position_vec_result = Position::get_remote(&settings).await;
 
                 match position_vec_result {
                     Ok(position_vec) => {
-
-
-
-
-                        // TODO: save to database test
-                        // this is just proof of concept; move this to a timer or event-triggered in backend
-                        // and have the frontend load from our database vice relying on Alpaca's API (and limits)
-                        // to load our frontend
-                        let now = chrono::Utc::now();
-                        for posn in position_vec.clone().iter() {
-                            let _result = posn.save_to_db(now, &pool).await;
-                        }
 
                         let data = json!({
                             "title": "Positions",
