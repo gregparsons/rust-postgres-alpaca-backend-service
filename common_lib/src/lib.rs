@@ -12,5 +12,8 @@ pub mod trade_setting_profile;
 pub mod alpaca_activity;
 pub mod alpaca_order;
 pub mod error;
+pub mod alpaca_api_structs;
+pub mod account;
+
 
 

@@ -3,10 +3,10 @@
 //! start() spawns a long-running thread to maintain an open connection to a database pool
 //!
 
-use crate::models::{AlpWsQuote, AlpWsTrade, AlpacaTradeRest};
 use crossbeam::channel::Sender;
 use std::thread::JoinHandle;
 use tokio_postgres::{Client, SimpleQueryMessage};
+use common_lib::alpaca_api_structs::{AlpacaTradeRest, AlpWsQuote, AlpWsTrade};
 use common_lib::common_structs::MinuteBar;
 
 #[derive(Debug)]

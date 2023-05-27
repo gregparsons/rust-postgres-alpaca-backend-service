@@ -8,7 +8,7 @@ pub static SESSION_USER_ID:&str = "session_user_id";
 pub static SESSION_USERNAME:&str = "session_username";
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct FormData{
+pub struct FormData {
     pub username:String,
     pub password:String,
 }
@@ -23,7 +23,7 @@ pub struct QueryAverage {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MinuteBar{
+pub struct MinuteBar {
     #[serde(rename = "T")]
     msg_type: String,
     #[serde(rename = "S")]

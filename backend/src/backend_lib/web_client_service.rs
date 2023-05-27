@@ -3,13 +3,13 @@
 //! Restful Alpaca Poller
 
 use chrono::{Utc};
-use crate::common::{MARKET_OPEN_TIME, MARKET_CLOSE_TIME};
 use tokio::runtime::Handle;
 use common_lib::alpaca_activity::Activity;
 use common_lib::alpaca_order::Order;
 use common_lib::alpaca_position::Position;
 use common_lib::settings::Settings;
 use common_lib::sqlx_pool::create_sqlx_pg_pool;
+use crate::{MARKET_CLOSE_TIME, MARKET_OPEN_TIME};
 
 /// Spawn a new thread to poll the Alpaca REST API
 pub async fn run() {
@@ -68,7 +68,6 @@ pub async fn run() {
                                     tracing::debug!("[alpaca_activity] error: {:?}", &e);
                                 }
                             }
-
 
                             // get alpaca positions
                             match Position::get_remote(&settings).await {

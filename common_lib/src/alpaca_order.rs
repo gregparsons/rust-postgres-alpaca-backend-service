@@ -260,23 +260,19 @@ impl Order {
             self.id, self.client_order_id, self.created_at, self.updated_at, self.submitted_at, self.filled_at,
             self.symbol, self.qty, self.filled_qty, self.filled_avg_price, self.order_type_v2.to_string(),
             self.side.to_string(), self.time_in_force.to_string(), self.limit_price, self.stop_price, self.status
-
         ).execute(pool).await;
         println!("[save_to_db] result: {:?}", result);
-
     }
 
     pub async fn delete_all_db(pool: &PgPool)-> Result<PgQueryResult,sqlx::Error> {
-
         sqlx::query!(r#"delete from alpaca_order"#).execute(pool).await
-
     }
 
 }
 
 impl fmt::Display for Order {
 
-    /// enable to_string()
+    /// enable to_string() for Order
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         //fmt::Debug::fmt(self, f)
         match self.limit_price.as_ref(){

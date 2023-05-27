@@ -116,9 +116,6 @@ impl Activity {
         return_val
     }
 
-
-
-
     pub async fn save_to_db(&self, pool: &PgPool)-> Result<PgQueryResult, sqlx::Error> {
         let result = sqlx::query!(
             r#"
@@ -240,19 +237,6 @@ impl fmt::Display for ActivitySubtype {
         fmt::Debug::fmt(self, f)
     }
 }
-
-// #[derive(Deserialize, Serialize, Debug)]
-// pub enum ActivityType{
-//     #[serde(rename="FILL")]
-//     Fill
-// }
-// #[derive(Deserialize, Serialize, Debug)]
-// pub enum ActivitySubtype{
-//     #[serde(rename="fill")]
-//     Fill,
-//     #[serde(rename="partial_fill")]
-//     PartialFill
-// }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ActivityQuery{
