@@ -1,10 +1,24 @@
 //! main.rs
 #![forbid(unsafe_code)]
 
-use backend_lib::data_collector::DataCollector;
+pub mod data_collector;
+pub mod db;
+pub mod web_client_service;
+pub mod websocket_service;
+
+use crate::data_collector::DataCollector;
 use common_lib::init::init;
 use common_lib::settings::Settings;
 use common_lib::sqlx_pool::create_sqlx_pg_pool;
+use chrono::NaiveTime;
+use once_cell::sync::Lazy;
+
+// https://alpaca.markets/learn/investing-basics/what-is-extended-hours-trading/
+pub static MARKET_OPEN_TIME:Lazy<NaiveTime> = Lazy::new(||{ NaiveTime::from_hms_opt(0, 01, 0).unwrap() }); // 4am Eastern
+// pub static MARKET_OPEN_TIME:Lazy<NaiveTime> = Lazy::new(||{ NaiveTime::from_hms_opt(9, 30, 0).unwrap() }); // 4am Eastern
+pub static MARKET_CLOSE_TIME:Lazy<NaiveTime> = Lazy::new(||{ NaiveTime::from_hms_opt(16, 0, 0).unwrap() }); // 4pm
+// pub static MARKET_CLOSE_TIME:Lazy<NaiveTime> = Lazy::new(||{ NaiveTime::from_hms_opt(23, 59, 0).unwrap() }); // 8pm pacific
+
 
 /// main
 fn main() {
