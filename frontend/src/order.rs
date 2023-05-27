@@ -1,4 +1,4 @@
-//! order.rs
+//! alpaca_order
 
 use actix_session::Session;
 use actix_web::{HttpResponse, web};
@@ -7,7 +7,7 @@ use serde_json::json;
 use sqlx::PgPool;
 use common_lib::common_structs::SESSION_USERNAME;
 use common_lib::http::redirect_home;
-use common_lib::order::Order;
+use common_lib::alpaca_order::Order;
 use common_lib::settings::Settings;
 
 pub async fn get_orders(pool: web::Data<PgPool>, hb: web::Data<Handlebars<'_>>, session:Session) -> HttpResponse {

@@ -3,11 +3,11 @@
 //! Restful Alpaca Poller
 
 use chrono::{Utc};
-use crate::alpaca_activity::get_activity_api;
 use crate::common::{MARKET_OPEN_TIME, MARKET_CLOSE_TIME};
 use tokio::runtime::Handle;
-use common_lib::order::Order;
-use common_lib::position::Position;
+use common_lib::alpaca_activity::Activity;
+use common_lib::alpaca_order::Order;
+use common_lib::alpaca_position::Position;
 use common_lib::settings::Settings;
 use common_lib::sqlx_pool::create_sqlx_pg_pool;
 
@@ -56,13 +56,24 @@ pub async fn run() {
 
 
                             // update alpaca activities
-                            let _ = get_activity_api(&pool3, &settings).await;
+                            match Activity::get_remote(&settings).await{
+                                Ok(activities) => {
+                                    tracing::debug!("[alpaca_activities] got activities: {}", activities.len());
+                                    // save to postgres
+                                    for a in activities {
+                                        let _ = a.save_to_db(&pool3).await;
+                                    }
+                                },
+                                Err(e) => {
+                                    tracing::debug!("[alpaca_activity] error: {:?}", &e);
+                                }
+                            }
 
 
                             // get alpaca positions
                             match Position::get_remote(&settings).await {
                                 Ok(positions)=>{
-                                    // use the same insert date for all the positions
+                                    // save to postgres
                                     let now = Utc::now();
                                     for position in positions.iter() {
                                         let _ = position.save_to_db(now, &pool3).await;
@@ -78,17 +89,26 @@ pub async fn run() {
                             // get alpaca orders
                             match Order::get_remote(&settings).await {
                                 Ok(orders) => {
-                                    tracing::debug!("[alpaca_order] orders: {:?}", &orders);
+                                    tracing::debug!("[alpaca_order] orders: {}", &orders.len());
 
+                                    // clear out the database assuming the table will only hold what alpaca's showing as open orders
+                                    match Order::delete_all_db(&pool3).await{
+                                        Ok(_)=>{
+                                            tracing::debug!("[alpaca_order] orders cleared");
+                                        },
+                                        Err(e)=>{
+                                            tracing::debug!("[alpaca_order] orders not cleared: {:?}", &e);
+                                        }
+                                    }
+
+                                    // save to postgres
                                     for order in orders.iter(){
                                         let _ = order.save_to_db(&pool3).await;
                                     }
                                 },
                                 Err(e)=>{
-                                    tracing::debug!("[alpaca_position] could not load orders from Alpaca web API: {:?}", &e);
+                                    tracing::debug!("[alpaca_order] could not load orders from Alpaca web API: {:?}", &e);
                                 }
-
-
                             }
 
 

@@ -1,4 +1,4 @@
-//! position.rs
+//! alpaca_position
 //!
 //!
 //!
@@ -186,7 +186,7 @@ impl Position{
 
     /// save a single position to the database; not ideal to not insert the result of the alpaca api call as a bulk insert but not rocket science at the moment
     pub async fn save_to_db(&self, timestamp: DateTime<Utc>, pool: &PgPool)-> Result<PgQueryResult, sqlx::Error> {
-        tracing::debug!("[save_to_db]");
+        // tracing::debug!("[save_to_db]");
         let result = sqlx::query!(
             r#"
                 insert into alpaca_position(dtg, symbol, exchange, asset_class, avg_entry_price, qty, qty_available, side, market_value
