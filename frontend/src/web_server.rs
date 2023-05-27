@@ -90,10 +90,12 @@ impl WebServer {
                 .app_data(db_pool.clone())
                 .app_data(handlebars_ref.clone())
                 .route("/", web::get().to(get_home))
-                .route("/signup", web::get().to(get_signup))
                 .route("/login", web::get().to(get_login))
-                .route("/signup", web::post().to(post_signup))
                 .route("/login", web::post().to(post_login))
+
+                // disable signup for now
+                // .route("/signup", web::get().to(get_signup))
+                // .route("/signup", web::post().to(post_signup))
                 .route("/ping", web::get().to(get_ping))
                 .route("/avg", web::get().to(get_avg))
                 .route("/chart", web::get().to(get_chart))
