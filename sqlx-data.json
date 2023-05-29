@@ -430,28 +430,6 @@
     },
     "query": "\n                    select\n                        *\n                    from v_stats\n                "
   },
-  "1bc82d69b282d4096d2ac1089d68e67eac73414efcd7ba189713b76660a35dec": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Varchar",
-          "Varchar",
-          "Timestamptz",
-          "Varchar",
-          "Varchar",
-          "Numeric",
-          "Numeric",
-          "Numeric",
-          "Numeric",
-          "Varchar"
-        ]
-      }
-    },
-    "query": "\n            insert into alpaca_activity\n                (\n                id\n                , activity_type\n                , activity_subtype\n                , transaction_time\n                , symbol\n                , side\n                , qty\n                , price\n                , cum_qty\n                , leaves_qty\n                , order_id\n                )\n                values (\n                    $1\n                    ,$2\n                    ,$3\n                    ,$4\n                    ,$5\n                    ,$6\n                    ,$7\n                    ,$8\n                    ,$9\n                    ,$10\n                    ,$11\n                    )"
-  },
   "2648629765c1a4b1a4f8e579999f86cf5cdfd96812213f81a7e46f3d940afdfa": {
     "describe": {
       "columns": [
@@ -548,6 +526,28 @@
       }
     },
     "query": "\n                insert into alpaca_position(dtg, symbol, exchange, asset_class, avg_entry_price, qty, qty_available, side, market_value\n                    , cost_basis, unrealized_pl, unrealized_plpc, current_price, lastday_price, change_today, asset_id)\n                values\n                    (\n                        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, $12, $13, $14, $15, $16\n                    )"
+  },
+  "4c28bcf6cbf72b5eb84cc26e08026b139d0b5863e433a61c6d64dd6877a199a1": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Timestamptz",
+          "Varchar",
+          "Text",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "\n            insert into alpaca_activity\n                (\n                id\n                , activity_type\n                , activity_subtype\n                , transaction_time\n                , symbol\n                , side\n                , qty\n                , price\n                , cum_qty\n                , leaves_qty\n                , order_id\n                )\n                values (\n                    $1\n                    ,$2\n                    ,$3\n                    ,$4\n                    ,$5\n                    ,lower($6)\n                    ,$7\n                    ,$8\n                    ,$9\n                    ,$10\n                    ,$11\n                    )"
   },
   "63cd399a7a6ddae29f88c4c89285c6867d2e5dca354c39188d9fcb70908a93e3": {
     "describe": {
