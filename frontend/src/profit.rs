@@ -61,37 +61,13 @@ pub async fn get_profit(hb: web::Data<Handlebars<'_>>, db_pool: web::Data<PgPool
                     vec![]
                 }
         };
-
-        // let json_string = json!(profit_vec).to_string();
-        // tracing::debug!("[get_profit] profit report:\n{:?}", &json_string);
-
-        // let prof_ttl:QueryProfitTotal = match sqlx::query_as!(
-        //     QueryProfitTotal,
-        //         r#"
-        //             select sum("subtotal!") as "profit!" from v_profit
-        //         "#,
-        //     )
-        //     .fetch_one(db_pool.as_ref())
-        //     .await {
-        //
-        //             Ok(one) => one,
-        //             Err(_e) => {
-        //                 QueryProfitTotal{
-        //                     profit: BigDecimal::from(0),
-        //                 }
-        //             },
-        //     };
-        //
-        //
-        // tracing::debug!("{:?}", &prof_ttl);
-
+        
         let data = json!({
             "title": "Profit",
             "parent": "base0",
             "is_logged_in": true,
             "session_username": &session_username,
             "data": profit_vec,
-            // "profit_total": prof_ttl
         });
 
         let body = hb.render("profit_table", &data).unwrap();
