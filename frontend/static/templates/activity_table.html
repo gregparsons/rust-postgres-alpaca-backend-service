@@ -1,6 +1,11 @@
 {{#*inline "page"}}
 <h2><p>{{title}}</p></h2>
 <p>{{message}}</p>
+<h4>
+    {{#each symbols}}
+    <a href="/activity/{{this}}">{{this}}</a>&nbsp
+    {{/each}}
+</h4>
 <style>
     table {
         font-family: arial, sans-serif;

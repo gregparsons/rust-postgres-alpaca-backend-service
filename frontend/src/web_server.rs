@@ -6,11 +6,11 @@ use handlebars::Handlebars;
 use sqlx::PgPool;
 use actix_session::SessionMiddleware;
 use actix_session::storage::CookieSessionStore;
-use crate::signup::{_get_signup, _post_signup};
+// use crate::signup::{_get_signup, _post_signup};
 use crate::login::{get_login, get_logout, post_login};
 use crate::metrics::{get_avg, get_chart};
 use crate::account::get_account;
-use crate::activities::get_activities;
+use crate::activities::{get_activities, get_activity_for_symbol};
 use crate::dashboard::{get_dashboard, get_dashboard_with_symbol};
 use crate::edit_settings::{get_settings, get_settings_button};
 use crate::order::get_orders;
@@ -104,6 +104,7 @@ impl WebServer {
                 .route("/symbols", web::get().to(get_symbols))
                 .route("/symbols", web::post().to(post_symbols))
                 .route("/activity", web::get().to(get_activities))
+                .route("/activity/{symbol}", web::get().to(get_activity_for_symbol))
                 .route("/settings", web::get().to(get_settings))
                 .route("/positions", web::get().to(get_positions))
                 .route("/settings/button/{name}", web::get().to(get_settings_button))

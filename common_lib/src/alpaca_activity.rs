@@ -165,9 +165,6 @@ impl Activity {
 
     /// get a vec of alpaca trading activities from the postgres database (as a reflection of what's been
     /// synced from the Alpaca API)
-    ///
-    /// TODO: probably already have a common function for this
-    ///
     pub async fn get_activities_from_db(pool:&PgPool) -> Result<Vec<ActivityQuery>,sqlx::Error>{
 
         // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only

@@ -20,6 +20,7 @@ pub async fn _get_signup(hb: web::Data<Handlebars<'_>>) -> HttpResponse {
 }
 
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 struct SignupResult{
     user_id:Uuid,
 }
