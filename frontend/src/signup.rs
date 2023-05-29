@@ -9,7 +9,7 @@ use sqlx::PgPool;
 use sqlx::types::Uuid;
 
 /// authorization: none
-pub async fn get_signup(hb: web::Data<Handlebars<'_>>) -> HttpResponse {
+pub async fn _get_signup(hb: web::Data<Handlebars<'_>>) -> HttpResponse {
     tracing::debug!("[get_signup]");
     let data = json!({
         "title": "Signup",
@@ -25,7 +25,7 @@ struct SignupResult{
 }
 
 /// ref: p. 360 zero2prod
-pub async fn post_signup(form: web::Form<FormData>, hb: web::Data<Handlebars<'_>>, pool: web::Data<PgPool>) -> HttpResponse {
+pub async fn _post_signup(form: web::Form<FormData>, hb: web::Data<Handlebars<'_>>, pool: web::Data<PgPool>) -> HttpResponse {
 
     tracing::debug!("[post_signup] {:?}", &form);
 

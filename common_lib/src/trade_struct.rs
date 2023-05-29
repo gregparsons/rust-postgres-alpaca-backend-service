@@ -32,6 +32,7 @@ pub enum TradeSide{
     #[serde(rename = "sell")]
     Sell,
     #[serde(rename = "sell_short")]
+    #[sqlx(rename="sell_short")]
     SellShort,
 }
 

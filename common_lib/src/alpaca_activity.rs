@@ -139,15 +139,24 @@ impl Activity {
                     ,$3
                     ,$4
                     ,$5
-                    ,$6
+                    ,lower($6)
                     ,$7
                     ,$8
                     ,$9
                     ,$10
                     ,$11
                     )"#,
-            self.id, self.activity_type.to_string(), self.activity_subtype.to_string(), self.transaction_time,
-            self.symbol, self.side.to_string(), self.qty, self.price, self.cum_qty, self.leaves_qty, self.order_id
+            self.id,
+            self.activity_type.to_string(),
+            self.activity_subtype.to_string(),
+            self.transaction_time,
+            self.symbol,
+            self.side.to_string(),
+            self.qty,
+            self.price,
+            self.cum_qty,
+            self.leaves_qty,
+            self.order_id
         ).execute(pool).await;
 
         tracing::debug!("[get_remote] insert result: {:?}", &result);

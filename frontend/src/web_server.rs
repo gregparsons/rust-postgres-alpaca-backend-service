@@ -6,7 +6,7 @@ use handlebars::Handlebars;
 use sqlx::PgPool;
 use actix_session::SessionMiddleware;
 use actix_session::storage::CookieSessionStore;
-use crate::signup::{get_signup, post_signup};
+use crate::signup::{_get_signup, _post_signup};
 use crate::login::{get_login, get_logout, post_login};
 use crate::metrics::{get_avg, get_chart};
 use crate::account::get_account;
@@ -92,7 +92,6 @@ impl WebServer {
                 .route("/", web::get().to(get_home))
                 .route("/login", web::get().to(get_login))
                 .route("/login", web::post().to(post_login))
-
                 // disable signup for now
                 // .route("/signup", web::get().to(get_signup))
                 // .route("/signup", web::post().to(post_signup))
@@ -112,7 +111,6 @@ impl WebServer {
                 .route("/dashboard/{symbol}", web::get().to(get_dashboard_with_symbol))
                 .route("/order", web::get().to(get_orders))
                 // .route("/order/{symbol}", web::get().to(get_orders))
-
 
         }).bind(("0.0.0.0", web_port))?
             .workers(2)
