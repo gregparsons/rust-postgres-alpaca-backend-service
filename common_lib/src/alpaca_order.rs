@@ -244,10 +244,10 @@ impl Order {
                 filled_qty,
                 filled_avg_price,
                 -- order_class,
-                order_type_v2,
+                lower(order_type_v2),
 
-                side ,
-                time_in_force,
+                lower(side),
+                lower(time_in_force),
                 limit_price,
                 stop_price,
                 status
@@ -257,9 +257,22 @@ impl Order {
                 -- hwm
                 )
             values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)"#,
-            self.id, self.client_order_id, self.created_at, self.updated_at, self.submitted_at, self.filled_at,
-            self.symbol, self.qty, self.filled_qty, self.filled_avg_price, self.order_type_v2.to_string(),
-            self.side.to_string(), self.time_in_force.to_string(), self.limit_price, self.stop_price, self.status
+            self.id
+            , self.client_order_id
+            , self.created_at
+            , self.updated_at
+            , self.submitted_at
+            , self.filled_at
+            , self.symbol
+            , self.qty
+            , self.filled_qty
+            , self.filled_avg_price
+            , self.order_type_v2.to_string()
+            , self.side.to_string()
+            , self.time_in_force.to_string()
+            , self.limit_price
+            , self.stop_price
+            , self.status
         ).execute(pool).await;
         println!("[save_to_db] result: {:?}", result);
     }
