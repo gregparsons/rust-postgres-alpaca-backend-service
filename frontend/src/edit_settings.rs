@@ -58,11 +58,13 @@ async fn get_settings_with_message(pool: web::Data<PgPool>, hb: web::Data<Handle
 /// GET /settings/button/{name}
 pub async fn get_settings_button(path: web::Path<SettingsProfile>, pool: web::Data<PgPool>, hb: web::Data<Handlebars<'_>>, session:Session) -> HttpResponse {
 
-    tracing::debug!("[get_settings_button] path: {:?}", &path);
+    // tracing::debug!("[get_settings_button] path: {}", &path);
 
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
 
         let profile_selected:SettingsProfile = path.into_inner();
+
+        tracing::debug!("[get_settings_button] profile_selected enum: {}", &profile_selected.to_string());
 
         match Settings::change_trade_profile(&profile_selected, &pool).await {
 
@@ -87,7 +89,7 @@ pub async fn get_settings_button(path: web::Path<SettingsProfile>, pool: web::Da
             },
             Err(e) => {
                 // TODO: redirect to error message
-                tracing::debug!("[get_settings] error getting symbols: {:?}", &e);
+                tracing::debug!("[get_settings] error getting settings: {:?}", &e);
                 redirect_home().await
             }
         }

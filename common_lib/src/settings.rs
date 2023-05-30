@@ -83,8 +83,10 @@ impl Settings {
     /// change the settings and return blank secret for front-end type uses
     pub async fn change_trade_profile(trade_settings_profile:&SettingsProfile, pool:&PgPool)->Result<Settings, sqlx::Error>{
 
-        let trade_settings_profile_as_str = trade_settings_profile.clone();
-        let trade_settings_profile_as_str = trade_settings_profile_as_str.to_string(); // .as_str();
+        let ts = trade_settings_profile.clone();
+        let ts = ts.to_string(); // .as_str();
+
+        // assert!()
 
         // SQL injection is avoided here by using an enum; failure upon parsing would've happened at the api level
         let settings_result = sqlx::query_as!(
@@ -104,7 +106,7 @@ impl Settings {
                     , trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
                 from fn_set_trade_settings($1);
             "#,
-            &trade_settings_profile_as_str
+            &ts
         ).fetch_one(pool).await;
         settings_result
     }

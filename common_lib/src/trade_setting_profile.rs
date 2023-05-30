@@ -2,11 +2,13 @@
 //!
 //!
 
-use std::fmt;
 use serde::Deserialize;
+use strum::Display;
 
 /// strongly typed path; fail strongly if someone types anything other than these in the web path
-#[derive(Deserialize, Debug)]
+// #[derive(Deserialize, Debug)]
+#[derive(Display, Deserialize, Debug)]
+#[strum(serialize_all = "snake_case")]
 pub enum SettingsProfile {
     #[serde(rename="buy")]
     Buy,
@@ -15,12 +17,4 @@ pub enum SettingsProfile {
     #[serde(rename="close_2")]
     Close2,
 
-}
-
-impl fmt::Display for SettingsProfile {
-
-    /// enable to_string()
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
-    }
 }

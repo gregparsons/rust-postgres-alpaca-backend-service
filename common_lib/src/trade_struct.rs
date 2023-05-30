@@ -39,8 +39,11 @@ pub enum TradeSide{
 
 impl fmt::Display for TradeSide {
     /// enable to_string()
+    // fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    //     fmt::Debug::fmt(self, f)
+    // }
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
     }
 }
 
@@ -57,9 +60,13 @@ pub enum TimeInForce{
 }
 /// enable to_string()
 impl fmt::Display for TimeInForce {
+    // fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+    //     fmt::Debug::fmt(self, f)
+    // }
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
     }
+
 }
 
 
@@ -72,9 +79,9 @@ pub enum OrderType{
     Limit,
 }
 
-/// enable to_string()
+/// enable to_string(); print enum in lowercase
 impl fmt::Display for OrderType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self, f)
+        write!(f, "{}", format!("{:?}", self).to_lowercase())
     }
 }
