@@ -627,6 +627,33 @@
     },
     "query": "\n                select\n                    dtg as \"dtg!\"\n                    , alpaca_paper_id as \"alpaca_paper_id!\"\n                    , alpaca_paper_secret as \"alpaca_paper_secret!\"\n                    , alpaca_live_id as \"alpaca_live_id!\"\n                    , alpaca_live_secret as \"alpaca_live_secret!\"\n                    , trade_size as \"trade_size!\"\n                    , trade_enable_buy as \"trade_enable_buy!\"\n                    , trade_ema_small_size as \"trade_ema_small_size!\"\n                    , trade_ema_large_size as \"trade_ema_large_size!\"\n                    , trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\"\n                    , trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                from v_settings;\n            "
   },
+  "7075f9dfd124b73b780d1918570aeff82176454a7d8621ae652026c3908afcf9": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Timestamptz",
+          "Timestamptz",
+          "Timestamptz",
+          "Timestamptz",
+          "Varchar",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Text",
+          "Text",
+          "Text",
+          "Numeric",
+          "Numeric",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "insert into alpaca_order(\n                id,\n                client_order_id,\n                created_at,\n                updated_at,\n                submitted_at,\n                filled_at,\n\n                -- expired_at,\n                -- canceled_at,\n                -- failed_at,\n                -- replaced_at,\n                -- replaced_by,\n                -- replaces,\n                -- asset_id,\n\n                symbol,\n                -- asset_class,\n                -- notional,\n                qty,\n                filled_qty,\n                filled_avg_price,\n                -- order_class,\n                order_type_v2,\n                side,\n                time_in_force,\n                limit_price,\n                stop_price,\n                status\n                -- extended_hours,\n                -- trail_percent,\n                -- trail_price,\n                -- hwm\n                )\n            values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, lower($11), lower($12), lower($13), $14, $15, $16)\n\n            "
+  },
   "710ae47c144dd8b3c04c82c821dde0c9e728394b19c640d41dec25288a19eb4b": {
     "describe": {
       "columns": [
@@ -944,32 +971,5 @@
       }
     },
     "query": "\n                select\n                    a.dtg as \"dtg!\"\n                    ,symbol as \"symbol!\"\n                    ,exchange as \"exchange!\"\n                    ,asset_class as \"asset_class!\"\n                    ,coalesce(avg_entry_price, 0.0) as \"avg_entry_price!\"\n                    ,coalesce(qty,0.0) as \"qty!\"\n                    ,coalesce(qty_available,0.0) as \"qty_available!\"\n                    ,side as \"side!:PositionSide\"\n                    ,coalesce(market_value,0.0) as \"market_value!\"\n                    ,coalesce(cost_basis,0.0) as \"cost_basis!\"\n                    ,coalesce(unrealized_pl,0.0) as \"unrealized_pl!\"\n                    ,coalesce(unrealized_plpc,0.0) as \"unrealized_plpc!\"\n                    ,coalesce(unrealized_intraday_pl,0.0) as \"unrealized_intraday_pl!\"\n                    ,coalesce(unrealized_intraday_plpc,0.0) as \"unrealized_intraday_plpc!\"\n                    ,coalesce(current_price,0.0) as \"current_price!\"\n                    ,coalesce(lastday_price,0.0) as \"lastday_price!\"\n                    ,coalesce(change_today,0.0) as \"change_today!\"\n                    ,asset_id as \"asset_id!\"\n                from\n                (select max(dtg) as dtg from alpaca_position) a\n                join\n                alpaca_position b on a.dtg = b.dtg\n                order by symbol\n            "
-  },
-  "e2fef6315fa1bbb38eba3e386f1f688c1619b9c0279940615283874e9ef46627": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Varchar",
-          "Timestamptz",
-          "Timestamptz",
-          "Timestamptz",
-          "Timestamptz",
-          "Varchar",
-          "Numeric",
-          "Numeric",
-          "Numeric",
-          "Varchar",
-          "Varchar",
-          "Varchar",
-          "Numeric",
-          "Numeric",
-          "Varchar"
-        ]
-      }
-    },
-    "query": "insert into alpaca_order(\n                id,\n                client_order_id,\n                created_at,\n                updated_at,\n                submitted_at,\n                filled_at,\n\n                -- expired_at,\n                -- canceled_at,\n                -- failed_at,\n                -- replaced_at,\n                -- replaced_by,\n                -- replaces,\n                -- asset_id,\n\n                symbol,\n                -- asset_class,\n                -- notional,\n                qty,\n                filled_qty,\n                filled_avg_price,\n                -- order_class,\n                order_type_v2,\n\n                side ,\n                time_in_force,\n                limit_price,\n                stop_price,\n                status\n                -- extended_hours,\n                -- trail_percent,\n                -- trail_price,\n                -- hwm\n                )\n            values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)"
   }
 }
