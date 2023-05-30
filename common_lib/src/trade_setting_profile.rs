@@ -14,7 +14,11 @@ pub enum TradeSettingsProfile {
     Buy,
     #[serde(rename="close")]
     Close,
-    #[serde(rename="close_2")]
+    #[serde(rename="close_with_loss")]
     CloseWithLoss,
+
+    // TODO: manually typing in a path other than one of these results in:
+    // unknown variant `close_with_loss`, expected one of `buy`, `close`, `close_2`
+    // from the deserialization attempt
 
 }
