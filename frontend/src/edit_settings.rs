@@ -10,7 +10,7 @@ use sqlx::PgPool;
 use common_lib::http::redirect_home;
 use common_lib::common_structs::SESSION_USERNAME;
 use common_lib::settings::Settings;
-use common_lib::trade_setting_profile::SettingsProfile;
+use common_lib::trade_setting_profile::TradeSettingsProfile;
 
 /// GET /settings
 pub async fn get_settings(pool: web::Data<PgPool>, hb: web::Data<Handlebars<'_>>, session:Session) -> HttpResponse {
@@ -56,15 +56,15 @@ async fn get_settings_with_message(pool: web::Data<PgPool>, hb: web::Data<Handle
 /// select * from fn_set_trade_settings('close2');
 ///
 /// GET /settings/button/{name}
-pub async fn get_settings_button(path: web::Path<SettingsProfile>, pool: web::Data<PgPool>, hb: web::Data<Handlebars<'_>>, session:Session) -> HttpResponse {
+pub async fn get_settings_button(path: web::Path<TradeSettingsProfile>, pool: web::Data<PgPool>, hb: web::Data<Handlebars<'_>>, session:Session) -> HttpResponse {
 
     // tracing::debug!("[get_settings_button] path: {}", &path);
 
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
 
-        let profile_selected:SettingsProfile = path.into_inner();
+        let profile_selected: TradeSettingsProfile = path.into_inner();
 
-        // tracing::debug!("[get_settings_button] profile_selected enum: {}", &profile_selected.to_string());
+        tracing::debug!("[get_settings_button] profile_selected enum: {}", &profile_selected.to_string());
 
         match Settings::change_trade_profile(&profile_selected, &pool).await {
 

@@ -9,12 +9,12 @@ use strum::Display;
 // #[derive(Deserialize, Debug)]
 #[derive(Display, Deserialize, Debug)]
 #[strum(serialize_all = "snake_case")]
-pub enum SettingsProfile {
+pub enum TradeSettingsProfile {
     #[serde(rename="buy")]
     Buy,
     #[serde(rename="close")]
     Close,
     #[serde(rename="close_2")]
-    Close2,
+    CloseWithLoss,
 
 }

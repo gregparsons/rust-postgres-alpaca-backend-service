@@ -6,7 +6,7 @@ use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use sqlx::PgPool;
 use serde::{Deserialize, Serialize};
-use crate::trade_setting_profile::SettingsProfile;
+use crate::trade_setting_profile::TradeSettingsProfile;
 
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
@@ -81,7 +81,7 @@ impl Settings {
     }
 
     /// change the settings and return blank secret for front-end type uses
-    pub async fn change_trade_profile(trade_settings_profile:&SettingsProfile, pool:&PgPool)->Result<Settings, sqlx::Error>{
+    pub async fn change_trade_profile(trade_settings_profile:&TradeSettingsProfile, pool:&PgPool) ->Result<Settings, sqlx::Error>{
 
         let ts = trade_settings_profile.clone();
         let ts = ts.to_string(); // .as_str();
