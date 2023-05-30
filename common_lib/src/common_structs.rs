@@ -18,8 +18,8 @@ pub struct QueryAverage {
     pub dtg: NaiveDateTime,
     pub symbol: String,
     pub price: BigDecimal,
-    pub size: BigDecimal,
-    pub exchange: Option<i32>,
+    // pub size: BigDecimal,
+    // pub exchange: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

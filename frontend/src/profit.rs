@@ -61,7 +61,7 @@ pub async fn get_profit(hb: web::Data<Handlebars<'_>>, db_pool: web::Data<PgPool
                     vec![]
                 }
         };
-        
+
         let data = json!({
             "title": "Profit",
             "parent": "base0",
