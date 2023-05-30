@@ -64,7 +64,7 @@ pub async fn get_settings_button(path: web::Path<SettingsProfile>, pool: web::Da
 
         let profile_selected:SettingsProfile = path.into_inner();
 
-        tracing::debug!("[get_settings_button] profile_selected enum: {}", &profile_selected.to_string());
+        // tracing::debug!("[get_settings_button] profile_selected enum: {}", &profile_selected.to_string());
 
         match Settings::change_trade_profile(&profile_selected, &pool).await {
 
