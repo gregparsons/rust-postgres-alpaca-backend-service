@@ -1,5 +1,6 @@
 //! trade_struct.rs
-use std::fmt;
+//!
+
 use bigdecimal::BigDecimal;
 use serde::{Serialize, Deserialize};
 use strum::Display;
@@ -17,12 +18,9 @@ pub struct JsonTrade{
 }
 
 /*
-
 warning: use of deprecated function `sqlx::_rename`: `#[sqlx(rename = "...")]` is now `#[sqlx(type_name = "...")`
-
 ref: https://github.com/cockroachdb/cockroach/issues/57411
-
- */
+*/
 
 // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
 #[derive(sqlx::Type, Debug, Serialize, Deserialize, Clone, PartialEq, Display)]
@@ -38,17 +36,6 @@ pub enum TradeSide{
     SellShort,
 }
 
-//
-// impl fmt::Display for TradeSide {
-//     /// enable to_string()
-//     // fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//     //     fmt::Debug::fmt(self, f)
-//     // }
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         write!(f, "{}", format!("{:?}", self).to_lowercase())
-//     }
-// }
-
 #[derive(sqlx::Type, Debug, Serialize, Deserialize, PartialEq, Clone, Display)]
 #[sqlx(type_name = "VARCHAR", rename_all = "lowercase")]
 #[strum(serialize_all = "snake_case")]
@@ -61,16 +48,6 @@ pub enum TimeInForce{
     #[serde(rename = "ioc")]
     Ioc,
 }
-
-// impl fmt::Display for TimeInForce {
-//     // fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//     //     fmt::Debug::fmt(self, f)
-//     // }
-//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//         write!(f, "{}", format!("{:?}", self).to_lowercase())
-//     }
-//
-// }
 
 
 #[derive(sqlx::Type, Debug, Serialize, Deserialize, PartialEq, Clone, Display)]
