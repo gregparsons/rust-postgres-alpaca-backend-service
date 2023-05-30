@@ -685,7 +685,7 @@
     },
     "query": "delete from alpaca_order"
   },
-  "9ef773649821c43cdbdf0104e584d934e0f42ea731da38c4b66c9657e3a87500": {
+  "909ac887376837390242f5a0bb4d481a828d7e0d608a82fc3912ed0dd26fedaa": {
     "describe": {
       "columns": [
         {
@@ -702,30 +702,18 @@
           "name": "price!",
           "ordinal": 2,
           "type_info": "Numeric"
-        },
-        {
-          "name": "size!",
-          "ordinal": 3,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "exchange",
-          "ordinal": 4,
-          "type_info": "Int4"
         }
       ],
       "nullable": [
         true,
         null,
-        true,
-        true,
         true
       ],
       "parameters": {
         "Left": []
       }
     },
-    "query": "\n            select\n                dtg as \"dtg!\",\n                coalesce(symbol, '') as \"symbol!\",\n                price as \"price!\",\n                size as \"size!\",\n                exchange as \"exchange\"\n            from\n                v_trade_minute\n            order by dtg desc\n            limit 1000\n        "
+    "query": "\n            select\n                dtg as \"dtg!\",\n                coalesce(symbol, '') as \"symbol!\",\n                price_close as \"price!\"\n                -- size as \"size!\",\n                -- exchange as \"exchange\"\n            from\n                -- v_trade_minute\n                bar_minute\n            order by dtg desc\n            limit 10000\n        "
   },
   "b1b266cecbb2297cecdfdf7191e4e0ef878f12f4c822c5a665ccecf3505c59d7": {
     "describe": {
