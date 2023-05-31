@@ -14,6 +14,7 @@ pub mod alpaca_order;
 pub mod error;
 pub mod alpaca_api_structs;
 pub mod account;
+pub mod market_hours;
 
 
 

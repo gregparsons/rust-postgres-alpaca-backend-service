@@ -7,9 +7,9 @@ use tokio::runtime::Handle;
 use common_lib::alpaca_activity::Activity;
 use common_lib::alpaca_order::Order;
 use common_lib::alpaca_position::Position;
+use common_lib::market_hours::{MARKET_CLOSE_TIME, MARKET_OPEN_TIME};
 use common_lib::settings::Settings;
 use common_lib::sqlx_pool::create_sqlx_pg_pool;
-use crate::{MARKET_CLOSE_TIME, MARKET_OPEN_TIME};
 
 /// Spawn a new thread to poll the Alpaca REST API
 pub async fn run() {
@@ -71,7 +71,15 @@ pub async fn run() {
 
                             // get alpaca positions
                             match Position::get_remote(&settings).await {
+
                                 Ok(positions)=>{
+
+                                    // clear out the database assuming the table will only hold what alpaca's showing as open orders
+                                    match Position::delete_all_db(&pool3).await{
+                                        Ok(_)=>tracing::debug!("[alpaca_position] positions cleared"),
+                                        Err(e)=> tracing::debug!("[alpaca_position] positions not cleared: {:?}", &e),
+                                    }
+
                                     // save to postgres
                                     let now = Utc::now();
                                     for position in positions.iter() {
@@ -91,13 +99,9 @@ pub async fn run() {
                                     tracing::debug!("[alpaca_order] orders: {}", &orders.len());
 
                                     // clear out the database assuming the table will only hold what alpaca's showing as open orders
-                                    match Order::delete_all_db(&pool3).await{
-                                        Ok(_)=>{
-                                            tracing::debug!("[alpaca_order] orders cleared");
-                                        },
-                                        Err(e)=>{
-                                            tracing::debug!("[alpaca_order] orders not cleared: {:?}", &e);
-                                        }
+                                    match Order::delete_all_db(&pool3).await {
+                                        Ok(_)=>tracing::debug!("[alpaca_order] orders cleared"),
+                                        Err(e)=>tracing::debug!("[alpaca_order] orders not cleared: {:?}", &e)
                                     }
 
                                     // save to postgres

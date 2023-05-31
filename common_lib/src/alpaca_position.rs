@@ -126,30 +126,28 @@ impl Position{
         let result_vec = sqlx::query_as!(
             Position,
             r#"
-                select
-                    a.dtg as "dtg!"
-                    ,symbol as "symbol!"
-                    ,exchange as "exchange!"
-                    ,asset_class as "asset_class!"
-                    ,coalesce(avg_entry_price, 0.0) as "avg_entry_price!"
-                    ,coalesce(qty,0.0) as "qty!"
-                    ,coalesce(qty_available,0.0) as "qty_available!"
-                    ,side as "side!:PositionSide"
-                    ,coalesce(market_value,0.0) as "market_value!"
-                    ,coalesce(cost_basis,0.0) as "cost_basis!"
-                    ,coalesce(unrealized_pl,0.0) as "unrealized_pl!"
-                    ,coalesce(unrealized_plpc,0.0) as "unrealized_plpc!"
-                    ,coalesce(unrealized_intraday_pl,0.0) as "unrealized_intraday_pl!"
-                    ,coalesce(unrealized_intraday_plpc,0.0) as "unrealized_intraday_plpc!"
-                    ,coalesce(current_price,0.0) as "current_price!"
-                    ,coalesce(lastday_price,0.0) as "lastday_price!"
-                    ,coalesce(change_today,0.0) as "change_today!"
-                    ,asset_id as "asset_id!"
-                from
-                (select max(dtg) as dtg from alpaca_position) a
-                join
-                alpaca_position b on a.dtg = b.dtg
-                order by symbol
+select
+    dtg as "dtg!"
+    ,symbol as "symbol!"
+    ,exchange as "exchange!"
+    ,asset_class as "asset_class!"
+    ,coalesce(avg_entry_price, 0.0) as "avg_entry_price!"
+    ,coalesce(qty,0.0) as "qty!"
+    ,coalesce(qty_available,0.0) as "qty_available!"
+    ,side as "side!:PositionSide"
+    ,coalesce(market_value,0.0) as "market_value!"
+    ,coalesce(cost_basis,0.0) as "cost_basis!"
+    ,coalesce(unrealized_pl,0.0) as "unrealized_pl!"
+    ,coalesce(unrealized_plpc,0.0) as "unrealized_plpc!"
+    ,coalesce(unrealized_intraday_pl,0.0) as "unrealized_intraday_pl!"
+    ,coalesce(unrealized_intraday_plpc,0.0) as "unrealized_intraday_plpc!"
+    ,coalesce(current_price,0.0) as "current_price!"
+    ,coalesce(lastday_price,0.0) as "lastday_price!"
+    ,coalesce(change_today,0.0) as "change_today!"
+    ,asset_id as "asset_id!"
+from
+alpaca_position
+order by symbol
             "#
         ).fetch_all(pool).await;
 
@@ -180,6 +178,10 @@ impl Position{
         Ok(remote_positions)
     }
 
+    /// delete_all_db
+    pub async fn delete_all_db(pool: &PgPool)-> Result<PgQueryResult,sqlx::Error> {
+        sqlx::query!(r#"delete from alpaca_position"#).execute(pool).await
+    }
 
     /// save a single position to the database; not ideal to not insert the result of the alpaca api call as a bulk insert but not rocket science at the moment
     pub async fn save_to_db(&self, timestamp: DateTime<Utc>, pool: &PgPool)-> Result<PgQueryResult, sqlx::Error> {
