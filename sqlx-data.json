@@ -702,6 +702,126 @@
     },
     "query": "\n                select\n                    transaction_time::timestamp as \"dtg_utc!\"\n                    ,timezone('US/Pacific', transaction_time) as \"dtg_pacific!\"\n                    ,symbol as \"symbol!\"\n                    ,side as \"side!:TradeSide\"\n                    ,qty as \"qty!\"\n                    ,price as \"price!\"\n                from alpaca_activity\n                order by transaction_time desc\n            "
   },
+  "80e437ad789b879a357b50012cc3677198b4475a328261eed21053ad9b00ada6": {
+    "describe": {
+      "columns": [
+        {
+          "name": "dtg!",
+          "ordinal": 0,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "symbol!",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "exchange!",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "asset_class!",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "avg_entry_price!",
+          "ordinal": 4,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty!",
+          "ordinal": 5,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty_available!",
+          "ordinal": 6,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "side!:PositionSide",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "market_value!",
+          "ordinal": 8,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "cost_basis!",
+          "ordinal": 9,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_pl!",
+          "ordinal": 10,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_plpc!",
+          "ordinal": 11,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_intraday_pl!",
+          "ordinal": 12,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_intraday_plpc!",
+          "ordinal": 13,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "current_price!",
+          "ordinal": 14,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "lastday_price!",
+          "ordinal": 15,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "change_today!",
+          "ordinal": 16,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "asset_id!",
+          "ordinal": 17,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        true,
+        false,
+        true,
+        true,
+        null,
+        null,
+        null,
+        true,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\nselect\n    dtg as \"dtg!\"\n    ,symbol as \"symbol!\"\n    ,exchange as \"exchange!\"\n    ,asset_class as \"asset_class!\"\n    ,coalesce(avg_entry_price, 0.0) as \"avg_entry_price!\"\n    ,coalesce(qty,0.0) as \"qty!\"\n    ,coalesce(qty_available,0.0) as \"qty_available!\"\n    ,side as \"side!:PositionSide\"\n    ,coalesce(market_value,0.0) as \"market_value!\"\n    ,coalesce(cost_basis,0.0) as \"cost_basis!\"\n    ,coalesce(unrealized_pl,0.0) as \"unrealized_pl!\"\n    ,coalesce(unrealized_plpc,0.0) as \"unrealized_plpc!\"\n    ,coalesce(unrealized_intraday_pl,0.0) as \"unrealized_intraday_pl!\"\n    ,coalesce(unrealized_intraday_plpc,0.0) as \"unrealized_intraday_plpc!\"\n    ,coalesce(current_price,0.0) as \"current_price!\"\n    ,coalesce(lastday_price,0.0) as \"lastday_price!\"\n    ,coalesce(change_today,0.0) as \"change_today!\"\n    ,asset_id as \"asset_id!\"\nfrom\nalpaca_position\norder by symbol\n            "
+  },
   "884ca4bfd2aaadf5a8429b50cc543000263f123dbe4c96f678a3fc9203793484": {
     "describe": {
       "columns": [],
@@ -820,6 +940,16 @@
     },
     "query": "\n                select\n                    dtg as \"dtg!\"\n                    , alpaca_paper_id as \"alpaca_paper_id!\"\n                    , '' as \"alpaca_paper_secret!\"\n                    , alpaca_live_id as \"alpaca_live_id!\"\n                    , '' as \"alpaca_live_secret!\"\n                    , trade_size as \"trade_size!\"\n                    , trade_enable_buy as \"trade_enable_buy!\"\n                    , trade_ema_small_size as \"trade_ema_small_size!\"\n                    , trade_ema_large_size as \"trade_ema_large_size!\"\n                    , trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\"\n                    , trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                from v_settings;\n            "
   },
+  "b2fa705f5ff94831630c8927f722c6cecece0d825e9256b70fd9c2b55f6148d5": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "delete from alpaca_position"
+  },
   "c7db98645f2c87a75c8daea86b4d69a6a28987f084eb765a6632aaf1716185c9": {
     "describe": {
       "columns": [
@@ -851,125 +981,5 @@
       }
     },
     "query": "\n            select\n                user_id, username, password\n            from users\n            where username = $1\n        "
-  },
-  "dadc07176d510ad89c2f6bb00e08c20b08c34acc1e4dc7a46be534fc6eac449f": {
-    "describe": {
-      "columns": [
-        {
-          "name": "dtg!",
-          "ordinal": 0,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "symbol!",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "exchange!",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "asset_class!",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "avg_entry_price!",
-          "ordinal": 4,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "qty!",
-          "ordinal": 5,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "qty_available!",
-          "ordinal": 6,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "side!:PositionSide",
-          "ordinal": 7,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "market_value!",
-          "ordinal": 8,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "cost_basis!",
-          "ordinal": 9,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "unrealized_pl!",
-          "ordinal": 10,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "unrealized_plpc!",
-          "ordinal": 11,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "unrealized_intraday_pl!",
-          "ordinal": 12,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "unrealized_intraday_plpc!",
-          "ordinal": 13,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "current_price!",
-          "ordinal": 14,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "lastday_price!",
-          "ordinal": 15,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "change_today!",
-          "ordinal": 16,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "asset_id!",
-          "ordinal": 17,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        null,
-        false,
-        true,
-        true,
-        null,
-        null,
-        null,
-        true,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n                select\n                    a.dtg as \"dtg!\"\n                    ,symbol as \"symbol!\"\n                    ,exchange as \"exchange!\"\n                    ,asset_class as \"asset_class!\"\n                    ,coalesce(avg_entry_price, 0.0) as \"avg_entry_price!\"\n                    ,coalesce(qty,0.0) as \"qty!\"\n                    ,coalesce(qty_available,0.0) as \"qty_available!\"\n                    ,side as \"side!:PositionSide\"\n                    ,coalesce(market_value,0.0) as \"market_value!\"\n                    ,coalesce(cost_basis,0.0) as \"cost_basis!\"\n                    ,coalesce(unrealized_pl,0.0) as \"unrealized_pl!\"\n                    ,coalesce(unrealized_plpc,0.0) as \"unrealized_plpc!\"\n                    ,coalesce(unrealized_intraday_pl,0.0) as \"unrealized_intraday_pl!\"\n                    ,coalesce(unrealized_intraday_plpc,0.0) as \"unrealized_intraday_plpc!\"\n                    ,coalesce(current_price,0.0) as \"current_price!\"\n                    ,coalesce(lastday_price,0.0) as \"lastday_price!\"\n                    ,coalesce(change_today,0.0) as \"change_today!\"\n                    ,asset_id as \"asset_id!\"\n                from\n                (select max(dtg) as dtg from alpaca_position) a\n                join\n                alpaca_position b on a.dtg = b.dtg\n                order by symbol\n            "
   }
 }
