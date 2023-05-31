@@ -10,11 +10,15 @@ use strum::Display;
 #[derive(Display, Deserialize, Debug)]
 #[strum(serialize_all = "snake_case")]
 pub enum TradeSettingsProfile {
+
+    // these are needed by actix to deserialize the paths from lowercase to the enum; not sure if strum has this capability
     #[serde(rename="buy")]
     Buy,
-    #[serde(rename="close")]
+   #[serde(rename="buy_two")]
+    BuyTwo,
+   #[serde(rename="close")]
     Close,
-    #[serde(rename="close_with_loss")]
+   #[serde(rename="close_with_loss")]
     CloseWithLoss,
 
     // TODO: manually typing in a path other than one of these results in:

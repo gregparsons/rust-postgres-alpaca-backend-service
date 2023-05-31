@@ -40,7 +40,6 @@ pub async fn run() {
             if time_current_ny >= time_open_ny && time_current_ny <= time_close_ny {
                 tracing::debug!("[rest_service:start] NY time: {:?}, open: {:?}, close: {:?}", &time_current_ny, &time_open_ny, &time_close_ny);
 
-
                 // Don't need this. Using websocket exclusively.
                 // for stock in stocks.iter() {
                 //     tracing::debug!("[rest_service:start] Market is open (on business days). NY time: {:?}open: {:?}, close: {:?}", &time_current_ny, &time_open_ny, &time_close_ny);
@@ -53,7 +52,6 @@ pub async fn run() {
                     // refresh settings from the database
                     match Settings::load(&pool3).await {
                         Ok(settings)=>{
-
 
                             // update alpaca activities
                             match Activity::get_remote(&settings).await{
@@ -73,7 +71,6 @@ pub async fn run() {
                             match Position::get_remote(&settings).await {
 
                                 Ok(positions)=>{
-
                                     // clear out the database assuming the table will only hold what alpaca's showing as open orders
                                     match Position::delete_all_db(&pool3).await{
                                         Ok(_)=>tracing::debug!("[alpaca_position] positions cleared"),
@@ -91,7 +88,6 @@ pub async fn run() {
                                     tracing::debug!("[alpaca_position] could not load positions from Alpaca web API: {:?}", &e);
                                 }
                             }
-
 
                             // get alpaca orders
                             match Order::get_remote(&settings).await {
@@ -113,10 +109,6 @@ pub async fn run() {
                                     tracing::debug!("[alpaca_order] could not load orders from Alpaca web API: {:?}", &e);
                                 }
                             }
-
-
-
-
                         },
                         Err(e) => {
                             tracing::debug!("[run] couldn't load settings in loop to update activities/positions: {:?}", &e);
@@ -126,9 +118,7 @@ pub async fn run() {
             } else {
                 tracing::debug!("[rest_service:start] market is closed. NY time: {:?}, open: {:?}, close: {:?}", &time_current_ny, &time_open_ny, &time_close_ny);
             }
-
             std::thread::sleep(std::time::Duration::from_millis(alpaca_poll_rate_ms));
-
         }
     });
 }
