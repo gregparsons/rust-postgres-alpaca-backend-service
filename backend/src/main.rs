@@ -5,6 +5,8 @@ pub mod data_collector;
 pub mod db;
 pub mod web_client_service;
 pub mod websocket_service;
+pub mod ws_finnhub;
+
 
 use crate::data_collector::DataCollector;
 use common_lib::init::init;

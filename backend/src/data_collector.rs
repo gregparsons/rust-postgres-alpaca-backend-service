@@ -19,6 +19,7 @@ use sqlx::PgPool;
 use common_lib::settings::Settings;
 use common_lib::symbol_list::SymbolList;
 use crate::websocket_service::AlpacaStream;
+use crate::ws_finnhub::{FinnhubStream, WsFinnhub};
 
 pub struct DataCollector {}
 
@@ -55,20 +56,50 @@ impl DataCollector {
                     tracing::debug!("[start] error getting symbols for websocket: {:?}", &e);
                 }
             }
-
-            // spawn binary websocket
-            // let tx_db_ws2 = tx_db.clone();
-            // let tx_trader_ws2 = tx_trader.clone();
-            // tracing::debug!("Starting text websocket service in new thread...");
-            // let _ = std::thread::spawn(move || {
-            //     crate::websocket_service::Ws::run(tx_db_ws2, tx_trader_ws2, &AlpacaStream::BinaryUpdates);
-            // });
-
-        // if the websocket thread dies, the program finishes.
-        // thread_websocket.join();
         } else {
             tracing::debug!("Websocket service not started, ALPACA_WEBSOCKET_ON is false");
         }
+
+
+
+
+
+        let finnhub_on = bool::from_str(std::env::var("FINNHUB_ON").unwrap_or_else(|_| "true".to_owned()).as_str()).unwrap_or(false);
+        tracing::info!("FINNHUB_ON is: {}", &alpaca_ws_on);
+
+        if finnhub_on {
+            // spawn long-running text thread
+            let tx_db_ws = tx_db.clone();
+            tracing::debug!("Starting Finnhub text websocket service in new thread...");
+            let ws_pool = pool.clone();
+
+            let settings2 = (*settings).clone();
+            match SymbolList::get_active_symbols(&ws_pool).await{
+                Ok(symbols) => {
+                    // let _ = std::thread::spawn(move || {
+
+                    tokio::spawn(async move {
+
+
+                        WsFinnhub::run(tx_db_ws, &FinnhubStream::TextData, symbols, settings2, &pool).await;
+                    });
+                },
+                Err(e) => {
+                    tracing::debug!("[start] error getting symbols for websocket: {:?}", &e);
+                }
+            }
+        } else {
+            tracing::debug!("Websocket service not started, ALPACA_WEBSOCKET_ON is false");
+        }
+
+
+
+
+
+
+
+
+
 
         // Rest HTTP Service (in/out)
         let alpaca_rest_on = bool::from_str(
@@ -89,6 +120,7 @@ impl DataCollector {
 
         // infinite loop to keep child threads alive
         loop {
+            // TODO: separate rest and websocket threads so we don't have to deal with this
             std::thread::sleep(std::time::Duration::from_secs(5));
         }
     }

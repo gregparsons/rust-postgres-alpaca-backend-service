@@ -27,7 +27,7 @@ use common_lib::settings::Settings;
 
 
 #[derive(PartialEq)]
-pub enum AlpacaStream{
+pub enum AlpacaStream {
     TextData,
     BinaryUpdates,
 }
