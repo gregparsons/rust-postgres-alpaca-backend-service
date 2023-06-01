@@ -3,11 +3,15 @@
 //! start() spawns a long-running thread to maintain an open connection to a database pool
 //!
 
-use crate::models::{AlpWsQuote, AlpWsTrade, AlpacaTradeRest};
 use crossbeam::channel::Sender;
 use std::thread::JoinHandle;
+use sqlx::PgPool;
+use sqlx::postgres::PgQueryResult;
 use tokio_postgres::{Client, SimpleQueryMessage};
+use common_lib::alpaca_api_structs::{AlpacaTradeRest, AlpWsQuote, AlpWsTrade};
 use common_lib::common_structs::MinuteBar;
+use common_lib::finnhub::FinnhubTrade;
+use common_lib::sqlx_pool::create_sqlx_pg_pool;
 
 #[derive(Debug)]
 pub enum DbMsg {
@@ -15,34 +19,41 @@ pub enum DbMsg {
     // Ping(String),
     WsTrade(AlpWsTrade),
     WsQuote(AlpWsQuote),
-    MinuteBar(MinuteBar)
+    MinuteBar(MinuteBar),
+    FhTrade(FinnhubTrade)
+
+
 }
 
-/// start()
-///
-/// return a crossbeam_channel::channel::Sender in order to be able to send messages to the
-/// db listener thread (to be able to send cross-thread inserts)
-pub async fn start() -> Sender<DbMsg> {
-    tracing::debug!("");
+pub struct DbActor{}
 
-    // Channel for websocket thread to send to database thread
-    let (tx, rx) = crossbeam::channel::unbounded();
+impl DbActor {
+    /// start()
+    ///
+    /// return a crossbeam_channel::channel::Sender in order to be able to send messages to the
+    /// db listener thread (to be able to send cross-thread inserts)
+    pub async fn start() -> Sender<DbMsg> {
+        tracing::debug!("");
 
-    // connect to Postgres
-    let client: Client = tokio::spawn(async {
-        let db_log_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not found");
-        db_connect(&db_log_url).await
-    })
-    .await
-    .unwrap();
+        // Channel for websocket thread to send to database thread
+        let (tx, rx) = crossbeam::channel::unbounded();
 
-    // upon connection start a message-listening thread
-    tokio::spawn(async move {
-        crate::db::db_thread(client, rx).await;
-    });
+        // connect to Postgres
+        let client: Client = tokio::spawn(async {
+            let db_log_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not found");
+            db_connect(&db_log_url).await
+        })
+            .await
+            .unwrap();
 
-    // return a means of sending messages to the db listener thread
-    tx
+        // upon connection start a message-listening thread
+        tokio::spawn(async move {
+            crate::db::db_thread(client, rx).await;
+        });
+
+        // return a means of sending messages to the db listener thread
+        tx
+    }
 }
 
 ///
@@ -83,6 +94,11 @@ pub async fn db_connect(db_url: &str) -> tokio_postgres::Client {
 async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> JoinHandle<()> {
     tracing::debug!("[db_thread]");
 
+
+    // TODO: starting here I'm using SQLX instead of tokio postgres
+    let pool = create_sqlx_pg_pool().await;
+
+
     loop {
         crossbeam::channel::select! {
             recv(rx) -> result => {
@@ -101,13 +117,24 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
 
                         DbMsg::WsTrade(t) => {
                             tracing::debug!("[db_thread, DbMsg::WsTrade] trade: {:?}", &t);
-                            crate::db::insert_ws_trade(&client, t).await;
+                            crate::db::insert_alpaca_websocket_trade(&client, t).await;
                         }
 
                         DbMsg::MinuteBar(minute_bar) => {
                             // tracing::debug!("[db_thread, DbMsg::MinuteBar] minute_bar received by db thread: {:?}", &minute_bar);
                             crate::db::insert_minute_bar(&client, &minute_bar).await;
                         }
+
+                        DbMsg::FhTrade(finnhub_trade) => {
+
+                            // tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub_trade received by db thread: {:?}", &finnhub_trade);
+                            match insert_finnhub_trade(&finnhub_trade, &pool).await {
+                                Ok(_)=> tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade inserted"),
+                                Err(e) => tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade not inserted: {:?}", &e),
+                            }
+                        }
+
+
                     }
                 }
             }
@@ -115,7 +142,8 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
     }
 }
 
-async fn insert_ws_trade(client: &Client, t: AlpWsTrade) {
+/// TODO: convert this to SQLX; it currently does not use a connection pool
+async fn insert_alpaca_websocket_trade(client: &Client, t: AlpWsTrade) {
     tracing::debug!("");
 
     let sql = format!(
@@ -157,6 +185,7 @@ async fn insert_ws_trade(client: &Client, t: AlpWsTrade) {
     }
 }
 
+/// TODO: convert this to SQLX; it currently does not use a connection pool
 async fn insert_ws_quote(client: &Client, t: AlpWsQuote) {
     let sql = format!(
         r"
@@ -208,6 +237,7 @@ async fn insert_ws_quote(client: &Client, t: AlpWsQuote) {
 }
 
 /// insert a result from polling the rest API
+/// TODO: convert this to SQLX; it currently does not use a connection pool
 async fn insert_trade_rest(client: &Client, trade_rest: AlpacaTradeRest) {
     /*
         insert into t_last_trade(dtg, price, size, exchange, cond1, cond2, cond3, cond4)
@@ -245,6 +275,7 @@ async fn insert_trade_rest(client: &Client, trade_rest: AlpacaTradeRest) {
     }
 }
 
+/// TODO: convert this to SQLX; it currently does not use a connection pool
 async fn insert_minute_bar(client: &Client, mb: &MinuteBar) {
     tracing::debug!("");
 
@@ -280,4 +311,19 @@ async fn insert_minute_bar(client: &Client, mb: &MinuteBar) {
     } else {
         tracing::debug!("[insert_minute_bar] insert failed");
     }
+}
+
+/// insert a single FinnHub trade into the trade_fh table
+async fn insert_finnhub_trade(trade: &FinnhubTrade, pool: &PgPool) ->Result<PgQueryResult,sqlx::Error>{
+
+    sqlx::query!(
+        r#"
+            insert into trade_fh (dtg,symbol, price, volume) values ($1, $2, $3, $4)
+        "#,
+        trade.dtg,
+        trade.symbol,
+        trade.price,
+        trade.volume
+    ).execute(pool).await
+
 }

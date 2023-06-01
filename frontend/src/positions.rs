@@ -9,7 +9,7 @@ use serde_json::json;
 use sqlx::PgPool;
 use common_lib::http::redirect_home;
 use common_lib::common_structs::SESSION_USERNAME;
-use common_lib::position::Position;
+use common_lib::alpaca_position::Position;
 
 /// GET /positions
 pub async fn get_positions(pool: web::Data<PgPool>, hb: web::Data<Handlebars<'_>>, session:Session) -> HttpResponse {

@@ -1,4 +1,4 @@
-//! order.rs
+//! alpaca_order
 
 //!
 //! remote_position.rs
@@ -11,7 +11,7 @@
 //! make sure the settings to disallow short sales is turned off.
 //!
 
-//! order.rs
+//! alpaca_order
 //!
 
 use std::fmt;
@@ -20,6 +20,8 @@ use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use reqwest::header::HeaderMap;
 use sqlx::PgPool;
+use sqlx::postgres::PgQueryResult;
+use crate::error::TradeWebError;
 use crate::settings::Settings;
 use crate::trade_struct::{OrderType, TimeInForce, TradeSide};
 
@@ -37,41 +39,41 @@ use crate::trade_struct::{OrderType, TimeInForce, TradeSide};
 ///
 /// https://alpaca.markets/docs/api-references/trading-api/orders/
 ///
-/// {
-//   "id": "61e69015-8549-4bfd-b9c3-01e75843f47d",
-//   "client_order_id": "eb9e2aaa-f71a-4f51-b5b4-52a6c565dad4",
-//   "created_at": "2021-03-16T18:38:01.942282Z",
-//   "updated_at": "2021-03-16T18:38:01.942282Z",
-//   "submitted_at": "2021-03-16T18:38:01.937734Z",
-//   "filled_at": null,
-//   "expired_at": null,
-//   "canceled_at": null,
-//   "failed_at": null,
-//   "replaced_at": null,
-//   "replaced_by": null,
-//   "replaces": null,
-//   "asset_id": "b0b6dd9d-8b9b-48a9-ba46-b9d54906e415",
-//   "symbol": "AAPL",
-//   "asset_class": "us_equity",
-//   "notional": "500",
-//   "qty": null,
-//   "filled_qty": "0",
-//   "filled_avg_price": null,
-//   "order_class": "",
-//   "order_type": "market",
-//   "type": "market",
-//   "side": "buy",
-//   "time_in_force": "day",
-//   "limit_price": null,
-//   "stop_price": null,
-//   "status": "accepted",
-//   "extended_hours": false,
-//   "legs": null,
-//   "trail_percent": null,
-//   "trail_price": null,
-//   "hwm": null
-// }
 ///
+/// {
+///   "id": "61e69015-8549-4bfd-b9c3-01e75843f47d",
+///   "client_order_id": "eb9e2aaa-f71a-4f51-b5b4-52a6c565dad4",
+///   "created_at": "2021-03-16T18:38:01.942282Z",
+///   "updated_at": "2021-03-16T18:38:01.942282Z",
+///   "submitted_at": "2021-03-16T18:38:01.937734Z",
+///   "filled_at": null,
+///   "expired_at": null,
+///   "canceled_at": null,
+///   "failed_at": null,
+///   "replaced_at": null,
+///   "replaced_by": null,
+///   "replaces": null,
+///   "asset_id": "b0b6dd9d-8b9b-48a9-ba46-b9d54906e415",
+///   "symbol": "AAPL",
+///   "asset_class": "us_equity",
+///   "notional": "500",
+///   "qty": null,
+///   "filled_qty": "0",
+///   "filled_avg_price": null,
+///   "order_class": "",
+///   "order_type": "market",
+///   "type": "market",
+///   "side": "buy",
+///   "time_in_force": "day",
+///   "limit_price": null,
+///   "stop_price": null,
+///   "status": "accepted",
+///   "extended_hours": false,
+///   "legs": null,
+///   "trail_percent": null,
+///   "trail_price": null,
+///   "hwm": null
+/// }
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Order {
     pub id: String,
@@ -114,7 +116,7 @@ pub struct Order {
 impl Order {
 
     /// Get all outstanding orders from Alpaca API
-    pub async fn get_remote(settings: &Settings) -> Result<Vec<Order>, reqwest::Error> {
+    pub async fn get_remote(settings: &Settings) -> Result<Vec<Order>, TradeWebError> {
 
         let mut headers = HeaderMap::new();
         let api_key = settings.alpaca_paper_id.clone();
@@ -123,14 +125,41 @@ impl Order {
         headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
         let client = reqwest::Client::new();
 
-        let result_vec:Vec<Order> = client.get("https://paper-api.alpaca.markets/v2/orders")
+        let http_result = client.get("https://paper-api.alpaca.markets/v2/orders")
             .headers(headers)
             .send()
-            .await?
-            .json()
-            .await?;
+            .await;
 
-        Ok(result_vec)
+        // parse_http_result_to_vec::<Order>(http_result).await
+
+        let return_val = match http_result {
+            Ok(response) => {
+                match &response.text().await{
+                    Ok(response_text)=>{
+                        match serde_json::from_str::<Vec<Order>>(&response_text){
+                            Ok(orders)=> {
+                                Ok(orders)
+                            },
+                            Err(e)=>{
+                                tracing::debug!("[get_remote] deserialization to json vec failed: {:?}", &e);
+                                Err(TradeWebError::JsonError)
+                            }
+                        }
+                    },
+                    Err(e)=>{
+                        tracing::debug!("[get_remote] deserialization to json text failed: {:?}", &e);
+                        Err(TradeWebError::JsonError)
+                    }
+                }
+            },
+            Err(e) => {
+                tracing::debug!("[get_remote] reqwest error: {:?}", &e);
+                Err(TradeWebError::ReqwestError)
+            }
+        };
+
+        return_val
+
     }
 
     /// Get the most recent list of positions from the database
@@ -141,40 +170,40 @@ impl Order {
         let result_vec = sqlx::query_as!(
             Order,
             r#"
-select
-    id as "id!"
-    , client_order_id as "client_order_id!"
-    , created_at as "created_at!"
-    , updated_at as "updated_at!"
-    , submitted_at as "submitted_at!"
-    , filled_at
-    , expired_at
-    , canceled_at
-    , failed_at
-    , replaced_at
-    , replaced_by
-    , replaces
-    , asset_id as "asset_id!:Option<String>"
-    , symbol as "symbol!:String"
-    , asset_class as "asset_class!:Option<String>"
-    , notional as "notional!:Option<BigDecimal>"
-    , coalesce(qty, 0.0) as "qty!:BigDecimal"
-    , filled_qty as "filled_qty!:Option<BigDecimal>"
-    , filled_avg_price as "filled_avg_price!:Option<BigDecimal>"
-    , order_class as "order_class!:Option<String>"
-    , order_type_v2 as "order_type_v2!:OrderType"
-    , side as "side!:TradeSide"
-    , time_in_force as "time_in_force!:TimeInForce"
-    , limit_price as "limit_price!:Option<BigDecimal>"
-    , stop_price as "stop_price!:Option<BigDecimal>"
-    , status as "status!"
-    , coalesce(extended_hours, false) as "extended_hours!"
-    , trail_percent
-    , trail_price
-    , hwm
-from alpaca_order
-where filled_at is null
-order by updated_at desc
+                select
+                    id as "id!"
+                    , client_order_id as "client_order_id!"
+                    , created_at as "created_at!"
+                    , updated_at as "updated_at!"
+                    , submitted_at as "submitted_at!"
+                    , filled_at
+                    , expired_at
+                    , canceled_at
+                    , failed_at
+                    , replaced_at
+                    , replaced_by
+                    , replaces
+                    , asset_id as "asset_id!:Option<String>"
+                    , symbol as "symbol!:String"
+                    , asset_class as "asset_class!:Option<String>"
+                    , notional as "notional!:Option<BigDecimal>"
+                    , coalesce(qty, 0.0) as "qty!:BigDecimal"
+                    , filled_qty as "filled_qty!:Option<BigDecimal>"
+                    , filled_avg_price as "filled_avg_price!:Option<BigDecimal>"
+                    , order_class as "order_class!:Option<String>"
+                    , order_type_v2 as "order_type_v2!:OrderType"
+                    , side as "side!:TradeSide"
+                    , time_in_force as "time_in_force!:TimeInForce"
+                    , limit_price as "limit_price!:Option<BigDecimal>"
+                    , stop_price as "stop_price!:Option<BigDecimal>"
+                    , status as "status!"
+                    , coalesce(extended_hours, false) as "extended_hours!"
+                    , trail_percent
+                    , trail_price
+                    , hwm
+                from alpaca_order
+                where filled_at is null
+                order by updated_at desc
             "#
         ).fetch_all(pool).await;
 
@@ -185,8 +214,6 @@ order by updated_at desc
 
     /// Save a single order to the database
     pub async fn save_to_db(&self, pool: &sqlx::PgPool) {
-
-
         /*
 
             [{"id":"2412874c-45a4-4e47-b0eb-98c00c1f05eb","client_order_id":"b6f91215-4e78-400d-b2ac-1bb546f86237","created_at":"2023-03-17T06:02:42.552044Z","updated_at":"2023-03-17T06:02:42.552044Z","submitted_at":"2023-03-17T06:02:42.551444Z","filled_at":null,"expired_at":null,"canceled_at":null,"failed_at":null,"replaced_at":null,"replaced_by":null,"replaces":null,"asset_id":"8ccae427-5dd0-45b3-b5fe-7ba5e422c766","symbol":"TSLA","asset_class":"us_equity","notional":null,"qty":"1","filled_qty":"0","filled_avg_price":null,"order_class":"","order_type":"market","type":"market","side":"buy","time_in_force":"day","limit_price":null,"stop_price":null,"status":"accepted","extended_hours":false,"legs":null,"trail_percent":null,"trail_price":null,"hwm":null,"subtag":null,"source":null}]
@@ -218,8 +245,7 @@ order by updated_at desc
                 filled_avg_price,
                 -- order_class,
                 order_type_v2,
-
-                side ,
+                side,
                 time_in_force,
                 limit_price,
                 stop_price,
@@ -229,21 +255,32 @@ order by updated_at desc
                 -- trail_price,
                 -- hwm
                 )
-            values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)"#,
-            self.id, self.client_order_id, self.created_at, self.updated_at, self.submitted_at, self.filled_at,
-            self.symbol, self.qty, self.filled_qty, self.filled_avg_price, self.order_type_v2.to_string(),
-            self.side.to_string(), self.time_in_force.to_string(), self.limit_price, self.stop_price, self.status
+            values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, lower($11), lower($12), lower($13), $14, $15, $16)
 
+            "#,
+            self.id, self.client_order_id, self.created_at, self.updated_at, self.submitted_at,
+            self.filled_at, // $7
+            self.symbol,
+            self.qty, self.filled_qty, self.filled_avg_price,
+            self.order_type_v2.to_string(), // $11
+            self.side.to_string(),          // $12
+            self.time_in_force.to_string(), // $13
+            self.limit_price,
+            self.stop_price,
+            self.status
         ).execute(pool).await;
-        println!("[save_to_db] result: {:?}", result);
+        tracing::debug!("[save_to_db] result: {:?}", result);
+    }
 
+    pub async fn delete_all_db(pool: &PgPool)-> Result<PgQueryResult,sqlx::Error> {
+        sqlx::query!(r#"delete from alpaca_order"#).execute(pool).await
     }
 
 }
 
 impl fmt::Display for Order {
 
-    /// enable to_string()
+    /// enable to_string() for Order
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         //fmt::Debug::fmt(self, f)
         match self.limit_price.as_ref(){
@@ -256,7 +293,6 @@ impl fmt::Display for Order {
         }
     }
 }
-
 
 
 

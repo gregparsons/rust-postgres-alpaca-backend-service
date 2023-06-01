@@ -3,11 +3,11 @@
 //! Restful Alpaca Poller
 
 use chrono::{Utc};
-use crate::alpaca_activity::get_activity_api;
-use crate::common::{MARKET_OPEN_TIME, MARKET_CLOSE_TIME};
 use tokio::runtime::Handle;
-use common_lib::order::Order;
-use common_lib::position::Position;
+use common_lib::alpaca_activity::Activity;
+use common_lib::alpaca_order::Order;
+use common_lib::alpaca_position::Position;
+use common_lib::market_hours::{MARKET_CLOSE_TIME, MARKET_OPEN_TIME};
 use common_lib::settings::Settings;
 use common_lib::sqlx_pool::create_sqlx_pg_pool;
 
@@ -38,14 +38,7 @@ pub async fn run() {
             let time_current_ny = Utc::now().with_timezone(&chrono_tz::America::New_York).time();
 
             if time_current_ny >= time_open_ny && time_current_ny <= time_close_ny {
-                tracing::debug!("[rest_service:start] NY time: {:?}, open: {:?}, close: {:?}", &time_current_ny, &time_open_ny, &time_close_ny);
-
-
-                // Don't need this. Using websocket exclusively.
-                // for stock in stocks.iter() {
-                //     tracing::debug!("[rest_service:start] Market is open (on business days). NY time: {:?}open: {:?}, close: {:?}", &time_current_ny, &time_open_ny, &time_close_ny);
-                //     let _ = crate::web_client_service::get_last_trade_rest(tx_database.clone(), stock, &alpaca_url, &alpaca_id, &alpaca_secret, tx_trader.clone());
-                // }
+                tracing::info!("[rest_service:start] NY time: {:?}, open: {:?}, close: {:?}", &time_current_ny, &time_open_ny, &time_close_ny);
 
                 // Poll the activity API
                 // https://stackoverflow.com/questions/61292425/how-to-run-an-asynchronous-task-from-a-non-main-thread-in-tokio/63434522#63434522
@@ -54,15 +47,31 @@ pub async fn run() {
                     match Settings::load(&pool3).await {
                         Ok(settings)=>{
 
-
                             // update alpaca activities
-                            let _ = get_activity_api(&pool3, &settings).await;
-
+                            match Activity::get_remote(&settings).await{
+                                Ok(activities) => {
+                                    tracing::debug!("[alpaca_activities] got activities: {}", activities.len());
+                                    // save to postgres
+                                    for a in activities {
+                                        let _ = a.save_to_db(&pool3).await;
+                                    }
+                                },
+                                Err(e) => {
+                                    tracing::error!("[alpaca_activity] error: {:?}", &e);
+                                }
+                            }
 
                             // get alpaca positions
                             match Position::get_remote(&settings).await {
+
                                 Ok(positions)=>{
-                                    // use the same insert date for all the positions
+                                    // clear out the database assuming the table will only hold what alpaca's showing as open orders
+                                    match Position::delete_all_db(&pool3).await{
+                                        Ok(_)=>tracing::debug!("[alpaca_position] positions cleared"),
+                                        Err(e)=> tracing::error!("[alpaca_position] positions not cleared: {:?}", &e),
+                                    }
+
+                                    // save to postgres
                                     let now = Utc::now();
                                     for position in positions.iter() {
                                         let _ = position.save_to_db(now, &pool3).await;
@@ -70,42 +79,40 @@ pub async fn run() {
                                     tracing::debug!("[alpaca_position] updated positions at {:?}", &now);
                                 },
                                 Err(e) => {
-                                    tracing::debug!("[alpaca_position] could not load positions from Alpaca web API: {:?}", &e);
+                                    tracing::error!("[alpaca_position] could not load positions from Alpaca web API: {:?}", &e);
                                 }
                             }
-
 
                             // get alpaca orders
                             match Order::get_remote(&settings).await {
                                 Ok(orders) => {
-                                    tracing::debug!("[alpaca_order] orders: {:?}", &orders);
+                                    tracing::debug!("[alpaca_order] orders: {}", &orders.len());
 
+                                    // clear out the database assuming the table will only hold what alpaca's showing as open orders
+                                    match Order::delete_all_db(&pool3).await {
+                                        Ok(_)=>tracing::debug!("[alpaca_order] orders cleared"),
+                                        Err(e)=>tracing::error!("[alpaca_order] orders not cleared: {:?}", &e)
+                                    }
+
+                                    // save to postgres
                                     for order in orders.iter(){
                                         let _ = order.save_to_db(&pool3).await;
                                     }
                                 },
                                 Err(e)=>{
-                                    tracing::debug!("[alpaca_position] could not load orders from Alpaca web API: {:?}", &e);
+                                    tracing::error!("[alpaca_order] could not load orders from Alpaca web API: {:?}", &e);
                                 }
-
-
                             }
-
-
-
-
                         },
                         Err(e) => {
-                            tracing::debug!("[run] couldn't load settings in loop to update activities/positions: {:?}", &e);
+                            tracing::error!("[run] couldn't load settings in loop to update activities/positions: {:?}", &e);
                         }
                     }
                 });
             } else {
                 tracing::debug!("[rest_service:start] market is closed. NY time: {:?}, open: {:?}, close: {:?}", &time_current_ny, &time_open_ny, &time_close_ny);
             }
-
             std::thread::sleep(std::time::Duration::from_millis(alpaca_poll_rate_ms));
-
         }
     });
 }

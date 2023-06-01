@@ -21,13 +21,13 @@ use crossbeam::channel::Sender;
 use serde_json::{json, Value};
 use tungstenite::client::IntoClientRequest;
 use tungstenite::{Message};
+use common_lib::alpaca_api_structs::AlpWsTrade;
 use common_lib::common_structs::{WsListenMessage, WsListenMessageData, MinuteBar, WsAuthenticate};
 use common_lib::settings::Settings;
-use crate::models::{AlpWsTrade};
-// use crate::settings::{STOCK_LIST, STOCK_LIST_COUNT};
+
 
 #[derive(PartialEq)]
-pub enum AlpacaStream{
+pub enum AlpacaStream {
     TextData,
     BinaryUpdates,
 }
@@ -85,9 +85,7 @@ impl Ws {
                             match msg {
 
                                 Message::Ping(t) => {
-                                    tracing::debug!("[ws_connect][ping] {:?}", &t)
-                                    // spawn a thread to freak out if it doesn't hear a new ping...
-                                    // todo: or just write to the database and ping it from another service
+                                    tracing::info!("[ws_connect][ping] {:?}", &t)
                                 },
                                 Message::Binary(b_msg) => {
                                     tracing::debug!("[ws_connect][binary] {:?}", &b_msg);

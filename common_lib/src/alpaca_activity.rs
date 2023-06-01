@@ -18,6 +18,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use sqlx::postgres::PgQueryResult;
 use crate::settings::Settings;
+use crate::error::TradeWebError;
 use crate::trade_struct::TradeSide;
 
 
@@ -61,6 +62,60 @@ pub struct Activity{
 
 impl Activity {
 
+    /// Get FILL activities
+    ///
+    /// https://alpaca.markets/docs/api-references/trading-api/account-activities/#properties
+    ///
+    pub async fn get_remote(settings: &Settings) ->Result<Vec<Activity>, TradeWebError> {
+
+        let mut headers = HeaderMap::new();
+        let api_key = settings.alpaca_paper_id.clone();
+        let api_secret = settings.alpaca_paper_secret.clone();
+        headers.insert("APCA-API-KEY-ID", api_key.parse().unwrap());
+        headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
+
+        let url = format!("https://paper-api.alpaca.markets/v2/account/activities/FILL");
+
+        tracing::debug!("[load_fill_activities] calling API: {}", &url);
+        let client = reqwest::Client::new();
+
+        let http_result = client.get(url)
+            .headers(headers)
+            .send()
+            .await;
+
+        // let result = parse_http_result_to_vec::<Activity>(http_result).await;
+        // result
+
+        let return_val = match http_result {
+            Ok(response) => {
+                match &response.text().await{
+                    Ok(response_text)=>{
+                        match serde_json::from_str::<Vec<Activity>>(&response_text){
+                            Ok(results)=> {
+                                Ok(results)
+                            },
+                            Err(e)=>{
+                                tracing::debug!("[get_remote] deserialization to json vec failed: {:?}", &e);
+                                Err(TradeWebError::JsonError)
+                            }
+                        }
+                    },
+                    Err(e)=>{
+                        tracing::debug!("[get_remote] deserialization to json text failed: {:?}", &e);
+                        Err(TradeWebError::JsonError)
+                    }
+                }
+            },
+            Err(e) => {
+                tracing::debug!("[get_remote] reqwest error: {:?}", &e);
+                Err(TradeWebError::ReqwestError)
+            }
+        };
+
+        return_val
+    }
+
     pub async fn save_to_db(&self, pool: &PgPool)-> Result<PgQueryResult, sqlx::Error> {
         let result = sqlx::query!(
             r#"
@@ -84,58 +139,35 @@ impl Activity {
                     ,$3
                     ,$4
                     ,$5
-                    ,$6
+                    ,lower($6)
                     ,$7
                     ,$8
                     ,$9
                     ,$10
                     ,$11
                     )"#,
-            self.id, self.activity_type.to_string(), self.activity_subtype.to_string(), self.transaction_time,
-            self.symbol, self.side.to_string(), self.qty, self.price, self.cum_qty, self.leaves_qty, self.order_id
+            self.id,
+            self.activity_type.to_string(),
+            self.activity_subtype.to_string(),
+            self.transaction_time,
+            self.symbol,
+            self.side.to_string(),
+            self.qty,
+            self.price,
+            self.cum_qty,
+            self.leaves_qty,
+            self.order_id
         ).execute(pool).await;
 
-        tracing::debug!("[activity::save_to_db] insert result: {:?}", &result);
+        tracing::debug!("[get_remote] insert result: {:?}", &result);
         result
     }
 
-    // /// Vec<Activity> for a specific stock symbol
-    // pub async fn get_activity_for_symbol(symbol:&str, pool:&PgPool)->Result<Vec<Activity>,sqlx::Error> {
-    //
-    //     let result_vec = sqlx::query_as!(
-    //         Activity,
-    //         r#"
-    //             select
-    //                 id as "id!"
-    //                 , activity_type as "activity_type!:ActivityType"
-    //                 , activity_subtype as "activity_subtype!:ActivitySubtype"
-    //                 , transaction_time as "transaction_time!"
-    //                 , symbol as "symbol!"
-    //                 , side as "side!:TradeSide"
-    //                 , qty as "qty!"
-    //                 , price as "price!"
-    //                 , cum_qty as "cum_qty!"
-    //                 , leaves_qty as "leaves_qty!"
-    //                 , order_id as "order_id!"
-    //             from alpaca_activity
-    //             where symbol = upper($1)
-    //         "#,
-    //         &symbol
-    //     ).fetch_all(pool).await;
-    //
-    //     result_vec
-    //
-    // }
-
     /// get a vec of alpaca trading activities from the postgres database (as a reflection of what's been
     /// synced from the Alpaca API)
-    ///
-    /// TODO: probably already have a common function for this
-    ///
     pub async fn get_activities_from_db(pool:&PgPool) -> Result<Vec<ActivityQuery>,sqlx::Error>{
 
         // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
-
         sqlx::query_as!(
         ActivityQuery,
             r#"
@@ -180,65 +212,8 @@ impl Activity {
 
     }
 
-    /// Get FILL activities
-    ///
-    /// https://alpaca.markets/docs/api-references/trading-api/account-activities/#properties
-    ///
-    pub async fn get_remote_activities(pool: PgPool, settings:Settings) ->Result<(), reqwest::Error> {
-        // 1. database call to get most recent activity
-        // 2. web api call to get all activities since most recent stored locally
-
-        let mut headers = HeaderMap::new();
-        // let api_key_id = std::env::var("ALPACA_API_ID").expect("ALPACA_API_ID environment variable not found");
-        // let api_secret = std::env::var("ALPACA_API_SECRET").expect("alpaca_secret environment variable not found");
-        let api_key = settings.alpaca_paper_id.clone();
-        let api_secret = settings.alpaca_paper_secret.clone();
-        headers.insert("APCA-API-KEY-ID", api_key.parse().unwrap());
-        headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
-        let url = format!("https://paper-api.alpaca.markets/v2/account/activities/FILL");
-
-        tracing::debug!("[load_fill_activities] calling API: {}", &url);
-
-        // get a single order
-        let client = reqwest::Client::new();
-
-        let http_result = client.get(url)
-            .headers(headers)
-            .send()
-            .await;
-
-        match http_result {
-            Ok(resp) => {
-
-                // i want to see what's in there dangit. json() gives away ownership and I can't get it back.
-                let json_text = &resp.text().await.unwrap();
-                tracing::debug!("json: {}", &json_text);
-
-                match serde_json::from_str::<Vec<Activity>>(&json_text) {
-                    Ok(activities) => {
-                        tracing::debug!("[load_fill_activities] activity json: {:?}", &activities);
-                        for a in activities {
-                            tracing::debug!("[load_fill_activities] activity: {:?}", &a);
-
-                            // 3. merge remote results to local database
-                            let _result = a.save_to_db(&pool).await;
-                        }
-                    },
-                    Err(e) => {
-                        tracing::debug!("[load_fill_activities] json: {}", &json_text);
-                        tracing::debug!("[load_fill_activities] json error: {:?}", &e);
-                    }
-                }
-            },
-            Err(e) => {
-                tracing::debug!("[load_fill_activities] reqwest error: {:?}", &e);
-            }
-        }
-
-        Ok(())
-
-    }
 }
+
 
 /// https://alpaca.markets/docs/api-references/trading-api/account-activities/#properties
 #[derive(sqlx::Type, Deserialize, Serialize, Debug)]
@@ -268,19 +243,6 @@ impl fmt::Display for ActivitySubtype {
         fmt::Debug::fmt(self, f)
     }
 }
-
-// #[derive(Deserialize, Serialize, Debug)]
-// pub enum ActivityType{
-//     #[serde(rename="FILL")]
-//     Fill
-// }
-// #[derive(Deserialize, Serialize, Debug)]
-// pub enum ActivitySubtype{
-//     #[serde(rename="fill")]
-//     Fill,
-//     #[serde(rename="partial_fill")]
-//     PartialFill
-// }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct ActivityQuery{

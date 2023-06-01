@@ -38,6 +38,7 @@ pub async fn get_chart(hb: web::Data<Handlebars<'_>>, db_pool: web::Data<PgPool>
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
         tracing::debug!("session id: {}", &session_username);
         let json = get_data(&db_pool).await;
+        // tracing::debug!("[get_chart] data: {:?}", &json);
         let data = json!({
             "title": "1-Minute Chart",
             "parent": "base0",
@@ -46,7 +47,9 @@ pub async fn get_chart(hb: web::Data<Handlebars<'_>>, db_pool: web::Data<PgPool>
             "data"  : json
         });
         let body = hb.render("chart", &data).unwrap();
-        HttpResponse::Ok().append_header(("cache-control", "no-store")).body(body)
+        HttpResponse::Ok()
+            .append_header(("cache-control", "no-store"))
+            .body(body)
     } else {
         redirect_home().await
     }
@@ -65,13 +68,14 @@ async fn get_data(db_pool: &web::Data<PgPool>) -> String{
             select
                 dtg as "dtg!",
                 coalesce(symbol, '') as "symbol!",
-                price as "price!",
-                size as "size!",
-                exchange as "exchange"
+                price_close as "price!"
+                -- size as "size!",
+                -- exchange as "exchange"
             from
-                v_trade_minute
+                -- v_trade_minute
+                bar_minute
             order by dtg desc
-            limit 1000
+            limit 10000
         "#,
     )
         .fetch_all(db_pool.as_ref())

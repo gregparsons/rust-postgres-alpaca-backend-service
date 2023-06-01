@@ -1,7 +1,14 @@
 //! main.rs
 #![forbid(unsafe_code)]
 
-use backend_lib::data_collector::DataCollector;
+pub mod data_collector;
+pub mod db;
+pub mod web_client_service;
+pub mod websocket_service;
+pub mod ws_finnhub;
+
+
+use crate::data_collector::DataCollector;
 use common_lib::init::init;
 use common_lib::settings::Settings;
 use common_lib::sqlx_pool::create_sqlx_pg_pool;

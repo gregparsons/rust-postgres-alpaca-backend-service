@@ -44,7 +44,6 @@ pub async fn post_login(form: web::Form<FormData>, hb: web::Data<Handlebars<'_>>
     ).fetch_one(db_pool.as_ref()).await;
     tracing::debug!("[post_login] login_result: {:?}", &login_result);
 
-
     let login_result_unwrapped = &login_result.unwrap();
 
     let stored_pw_hash = &login_result_unwrapped.password;
