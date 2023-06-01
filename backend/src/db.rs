@@ -172,7 +172,7 @@ async fn insert_alpaca_websocket_trade(client: &Client, t: AlpWsTrade) {
         for i in result_vec {
             match i {
                 SimpleQueryMessage::CommandComplete(row_count) => {
-                    tracing::info!("[insert_ws_trade] {} row(s) inserted", row_count);
+                    tracing::debug!("[insert_ws_trade] {} row(s) inserted", row_count);
                 }
 
                 SimpleQueryMessage::Row(_row) => {}
@@ -301,7 +301,7 @@ async fn insert_minute_bar(client: &Client, mb: &MinuteBar) {
         for i in result_vec {
             match i {
                 SimpleQueryMessage::CommandComplete(row_count) => {
-                    tracing::info!("[insert_minute_bar] {} row(s) inserted", row_count);
+                    tracing::debug!("[insert_minute_bar] {} row(s) inserted", row_count);
                 }
 
                 SimpleQueryMessage::Row(_row) => {}
