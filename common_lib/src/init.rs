@@ -30,6 +30,6 @@ pub fn init(package_name:&str) {
 
     // start tracing
     tracing_subscriber::registry().with(fmt::layer()).with(EnvFilter::from_default_env()).init();
-    tracing::debug!("[init] .env file: {}", &dot_env_path);
+    tracing::info!("[init] .env file: {}", &dot_env_path);
 
 }

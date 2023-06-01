@@ -38,13 +38,7 @@ pub async fn run() {
             let time_current_ny = Utc::now().with_timezone(&chrono_tz::America::New_York).time();
 
             if time_current_ny >= time_open_ny && time_current_ny <= time_close_ny {
-                tracing::debug!("[rest_service:start] NY time: {:?}, open: {:?}, close: {:?}", &time_current_ny, &time_open_ny, &time_close_ny);
-
-                // Don't need this. Using websocket exclusively.
-                // for stock in stocks.iter() {
-                //     tracing::debug!("[rest_service:start] Market is open (on business days). NY time: {:?}open: {:?}, close: {:?}", &time_current_ny, &time_open_ny, &time_close_ny);
-                //     let _ = crate::web_client_service::get_last_trade_rest(tx_database.clone(), stock, &alpaca_url, &alpaca_id, &alpaca_secret, tx_trader.clone());
-                // }
+                tracing::info!("[rest_service:start] NY time: {:?}, open: {:?}, close: {:?}", &time_current_ny, &time_open_ny, &time_close_ny);
 
                 // Poll the activity API
                 // https://stackoverflow.com/questions/61292425/how-to-run-an-asynchronous-task-from-a-non-main-thread-in-tokio/63434522#63434522
@@ -63,7 +57,7 @@ pub async fn run() {
                                     }
                                 },
                                 Err(e) => {
-                                    tracing::debug!("[alpaca_activity] error: {:?}", &e);
+                                    tracing::error!("[alpaca_activity] error: {:?}", &e);
                                 }
                             }
 
@@ -74,7 +68,7 @@ pub async fn run() {
                                     // clear out the database assuming the table will only hold what alpaca's showing as open orders
                                     match Position::delete_all_db(&pool3).await{
                                         Ok(_)=>tracing::debug!("[alpaca_position] positions cleared"),
-                                        Err(e)=> tracing::debug!("[alpaca_position] positions not cleared: {:?}", &e),
+                                        Err(e)=> tracing::error!("[alpaca_position] positions not cleared: {:?}", &e),
                                     }
 
                                     // save to postgres
@@ -85,7 +79,7 @@ pub async fn run() {
                                     tracing::debug!("[alpaca_position] updated positions at {:?}", &now);
                                 },
                                 Err(e) => {
-                                    tracing::debug!("[alpaca_position] could not load positions from Alpaca web API: {:?}", &e);
+                                    tracing::error!("[alpaca_position] could not load positions from Alpaca web API: {:?}", &e);
                                 }
                             }
 
@@ -97,7 +91,7 @@ pub async fn run() {
                                     // clear out the database assuming the table will only hold what alpaca's showing as open orders
                                     match Order::delete_all_db(&pool3).await {
                                         Ok(_)=>tracing::debug!("[alpaca_order] orders cleared"),
-                                        Err(e)=>tracing::debug!("[alpaca_order] orders not cleared: {:?}", &e)
+                                        Err(e)=>tracing::error!("[alpaca_order] orders not cleared: {:?}", &e)
                                     }
 
                                     // save to postgres
@@ -106,12 +100,12 @@ pub async fn run() {
                                     }
                                 },
                                 Err(e)=>{
-                                    tracing::debug!("[alpaca_order] could not load orders from Alpaca web API: {:?}", &e);
+                                    tracing::error!("[alpaca_order] could not load orders from Alpaca web API: {:?}", &e);
                                 }
                             }
                         },
                         Err(e) => {
-                            tracing::debug!("[run] couldn't load settings in loop to update activities/positions: {:?}", &e);
+                            tracing::error!("[run] couldn't load settings in loop to update activities/positions: {:?}", &e);
                         }
                     }
                 });

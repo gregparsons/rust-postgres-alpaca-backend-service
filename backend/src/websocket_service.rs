@@ -85,9 +85,7 @@ impl Ws {
                             match msg {
 
                                 Message::Ping(t) => {
-                                    tracing::debug!("[ws_connect][ping] {:?}", &t)
-                                    // spawn a thread to freak out if it doesn't hear a new ping...
-                                    // todo: or just write to the database and ping it from another service
+                                    tracing::info!("[ws_connect][ping] {:?}", &t)
                                 },
                                 Message::Binary(b_msg) => {
                                     tracing::debug!("[ws_connect][binary] {:?}", &b_msg);

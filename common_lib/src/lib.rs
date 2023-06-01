@@ -15,6 +15,7 @@ pub mod error;
 pub mod alpaca_api_structs;
 pub mod account;
 pub mod market_hours;
+pub mod finnhub;
 
 
 

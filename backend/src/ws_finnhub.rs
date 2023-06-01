@@ -2,10 +2,7 @@
 
 
 
-use std::time::{Duration};
-use bigdecimal::BigDecimal;
-use chrono::{DateTime, NaiveDateTime, Utc};
-use serde::{Serialize, Deserialize};
+
 /**
     Websocket client for Alpaca
 
@@ -15,54 +12,12 @@ use serde::{Serialize, Deserialize};
 // use crossbeam_channel::{after, select, tick};
 use crate::db::DbMsg;
 use crossbeam::channel::Sender;
-use serde_json::{json, Value};
+use serde_json::json;
 use tungstenite::client::IntoClientRequest;
 use tungstenite::{Message};
 use common_lib::settings::Settings;
-use common_lib::symbol_list::SymbolList;
-use chrono::serde::ts_milliseconds;
-use sqlx::PgPool;
-
-
-#[derive(PartialEq)]
-pub enum FinnhubStream {
-    TextData,
-    BinaryUpdates,
-}
-
-#[derive(Serialize, Debug)]
-struct FinnhubSubscribe{
-    #[serde(rename="type")]
-    websocket_message_type:String,
-    symbol:String,
-}
-
-/// https://finnhub.io/docs/api/websocket-trades
-#[derive(Debug, Serialize, Deserialize)]
-struct FinnhubTrade{
-
-    #[serde(rename="t")]
-    #[serde(with = "ts_milliseconds")]
-    dtg: DateTime<Utc>,
-
-    #[serde(rename="s")]
-    symbol: String,
-
-    #[serde(rename="p")]
-    price:BigDecimal,
-
-    #[serde(rename="v")]
-    volume:BigDecimal,
-
-    #[serde(rename="c")]
-    conditions: Vec<String>,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-struct FinnhubData{
-    data:Vec<FinnhubTrade>
-}
-
+use common_lib::finnhub::{FinnhubData, FinnhubStream, FinnhubSubscribe};
+use std::time::{Duration};
 
 fn stock_list_to_uppercase(lower_stock:&Vec<String>)-> Vec<String>{
     lower_stock.iter().map(|x| x.to_uppercase() ).collect()
@@ -71,12 +26,12 @@ fn stock_list_to_uppercase(lower_stock:&Vec<String>)-> Vec<String>{
 pub struct WsFinnhub;
 
 impl WsFinnhub {
-    pub async fn run(tx_db: Sender<DbMsg>, stream_type:&FinnhubStream, symbols:Vec<String>, settings:Settings, pool:&PgPool) {
+    pub async fn run(tx_db: Sender<DbMsg>, stream_type:&FinnhubStream, symbols:Vec<String>, settings:Settings) {
         tracing::debug!("[WsFinnhub::run]");
-        WsFinnhub::connect(tx_db, stream_type, symbols, &settings, pool).await;
+        WsFinnhub::connect(tx_db, stream_type, symbols, &settings).await;
     }
 
-    async fn connect(tx_db: Sender<DbMsg>, stream_type:&FinnhubStream, symbols:Vec<String>, settings:&Settings, pool:&PgPool) {
+    async fn connect(tx_db: Sender<DbMsg>, stream_type:&FinnhubStream, symbols:Vec<String>, settings:&Settings) {
 
         // wss://ws.finnhub.io?token=xxxxxxxx
         // .env includes everything except the api key value (xxxxxx); called token here
@@ -174,16 +129,14 @@ impl WsFinnhub {
 
                                                 tracing::debug!("[deserialize]: {:?}", &d);
 
-                                                // TODO: not sure if sqlx/tokio async will block the websocket
-                                                let _ = sqlx::query!(
-                                                    r#"
-                                                    insert into trade_fh (dtg,symbol, price, volume) values ($1, $2, $3, $4)
-                                                    "#,
-                                                    d.dtg,
-                                                    d.symbol,
-                                                    d.price,
-                                                    d.volume
-                                                ).execute(pool).await;
+                                                // don't block websocket; send to crossbeam queue for insertion in database
+                                                let _ = tx_db.send(DbMsg::FhTrade(d.clone()));
+
+
+
+
+
+
                                             }
                                         },
                                         Err(e)=>{

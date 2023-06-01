@@ -16,10 +16,12 @@
 
 use std::str::FromStr;
 use sqlx::PgPool;
+use common_lib::finnhub::FinnhubStream;
 use common_lib::settings::Settings;
 use common_lib::symbol_list::SymbolList;
+use crate::db::DbActor;
 use crate::websocket_service::AlpacaStream;
-use crate::ws_finnhub::{FinnhubStream, WsFinnhub};
+use crate::ws_finnhub::WsFinnhub;
 
 pub struct DataCollector {}
 
@@ -32,7 +34,7 @@ impl DataCollector {
         // Start the long-running database thread;
         // get a sender from the Database Service.
         // tx = "transmitter"
-        let tx_db = crate::db::start().await;
+        let tx_db = DbActor::start().await;
         tracing::debug!("[Market::start] db start() complete");
         // Websocket (Incoming) Data Service
         let alpaca_ws_on = bool::from_str(std::env::var("ALPACA_WEBSOCKET_ON").unwrap_or_else(|_| "true".to_owned()).as_str()).unwrap_or(false);
@@ -76,12 +78,8 @@ impl DataCollector {
             let settings2 = (*settings).clone();
             match SymbolList::get_active_symbols(&ws_pool).await{
                 Ok(symbols) => {
-                    // let _ = std::thread::spawn(move || {
-
                     tokio::spawn(async move {
-
-
-                        WsFinnhub::run(tx_db_ws, &FinnhubStream::TextData, symbols, settings2, &pool).await;
+                        WsFinnhub::run(tx_db_ws, &FinnhubStream::TextData, symbols, settings2).await;
                     });
                 },
                 Err(e) => {
