@@ -132,6 +132,16 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
                                 Ok(_)=> tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade inserted"),
                                 Err(e) => tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade not inserted: {:?}", &e),
                             }
+
+                            // also save a copy to the latest table; saves .5-3 seconds on lookup (could also just save it in memory
+                            // client-side later when I convert to using RabbitMq
+                            match insert_finnhub_trade_latest(&finnhub_trade, &pool).await {
+                                Ok(_)=> tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade inserted"),
+                                Err(e) => tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade not inserted: {:?}", &e),
+                            }
+
+
+
                         }
 
 
@@ -319,6 +329,22 @@ async fn insert_finnhub_trade(trade: &FinnhubTrade, pool: &PgPool) ->Result<PgQu
     sqlx::query!(
         r#"
             insert into trade_fh (dtg,symbol, price, volume) values ($1, $2, $3, $4)
+        "#,
+        trade.dtg,
+        trade.symbol,
+        trade.price,
+        trade.volume
+    ).execute(pool).await
+
+}
+
+async fn insert_finnhub_trade_latest(trade: &FinnhubTrade, pool: &PgPool) ->Result<PgQueryResult,sqlx::Error>{
+
+    sqlx::query!(
+        r#"
+            insert into trade_fh_latest (dtg, symbol, price, volume)
+            values ($1, $2, $3, $4)
+            on conflict (symbol) do update set dtg=$1, price=$3, volume=$4;
         "#,
         trade.dtg,
         trade.symbol,
