@@ -7,7 +7,7 @@ use tokio::runtime::Handle;
 use common_lib::alpaca_activity::Activity;
 use common_lib::alpaca_order::Order;
 use common_lib::alpaca_position::Position;
-use common_lib::market_hours::{MARKET_CLOSE_TIME, MARKET_OPEN_TIME};
+use common_lib::market_hours::{MARKET_CLOSE_EXTENDED, MARKET_OPEN_EXTENDED};
 use common_lib::settings::Settings;
 use common_lib::sqlx_pool::create_sqlx_pg_pool;
 
@@ -27,8 +27,8 @@ pub async fn run() {
 
         // this is set in all.sh via docker run
         let alpaca_poll_rate_ms: u64 = std::env::var("API_INTERVAL_MILLIS").unwrap_or_else(|_| "15000".to_string()).parse().unwrap_or(5000);
-        let time_open_ny = MARKET_OPEN_TIME.clone();
-        let time_close_ny = MARKET_CLOSE_TIME.clone();
+        let time_open_ny = MARKET_OPEN_EXTENDED.clone();
+        let time_close_ny = MARKET_CLOSE_EXTENDED.clone();
 
         loop {
 
