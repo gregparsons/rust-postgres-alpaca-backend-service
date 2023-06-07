@@ -22,7 +22,7 @@ use serde_json::{json, Value};
 use tungstenite::client::IntoClientRequest;
 use tungstenite::{Message};
 use common_lib::alpaca_api_structs::AlpWsTrade;
-use common_lib::common_structs::{WsListenMessage, WsListenMessageData, MinuteBar, WsAuthenticate};
+use common_lib::common_structs::{WsListenMessage, WsListenMessageData, MinuteBar, WsAuthenticate, AlpacaPing};
 use common_lib::settings::Settings;
 
 
@@ -85,7 +85,8 @@ impl Ws {
                             match msg {
 
                                 Message::Ping(t) => {
-                                    tracing::info!("[ws_connect][ping] {:?}", &t)
+                                    tracing::info!("[ws_connect][ping] {:?}", &t);
+                                    let _ = tx_db.send(DbMsg::AlpacaPing(AlpacaPing{ dtg: chrono::Utc::now() }));
                                 },
                                 Message::Binary(b_msg) => {
                                     tracing::debug!("[ws_connect][binary] {:?}", &b_msg);

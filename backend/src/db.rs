@@ -9,7 +9,7 @@ use sqlx::PgPool;
 use sqlx::postgres::PgQueryResult;
 use tokio_postgres::{Client, SimpleQueryMessage};
 use common_lib::alpaca_api_structs::{AlpacaTradeRest, AlpWsQuote, AlpWsTrade};
-use common_lib::common_structs::MinuteBar;
+use common_lib::common_structs::{AlpacaPing, MinuteBar};
 use common_lib::finnhub::{FinnhubPing, FinnhubTrade};
 use common_lib::sqlx_pool::create_sqlx_pg_pool;
 
@@ -22,8 +22,7 @@ pub enum DbMsg {
     MinuteBar(MinuteBar),
     FhTrade(FinnhubTrade),
     FhPing(FinnhubPing),
-
-
+    AlpacaPing(AlpacaPing),
 }
 
 pub struct DbActor{}
@@ -144,8 +143,11 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
                         },
 
                         DbMsg::FhPing(ping) => {
-                            // tracing::debug!("[DbMsg::FhPing] received");
                             let _ = insert_finnhub_ping(&ping, &pool).await;
+
+                        },
+                        DbMsg::AlpacaPing(ping) => {
+                            let _ = insert_alpaca_ping(&ping, &pool).await;
 
                         }
 
@@ -367,6 +369,17 @@ async fn insert_finnhub_ping(ping:&FinnhubPing, pool:&PgPool) -> Result<PgQueryR
     sqlx::query!(
         r#"
             insert into ping_finnhub (ping) values ($1)
+        "#,
+        ping.dtg
+    ).execute(pool).await
+
+}
+
+/// Append a timestamp to the ping table whenever the Finnhub websocket pings. Use it to determine if the websocket goes down.
+async fn insert_alpaca_ping(ping:&AlpacaPing, pool:&PgPool) -> Result<PgQueryResult,sqlx::Error> {
+    sqlx::query!(
+        r#"
+            insert into ping_alpaca (ping) values ($1)
         "#,
         ping.dtg
     ).execute(pool).await

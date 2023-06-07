@@ -42,6 +42,10 @@ pub struct MinuteBar {
     pub dtg: DateTime<Utc>,
 }
 
+#[derive(Serialize, Debug)]
+pub struct AlpacaPing {
+    pub dtg:DateTime<Utc>
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct WsAuthenticate {
