@@ -1029,5 +1029,17 @@
       }
     },
     "query": "\n            insert into trade_fh (dtg,symbol, price, volume) values ($1, $2, $3, $4)\n        "
+  },
+  "f86247410a72e8f261a8331a38a5f00db3ff601686833b8f72e987abff14fa61": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "\n            insert into ping_finnhub (ping) values ($1)\n        "
   }
 }
