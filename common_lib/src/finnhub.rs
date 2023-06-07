@@ -6,10 +6,25 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize,Serialize};
 use chrono::serde::ts_milliseconds;
 
+#[derive(Debug, Deserialize)]
+#[serde(tag = "type", content = "data")]
+pub enum FinnhubPacket{
+    #[serde(rename="ping")]
+    Ping,
+    #[serde(rename="trade")]
+    Trade(Vec<FinnhubTrade>),
+
+}
+
 #[derive(PartialEq)]
 pub enum FinnhubStream {
     TextData,
     BinaryUpdates,
+}
+
+#[derive(Serialize, Debug)]
+pub struct FinnhubPing {
+    pub dtg:DateTime<Utc>
 }
 
 #[derive(Serialize, Debug)]
@@ -40,7 +55,7 @@ pub struct FinnhubTrade{
     pub conditions: Vec<String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct FinnhubData{
-    pub data:Vec<FinnhubTrade>
-}
+// #[derive(Debug, Serialize, Deserialize)]
+// pub struct FinnhubData{
+//     pub data:Vec<FinnhubTrade>
+// }

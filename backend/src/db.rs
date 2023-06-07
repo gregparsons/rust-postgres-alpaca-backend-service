@@ -10,7 +10,7 @@ use sqlx::postgres::PgQueryResult;
 use tokio_postgres::{Client, SimpleQueryMessage};
 use common_lib::alpaca_api_structs::{AlpacaTradeRest, AlpWsQuote, AlpWsTrade};
 use common_lib::common_structs::MinuteBar;
-use common_lib::finnhub::FinnhubTrade;
+use common_lib::finnhub::{FinnhubPing, FinnhubTrade};
 use common_lib::sqlx_pool::create_sqlx_pg_pool;
 
 #[derive(Debug)]
@@ -20,7 +20,8 @@ pub enum DbMsg {
     WsTrade(AlpWsTrade),
     WsQuote(AlpWsQuote),
     MinuteBar(MinuteBar),
-    FhTrade(FinnhubTrade)
+    FhTrade(FinnhubTrade),
+    FhPing(FinnhubPing),
 
 
 }
@@ -140,7 +141,11 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
                                 Err(e) => tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade not inserted: {:?}", &e),
                             }
 
+                        },
 
+                        DbMsg::FhPing(ping) => {
+                            // tracing::debug!("[DbMsg::FhPing] received");
+                            let _ = insert_finnhub_ping(&ping, &pool).await;
 
                         }
 
@@ -151,6 +156,9 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
         }
     }
 }
+
+
+
 
 /// TODO: convert this to SQLX; it currently does not use a connection pool
 async fn insert_alpaca_websocket_trade(client: &Client, t: AlpWsTrade) {
@@ -350,6 +358,17 @@ async fn insert_finnhub_trade_latest(trade: &FinnhubTrade, pool: &PgPool) ->Resu
         trade.symbol,
         trade.price,
         trade.volume
+    ).execute(pool).await
+
+}
+
+/// Append a timestamp to the ping table whenever the Finnhub websocket pings. Use it to determine if the websocket goes down.
+async fn insert_finnhub_ping(ping:&FinnhubPing, pool:&PgPool) -> Result<PgQueryResult,sqlx::Error> {
+    sqlx::query!(
+        r#"
+            insert into ping_finnhub (ping) values ($1)
+        "#,
+        ping.dtg
     ).execute(pool).await
 
 }
