@@ -555,6 +555,33 @@
     },
     "query": "\n            insert into alpaca_activity\n                (\n                id\n                , activity_type\n                , activity_subtype\n                , transaction_time\n                , symbol\n                , side\n                , qty\n                , price\n                , cum_qty\n                , leaves_qty\n                , order_id\n                )\n                values (\n                    $1\n                    ,$2\n                    ,$3\n                    ,$4\n                    ,$5\n                    ,lower($6)\n                    ,$7\n                    ,$8\n                    ,$9\n                    ,$10\n                    ,$11\n                    )"
   },
+  "4e9d3bf266c0d115ec8c3e85cedc7a532ce0e9595f57ee9c373f562548262bc4": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamp"
+        ]
+      }
+    },
+    "query": "insert into ping_finnhub (ping) values ($1)"
+  },
+  "5289517c19ee0f73d3cfed9f849e68cb70e1346573d4944d5686fbae96039202": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamp",
+          "Varchar",
+          "Numeric",
+          "Numeric"
+        ]
+      }
+    },
+    "query": "insert into trade_alp_latest(dtg,symbol,price,size)\n            values ($1, $2, $3, $4)\n            on conflict (symbol) do update set dtg=$1, price=$3, size=$4;\n        "
+  },
   "7075f9dfd124b73b780d1918570aeff82176454a7d8621ae652026c3908afcf9": {
     "describe": {
       "columns": [],
@@ -844,18 +871,6 @@
     },
     "query": "\nSELECT\n    dtg as \"dtg!\",\n    alpaca_paper_id as \"alpaca_paper_id!:String\",\n    '' as \"alpaca_paper_secret!:String\",\n    alpaca_live_id as \"alpaca_live_id!:String\",\n    '' as \"alpaca_live_secret!:String\",\n    trade_size as \"trade_size!\",\n    trade_enable_buy as \"trade_enable_buy!\",\n    trade_ema_small_size as \"trade_ema_small_size!\",\n    trade_ema_large_size as \"trade_ema_large_size!\",\n    trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\",\n    trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n    ,finnhub_key as \"finnhub_key!:String\"\nFROM t_settings_test\nORDER BY t_settings_test.dtg DESC\nLIMIT 1\n            "
   },
-  "8e830574dd46426c540b4cbaa19812f1dcd95ac581207f32d915b0942783350b": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "\n            insert into ping_alpaca (ping) values ($1)\n        "
-  },
   "909ac887376837390242f5a0bb4d481a828d7e0d608a82fc3912ed0dd26fedaa": {
     "describe": {
       "columns": [
@@ -928,13 +943,25 @@
     },
     "query": "\n            select\n                user_id, username, password\n            from users\n            where username = $1\n        "
   },
+  "cc27b0861e395c6fc0bec92cd0d3cbc3f9389ee9f1c73bf858d813c38ccc985f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamp"
+        ]
+      }
+    },
+    "query": "insert into ping_alpaca (ping) values ($1)"
+  },
   "d62927ad711a177a4e10c0413f2cfd253bc552b3839ab5a309a512ddb3e76f4e": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
         "Left": [
-          "Timestamptz",
+          "Timestamp",
           "Varchar",
           "Numeric",
           "Numeric"
@@ -1033,7 +1060,7 @@
       "nullable": [],
       "parameters": {
         "Left": [
-          "Timestamptz",
+          "Timestamp",
           "Varchar",
           "Numeric",
           "Numeric"
@@ -1042,16 +1069,19 @@
     },
     "query": "\n            insert into trade_fh (dtg,symbol, price, volume) values ($1, $2, $3, $4)\n        "
   },
-  "f86247410a72e8f261a8331a38a5f00db3ff601686833b8f72e987abff14fa61": {
+  "f668e12c38343f491668511fca165870bb160244ac44ff1e246177aa441b1ce0": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
         "Left": [
-          "Timestamptz"
+          "Timestamp",
+          "Varchar",
+          "Numeric",
+          "Numeric"
         ]
       }
     },
-    "query": "\n            insert into ping_finnhub (ping) values ($1)\n        "
+    "query": "\n        insert into trade_alp (dtg, symbol, price, size)\n        values ($1, $2, $3, $4)\n    "
   }
 }

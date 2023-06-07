@@ -50,6 +50,12 @@ impl Ws {
 
     fn ws_connect(tx_db: Sender<DbMsg>, stream_type:&AlpacaStream, symbols:Vec<String>, settings:&Settings) {
 
+        // ***** TEST for when the websocket feed is down
+        // let fake_trade = r#"{"T":"t","S":"INTC","i":7595,"x":"V","p":31.315,"s":200,"c":["@"],"z":"C","t":"2023-06-07T19:59:46.576771867Z"}"#;
+        // let trade = serde_json::from_str::<AlpWsTrade>(&fake_trade).unwrap();
+        // tracing::debug!("[***** fake_trade*****] {:?}", &trade);
+        // let _ = tx_db.send(DbMsg::WsTrade(trade.to_owned()));
+
         let ws_url = match stream_type{
             AlpacaStream::TextData => std::env::var("ALPACA_WS_URL_TEXT").expect("ALPACA_WS_URL_TEXT not found"),
             AlpacaStream::BinaryUpdates => std::env::var("ALPACA_WS_URL_BIN").expect("ALPACA_WS_URL_BIN not found"),
@@ -85,8 +91,9 @@ impl Ws {
                             match msg {
 
                                 Message::Ping(t) => {
-                                    tracing::info!("[ws_connect][ping] {:?}", &t);
+                                    tracing::info!("[Alpaca][ping] {:?}", &t);
                                     let _ = tx_db.send(DbMsg::AlpacaPing(AlpacaPing{ dtg: chrono::Utc::now() }));
+
                                 },
                                 Message::Binary(b_msg) => {
                                     tracing::debug!("[ws_connect][binary] {:?}", &b_msg);
@@ -119,6 +126,7 @@ impl Ws {
                                         }
                                     }
                                 }
+
                                 Message::Text(t_msg) => {
                                     tracing::debug!("[ws_connect][text] {}",&t_msg);
                                     let json_vec: Vec<Value> = serde_json::from_str(&t_msg).unwrap();
@@ -234,10 +242,8 @@ impl Ws {
                     }
                 }
             };
-
             // 5 second delay if the websocket goes down, then retry
             std::thread::sleep(Duration::from_millis(5000));
-
         }
     }
 }

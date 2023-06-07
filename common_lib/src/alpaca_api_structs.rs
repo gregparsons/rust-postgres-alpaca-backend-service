@@ -124,19 +124,19 @@ pub struct AlpWsTrade {
     pub price: BigDecimal,
 
     #[serde(rename = "s")]
-    pub size: usize,
+    pub size: BigDecimal,
 
-    // #[serde(with = "ts_nanoseconds")]
     #[serde(rename = "t")]
-    pub dtg: String, // DateTime<Utc>,
+    // pub dtg: String, // DateTime<Utc>,
+    pub dtg: DateTime<Utc>,
 
     // #[serde(default)]
     // pub c:Vec<usize>,
     #[serde(rename = "z")]
     pub id_tape: String,
 
-    #[serde(default = "Utc::now")]
-    pub dtg_updated: DateTime<Utc>,
+    // #[serde(default = "Utc::now")]
+    // pub dtg_updated: DateTime<Utc>,
 }
 
 /*

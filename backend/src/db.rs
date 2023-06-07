@@ -8,15 +8,14 @@ use std::thread::JoinHandle;
 use sqlx::PgPool;
 use sqlx::postgres::PgQueryResult;
 use tokio_postgres::{Client, SimpleQueryMessage};
-use common_lib::alpaca_api_structs::{AlpacaTradeRest, AlpWsQuote, AlpWsTrade};
+use common_lib::alpaca_api_structs::{AlpWsQuote, AlpWsTrade};
 use common_lib::common_structs::{AlpacaPing, MinuteBar};
 use common_lib::finnhub::{FinnhubPing, FinnhubTrade};
 use common_lib::sqlx_pool::create_sqlx_pg_pool;
 
 #[derive(Debug)]
 pub enum DbMsg {
-    LastTrade(AlpacaTradeRest),
-    // Ping(String),
+    // LastTrade(AlpacaTradeRest),
     WsTrade(AlpWsTrade),
     WsQuote(AlpWsQuote),
     MinuteBar(MinuteBar),
@@ -105,10 +104,10 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
                 if let Ok(msg) = result {
                     match msg {
 
-                        DbMsg::LastTrade(last_trade) => {
-                            tracing::debug!("[db_thread, DbMsg::LastTrade] {:?}", &last_trade);
-                            crate::db::insert_trade_rest(&client, last_trade).await;
-                        },
+                        // DbMsg::LastTrade(last_trade) => {
+                        //     tracing::debug!("[db_thread, DbMsg::LastTrade] {:?}", &last_trade);
+                        //     crate::db::insert_trade_rest(&client, last_trade).await;
+                        // },
 
                         DbMsg::WsQuote(q) => {
                             tracing::debug!("[db_thread, DbMsg::WsQuote] quote: {:?}", &q);
@@ -117,7 +116,20 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
 
                         DbMsg::WsTrade(t) => {
                             tracing::debug!("[db_thread, DbMsg::WsTrade] trade: {:?}", &t);
-                            crate::db::insert_alpaca_websocket_trade(&client, t).await;
+
+                            // old; uses tokio::postgres w/o a connection pool
+                            // crate::db::insert_alpaca_websocket_trade(&client, &t).await;
+
+                            match insert_alpaca_trade(&t, &pool).await{
+                                Ok(_)=> tracing::debug!("[db_thread, DbMsg::WsTrade] alpaca trade inserted"),
+                                Err(e) => tracing::debug!("[db_thread, DbMsg::WsTrade] alpaca trade not inserted: {:?}", &e),
+                            }
+
+                            // also save a copy to the latest table; saves .5-3 seconds on lookup
+                            match insert_alpaca_trade_latest(&t, &pool).await {
+                                Ok(_)=> tracing::debug!("[db_thread, DbMsg::WsTrade] latest alpaca trade inserted"),
+                                Err(e) => tracing::debug!("[db_thread, DbMsg::WsTrade] latest alpaca trade not inserted: {:?}", &e),
+                            }
                         }
 
                         DbMsg::MinuteBar(minute_bar) => {
@@ -150,8 +162,6 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
                             let _ = insert_alpaca_ping(&ping, &pool).await;
 
                         }
-
-
                     }
                 }
             }
@@ -161,49 +171,47 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
 
 
 
-
-/// TODO: convert this to SQLX; it currently does not use a connection pool
-async fn insert_alpaca_websocket_trade(client: &Client, t: AlpWsTrade) {
-    tracing::debug!("");
-
-    let sql = format!(
-        r"
-		insert into t_ws_trade(
-			dtg,
-			dtg_updated,
-			event,
-			symbol,
-			-- exchange,
-			price,
-			size,
-			id_trade
-			--,
-			-- c:Vec<usize>,
-			-- id_tape
-		)
-		values ('{}','{}','{}','{}',{},{}, {});",
-        t.dtg, t.dtg_updated, t.event, t.symbol, /*t.exchange,*/ t.price, t.size, t.id_trade/*, t.id_tape*/
-    );
-
-    // tracing::debug!("[insert_ws_trade] sql: {}", &sql);
-
-    // run query
-    if let Ok(result_vec) = client.simple_query(&sql).await {
-        for i in result_vec {
-            match i {
-                SimpleQueryMessage::CommandComplete(row_count) => {
-                    tracing::debug!("[insert_ws_trade] {} row(s) inserted", row_count);
-                }
-
-                SimpleQueryMessage::Row(_row) => {}
-                _ => tracing::debug!("[insert_ws_trade] Something weird happened on log query."),
-            }
-        }
-    } else {
-        // TODO: why is this happening? (1/20/2021)
-        tracing::debug!("[insert_ws_trade] insert failed");
-    }
-}
+/// deprecated
+// async fn insert_alpaca_websocket_trade(client: &Client, t: &AlpWsTrade) {
+//     tracing::debug!("");
+//
+//     let sql = format!(
+//         r"
+// 		insert into t_ws_trade(
+// 			dtg,
+// 			event,
+// 			symbol,
+// 			-- exchange,
+// 			price,
+// 			size,
+// 			id_trade
+// 			--,
+// 			-- c:Vec<usize>,
+// 			-- id_tape
+// 		)
+// 		values ('{}','{}','{}',{},{}, {});",
+//         t.dtg, t.event, t.symbol, /*t.exchange,*/ t.price, t.size, t.id_trade/*, t.id_tape*/
+//     );
+//
+//     // tracing::debug!("[insert_ws_trade] sql: {}", &sql);
+//
+//     // run query
+//     if let Ok(result_vec) = client.simple_query(&sql).await {
+//         for i in result_vec {
+//             match i {
+//                 SimpleQueryMessage::CommandComplete(row_count) => {
+//                     tracing::debug!("[insert_ws_trade] {} row(s) inserted", row_count);
+//                 }
+//
+//                 SimpleQueryMessage::Row(_row) => {}
+//                 _ => tracing::debug!("[insert_ws_trade] Something weird happened on log query."),
+//             }
+//         }
+//     } else {
+//         // TODO: why is this happening? (1/20/2021)
+//         tracing::debug!("[insert_ws_trade] insert failed");
+//     }
+// }
 
 /// TODO: convert this to SQLX; it currently does not use a connection pool
 async fn insert_ws_quote(client: &Client, t: AlpWsQuote) {
@@ -256,44 +264,44 @@ async fn insert_ws_quote(client: &Client, t: AlpWsQuote) {
     }
 }
 
-/// insert a result from polling the rest API
-/// TODO: convert this to SQLX; it currently does not use a connection pool
-async fn insert_trade_rest(client: &Client, trade_rest: AlpacaTradeRest) {
-    /*
-        insert into t_last_trade(dtg, price, size, exchange, cond1, cond2, cond3, cond4)
-        values (now(), 0.0, 0.0, 0, 0, 0, 0, 0)
-    */
-
-    let sql = format!(
-        r#"
-		insert into t_last_trade(dtg_updated, symbol, dtg, price, size)
-		values ('{}', '{}', '{}'::timestamp, {}, {})"#,
-        trade_rest.dtg_updated,
-        trade_rest.symbol,
-        trade_rest.trade.dtg,
-        trade_rest.trade.price,
-        trade_rest.trade.size // , trade_rest.trade.exchange
-    );
-
-    tracing::debug!("[insert_trade_rest] sql: {}", &sql);
-
-    // run query; results come as messages from the tokio_postgres crate
-    if let Ok(result_vec) = client.simple_query(&sql).await {
-        for i in result_vec {
-            match i {
-                SimpleQueryMessage::CommandComplete(row_count) => {
-                    tracing::debug!("[insert_trade_rest] {} row(s) inserted", row_count);
-                }
-
-                SimpleQueryMessage::Row(_row) => {}
-
-                _ => tracing::debug!("[insert_trade_rest] Something weird happened on log query."),
-            }
-        }
-    } else {
-        tracing::debug!("[insert_trade_rest] insert failed");
-    }
-}
+// /// insert a result from polling the rest API
+// /// TODO: convert this to SQLX; it currently does not use a connection pool
+// async fn insert_trade_rest(client: &Client, trade_rest: AlpacaTradeRest) {
+//     /*
+//         insert into t_last_trade(dtg, price, size, exchange, cond1, cond2, cond3, cond4)
+//         values (now(), 0.0, 0.0, 0, 0, 0, 0, 0)
+//     */
+//
+//     let sql = format!(
+//         r#"
+// 		insert into t_last_trade(dtg_updated, symbol, dtg, price, size)
+// 		values ('{}', '{}', '{}'::timestamp, {}, {})"#,
+//         trade_rest.dtg_updated,
+//         trade_rest.symbol,
+//         trade_rest.trade.dtg,
+//         trade_rest.trade.price,
+//         trade_rest.trade.size // , trade_rest.trade.exchange
+//     );
+//
+//     tracing::debug!("[insert_trade_rest] sql: {}", &sql);
+//
+//     // run query; results come as messages from the tokio_postgres crate
+//     if let Ok(result_vec) = client.simple_query(&sql).await {
+//         for i in result_vec {
+//             match i {
+//                 SimpleQueryMessage::CommandComplete(row_count) => {
+//                     tracing::debug!("[insert_trade_rest] {} row(s) inserted", row_count);
+//                 }
+//
+//                 SimpleQueryMessage::Row(_row) => {}
+//
+//                 _ => tracing::debug!("[insert_trade_rest] Something weird happened on log query."),
+//             }
+//         }
+//     } else {
+//         tracing::debug!("[insert_trade_rest] insert failed");
+//     }
+// }
 
 /// TODO: convert this to SQLX; it currently does not use a connection pool
 async fn insert_minute_bar(client: &Client, mb: &MinuteBar) {
@@ -334,13 +342,13 @@ async fn insert_minute_bar(client: &Client, mb: &MinuteBar) {
 }
 
 /// insert a single FinnHub trade into the trade_fh table
-async fn insert_finnhub_trade(trade: &FinnhubTrade, pool: &PgPool) ->Result<PgQueryResult,sqlx::Error>{
+async fn insert_finnhub_trade(trade: &FinnhubTrade, pool: &PgPool) -> Result<PgQueryResult,sqlx::Error>{
 
     sqlx::query!(
         r#"
             insert into trade_fh (dtg,symbol, price, volume) values ($1, $2, $3, $4)
         "#,
-        trade.dtg,
+        trade.dtg.naive_utc(),
         trade.symbol,
         trade.price,
         trade.volume
@@ -348,15 +356,16 @@ async fn insert_finnhub_trade(trade: &FinnhubTrade, pool: &PgPool) ->Result<PgQu
 
 }
 
-async fn insert_finnhub_trade_latest(trade: &FinnhubTrade, pool: &PgPool) ->Result<PgQueryResult,sqlx::Error>{
 
+/// Continuously overwrite only the latest trade for a given symbol so we have a fast way of getting the most recent price.
+async fn insert_finnhub_trade_latest(trade: &FinnhubTrade, pool: &PgPool) ->Result<PgQueryResult,sqlx::Error>{
     sqlx::query!(
         r#"
             insert into trade_fh_latest (dtg, symbol, price, volume)
             values ($1, $2, $3, $4)
             on conflict (symbol) do update set dtg=$1, price=$3, volume=$4;
         "#,
-        trade.dtg,
+        trade.dtg.naive_utc(),
         trade.symbol,
         trade.price,
         trade.volume
@@ -364,24 +373,33 @@ async fn insert_finnhub_trade_latest(trade: &FinnhubTrade, pool: &PgPool) ->Resu
 
 }
 
+
+/// Insert an Alpaca trade received on the websocket
+async fn insert_alpaca_trade(t:&AlpWsTrade, pool:&PgPool) ->Result<PgQueryResult,sqlx::Error>{
+    sqlx::query!(r#"
+        insert into trade_alp (dtg, symbol, price, size)
+        values ($1, $2, $3, $4)
+    "#, t.dtg.naive_utc(), t.symbol, t.price, t.size).execute(pool).await
+}
+
+/// Continuously overwrite only the latest trade for a given symbol so we have a fast way of getting the most recent price.
+async fn insert_alpaca_trade_latest(trade: &AlpWsTrade, pool: &PgPool) ->Result<PgQueryResult,sqlx::Error>{
+    sqlx::query!(r#"insert into trade_alp_latest(dtg,symbol,price,size)
+            values ($1, $2, $3, $4)
+            on conflict (symbol) do update set dtg=$1, price=$3, size=$4;
+        "#,
+        trade.dtg.naive_utc(),trade.symbol,trade.price,trade.size
+    ).execute(pool).await
+}
+
 /// Append a timestamp to the ping table whenever the Finnhub websocket pings. Use it to determine if the websocket goes down.
 async fn insert_finnhub_ping(ping:&FinnhubPing, pool:&PgPool) -> Result<PgQueryResult,sqlx::Error> {
-    sqlx::query!(
-        r#"
-            insert into ping_finnhub (ping) values ($1)
-        "#,
-        ping.dtg
-    ).execute(pool).await
-
+    sqlx::query!(r#"insert into ping_finnhub (ping) values ($1)"#,ping.dtg.naive_utc()).execute(pool).await
 }
 
 /// Append a timestamp to the ping table whenever the Finnhub websocket pings. Use it to determine if the websocket goes down.
 async fn insert_alpaca_ping(ping:&AlpacaPing, pool:&PgPool) -> Result<PgQueryResult,sqlx::Error> {
-    sqlx::query!(
-        r#"
-            insert into ping_alpaca (ping) values ($1)
-        "#,
-        ping.dtg
-    ).execute(pool).await
-
+    sqlx::query!(r#"insert into ping_alpaca (ping) values ($1)"#, ping.dtg.naive_utc()).execute(pool).await
 }
+
+

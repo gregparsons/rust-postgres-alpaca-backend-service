@@ -66,8 +66,8 @@ impl DataCollector {
 
 
 
-        let finnhub_on = bool::from_str(std::env::var("FINNHUB_ON").unwrap_or_else(|_| "true".to_owned()).as_str()).unwrap_or(false);
-        tracing::info!("FINNHUB_ON is: {}", &alpaca_ws_on);
+        let finnhub_on = bool::from_str(std::env::var("FINNHUB_ON").unwrap_or_else(|_| "true".to_owned()).as_str()).unwrap_or(true);
+        tracing::info!("FINNHUB_ON is: {}", &finnhub_on);
 
         if finnhub_on {
             // spawn long-running text thread

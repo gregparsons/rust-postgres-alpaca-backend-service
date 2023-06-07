@@ -16,9 +16,8 @@ use serde_json::json;
 use tungstenite::client::IntoClientRequest;
 use tungstenite::{Message};
 use common_lib::settings::Settings;
-use common_lib::finnhub::{FinnhubPacket, FinnhubPing, FinnhubStream, FinnhubSubscribe, FinnhubTrade};
+use common_lib::finnhub::{FinnhubPacket, FinnhubPing, FinnhubStream, FinnhubSubscribe};
 use std::time::{Duration};
-use serde::Deserialize;
 
 fn stock_list_to_uppercase(lower_stock:&Vec<String>)-> Vec<String>{
     lower_stock.iter().map(|x| x.to_uppercase() ).collect()
@@ -96,11 +95,11 @@ impl WsFinnhub {
                                              Ok(FinnhubPacket::Trade(trades))=>{
                                                  // tracing::debug!("[deserialize] {:?}", &trades);
                                                  for trade in &trades {
-                                                     // let _ = tx_db.send(DbMsg::FhTrade(trade.clone()));
+                                                     let _ = tx_db.send(DbMsg::FhTrade(trade.clone()));
                                                  }
                                              },
                                              Ok(FinnhubPacket::Ping)=>{
-                                                 tracing::debug!("[deserialize] ping");
+                                                 tracing::info!("[Finnhub] ping");
                                                  let _ = tx_db.send(DbMsg::FhPing(FinnhubPing{ dtg: chrono::Utc::now() }));
                                              },
                                              Err(e)=>{
