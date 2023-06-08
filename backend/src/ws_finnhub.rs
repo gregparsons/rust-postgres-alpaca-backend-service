@@ -94,9 +94,9 @@ impl WsFinnhub {
                                          match serde_json::from_str::<FinnhubPacket>(&t_msg){
                                              Ok(FinnhubPacket::Trade(trades))=>{
                                                  // tracing::debug!("[deserialize] {:?}", &trades);
-                                                 for trade in &trades {
-                                                     let _ = tx_db.send(DbMsg::FhTrade(trade.clone()));
-                                                 }
+                                                 // for trade in &trades {
+                                                 //     let _ = tx_db.send(DbMsg::FhTrade(trade.clone()));
+                                                 // }
                                              },
                                              Ok(FinnhubPacket::Ping)=>{
                                                  tracing::info!("[Finnhub] ping");
