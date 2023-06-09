@@ -105,60 +105,6 @@ impl WsFinnhub {
                                                  tracing::debug!("[deserialize] FinnhubPacket json error {:?}", &e);
                                              }
                                          }
-
-                                         /*
-                                         match serde_json::from_str::<FinnhubData>(&t_msg) {
-                                             Ok(trade_data) => {
-                                                 for d in trade_data.data {
-                                                     tracing::debug!("[deserialize]: {:?}", &d);
-
-
-
-
-
-
-
-
-
-
-
-                                                     // ************** turn back on, temporary
-
-                                                     // don't block websocket; send to crossbeam queue for insertion in database
-                                                     // let _ = tx_db.send(DbMsg::FhTrade(d.clone()));
-
-
-
-
-
-
-
-
-
-
-                                                 }
-                                             },
-                                             Err(e) => {
-                                                 tracing::debug!("[deserialize] error: {:?}", &e);
-                                             }
-                                         }
-
-*/
-                                         // {"type":"ping"}
-                                         // {"data":[{"c":["1","24","12"],"p":203.04,"s":"TSLA","t":1685567484229,"v":1},{"c":["1","24","12"],"p":203.05,"s":"TSLA","t":1685567484403,"v":1}],"type":"trade"}
-                                         // {"data":[{"c":["1","24"],"p":203.04,"s":"TSLA","t":1685567486393,"v":500},{"c":["1","24","12"],"p":203.06,"s":"TSLA","t":1685567486611,"v":3},{"c":["1","24","12"],"p":177.46,"s":"AAPL","t":1685567486934,"v":72}],"type":"trade"}
-
-
-                                         // let json_vec: Vec<Value> = serde_json::from_str(&t_msg).unwrap();
-                                         // for json in json_vec {
-                                         //
-                                         //     if let Some(data) = json["data"].as_str() {
-                                         //
-                                         //         // parse pretend trade data
-                                         //         // let pretend_data = r#"{"data":[{"c":["1","24"],"p":203.04,"s":"TSLA","t":1685567486393,"v":500},{"c":["1","24","12"],"p":203.06,"s":"TSLA","t":1685567486611,"v":3},{"c":["1","24","12"],"p":177.46,"s":"AAPL","t":1685567486934,"v":72}],"type":"trade"}"#;
-                                         //         // let test = serde_json::from_str::<FinnhubData>(&pretend_data);
-                                         //     }
-                                         // }
                                      }
                                      _ => {
                                          tracing::debug!("[WsFinnhub::connect] websocket non-text, non-binary data: {:?}", &msg);

@@ -3,7 +3,7 @@
 
 pub mod data_collector;
 pub mod db;
-pub mod web_client_service;
+pub mod rest_client;
 pub mod websocket_service;
 pub mod ws_finnhub;
 

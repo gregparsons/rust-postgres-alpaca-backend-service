@@ -110,7 +110,7 @@ impl DataCollector {
 
         if alpaca_rest_on {
             tracing::debug!("[Market::start] starting alpaca web client");
-            crate::web_client_service::run(/*stocks, tx_db, tx_trader*/).await;
+            crate::rest_client::run(/*stocks, tx_db, tx_trader*/).await;
             tracing::debug!("[Market::start] alpaca web client finished");
         } else {
             tracing::debug!("Rest service not started, ALPACA_REST_ON is false");
