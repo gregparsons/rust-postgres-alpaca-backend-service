@@ -88,26 +88,22 @@ impl WsFinnhub {
                                      Message::Text(t_msg) => {
                                          tracing::debug!("[WsFinnhub::connect][text] {}",&t_msg);
 
-
-                                         // try turning this json into a FinnhubTrade (could also be a type/ping, so this would fail)
-
                                          match serde_json::from_str::<FinnhubPacket>(&t_msg){
                                              Ok(FinnhubPacket::Trade(trades))=>{
-                                                 // tracing::debug!("[deserialize] {:?}", &trades);
-                                                 // for trade in &trades {
-                                                 //     let _ = tx_db.send(DbMsg::FhTrade(trade.clone()));
-                                                 // }
+                                                 tracing::debug!("[deserialize] {:?}", &trades);
+
+                                                 for trade in &trades {
+                                                     let _ = tx_db.send(DbMsg::FhTrade(trade.clone()));
+                                                 }
                                              },
                                              Ok(FinnhubPacket::Ping)=>{
                                                  tracing::info!("[Finnhub] ping");
                                                  let _ = tx_db.send(DbMsg::FhPing(FinnhubPing{ dtg: chrono::Utc::now() }));
+
                                              },
                                              Err(e)=>{
                                                  tracing::debug!("[deserialize] FinnhubPacket json error {:?}", &e);
                                              }
-
-
-
                                          }
 
                                          /*
