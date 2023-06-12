@@ -402,7 +402,7 @@
         {
           "name": "trade_size!",
           "ordinal": 5,
-          "type_info": "Int4"
+          "type_info": "Numeric"
         },
         {
           "name": "trade_enable_buy!",
@@ -818,7 +818,7 @@
         {
           "name": "trade_size!",
           "ordinal": 5,
-          "type_info": "Int4"
+          "type_info": "Numeric"
         },
         {
           "name": "trade_enable_buy!",
@@ -901,6 +901,90 @@
     },
     "query": "\n            select\n                dtg as \"dtg!\",\n                coalesce(symbol, '') as \"symbol!\",\n                price_close as \"price!\"\n                -- size as \"size!\",\n                -- exchange as \"exchange\"\n            from\n                -- v_trade_minute\n                bar_minute\n            order by dtg desc\n            limit 10000\n        "
   },
+  "ab1c49e382e8644be418f1f6567297667b604bf4277bb639c4f716154a57e0d7": {
+    "describe": {
+      "columns": [
+        {
+          "name": "dtg!",
+          "ordinal": 0,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "alpaca_paper_id!:String",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "alpaca_paper_secret!:String",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "alpaca_live_id!:String",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "alpaca_live_secret!:String",
+          "ordinal": 4,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "trade_size!",
+          "ordinal": 5,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "trade_enable_buy!",
+          "ordinal": 6,
+          "type_info": "Bool"
+        },
+        {
+          "name": "trade_ema_small_size!",
+          "ordinal": 7,
+          "type_info": "Int4"
+        },
+        {
+          "name": "trade_ema_large_size!",
+          "ordinal": 8,
+          "type_info": "Int4"
+        },
+        {
+          "name": "trade_sell_high_per_cent_multiplier!",
+          "ordinal": 9,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "trade_sell_high_upper_limit_cents!",
+          "ordinal": 10,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "finnhub_key!:String",
+          "ordinal": 11,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                SELECT\n                    dtg as \"dtg!\",\n                    alpaca_paper_id as \"alpaca_paper_id!:String\",\n                    alpaca_paper_secret as \"alpaca_paper_secret!:String\",\n                    alpaca_live_id as \"alpaca_live_id!:String\",\n                    alpaca_live_secret as \"alpaca_live_secret!:String\",\n                    trade_size as \"trade_size!\",\n                    trade_enable_buy as \"trade_enable_buy!\",\n                    trade_ema_small_size as \"trade_ema_small_size!\",\n                    trade_ema_large_size as \"trade_ema_large_size!\",\n                    trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\",\n                    trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                    ,finnhub_key as \"finnhub_key!:String\"\n                FROM t_settings_test\n                ORDER BY t_settings_test.dtg DESC\n                LIMIT 1\n            "
+  },
   "b2fa705f5ff94831630c8927f722c6cecece0d825e9256b70fd9c2b55f6148d5": {
     "describe": {
       "columns": [],
@@ -969,90 +1053,6 @@
       }
     },
     "query": "\n            insert into trade_fh_latest (dtg, symbol, price, volume)\n            values ($1, $2, $3, $4)\n            on conflict (symbol) do update set dtg=$1, price=$3, volume=$4;\n        "
-  },
-  "d926db11576d7faf08bbf4ecb245f840438c7e84f5f9f6d79b726dd556af38d1": {
-    "describe": {
-      "columns": [
-        {
-          "name": "dtg!",
-          "ordinal": 0,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "alpaca_paper_id!:String",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "alpaca_paper_secret!:String",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "alpaca_live_id!:String",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "alpaca_live_secret!:String",
-          "ordinal": 4,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "trade_size!",
-          "ordinal": 5,
-          "type_info": "Int4"
-        },
-        {
-          "name": "trade_enable_buy!",
-          "ordinal": 6,
-          "type_info": "Bool"
-        },
-        {
-          "name": "trade_ema_small_size!",
-          "ordinal": 7,
-          "type_info": "Int4"
-        },
-        {
-          "name": "trade_ema_large_size!",
-          "ordinal": 8,
-          "type_info": "Int4"
-        },
-        {
-          "name": "trade_sell_high_per_cent_multiplier!",
-          "ordinal": 9,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "trade_sell_high_upper_limit_cents!",
-          "ordinal": 10,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "finnhub_key!:String",
-          "ordinal": 11,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\nSELECT\n    dtg as \"dtg!\",\n    alpaca_paper_id as \"alpaca_paper_id!:String\",\n    alpaca_paper_secret as \"alpaca_paper_secret!:String\",\n    alpaca_live_id as \"alpaca_live_id!:String\",\n    alpaca_live_secret as \"alpaca_live_secret!:String\",\n    trade_size as \"trade_size!\",\n    trade_enable_buy as \"trade_enable_buy!\",\n    trade_ema_small_size as \"trade_ema_small_size!\",\n    trade_ema_large_size as \"trade_ema_large_size!\",\n    trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\",\n    trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n    ,finnhub_key as \"finnhub_key!:String\"\nFROM t_settings_test\nORDER BY t_settings_test.dtg DESC\nLIMIT 1\n            "
   },
   "f46f0fffbdb0541edf45d7d8290f82fcaff502f2d63882686dc153f6e086b5e9": {
     "describe": {

@@ -16,7 +16,7 @@ pub struct Settings {
     pub alpaca_paper_secret:String,
     pub alpaca_live_id:String,
     pub alpaca_live_secret:String,
-    pub trade_size:i32,
+    pub trade_size:BigDecimal,
     pub trade_enable_buy:bool,
     pub trade_ema_small_size:i32,
     pub trade_ema_large_size:i32,
@@ -35,22 +35,22 @@ impl Settings {
         let settings_result = sqlx::query_as!(
             Settings,
             r#"
-SELECT
-    dtg as "dtg!",
-    alpaca_paper_id as "alpaca_paper_id!:String",
-    alpaca_paper_secret as "alpaca_paper_secret!:String",
-    alpaca_live_id as "alpaca_live_id!:String",
-    alpaca_live_secret as "alpaca_live_secret!:String",
-    trade_size as "trade_size!",
-    trade_enable_buy as "trade_enable_buy!",
-    trade_ema_small_size as "trade_ema_small_size!",
-    trade_ema_large_size as "trade_ema_large_size!",
-    trade_sell_high_per_cent_multiplier as "trade_sell_high_per_cent_multiplier!",
-    trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
-    ,finnhub_key as "finnhub_key!:String"
-FROM t_settings_test
-ORDER BY t_settings_test.dtg DESC
-LIMIT 1
+                SELECT
+                    dtg as "dtg!",
+                    alpaca_paper_id as "alpaca_paper_id!:String",
+                    alpaca_paper_secret as "alpaca_paper_secret!:String",
+                    alpaca_live_id as "alpaca_live_id!:String",
+                    alpaca_live_secret as "alpaca_live_secret!:String",
+                    trade_size as "trade_size!",
+                    trade_enable_buy as "trade_enable_buy!",
+                    trade_ema_small_size as "trade_ema_small_size!",
+                    trade_ema_large_size as "trade_ema_large_size!",
+                    trade_sell_high_per_cent_multiplier as "trade_sell_high_per_cent_multiplier!",
+                    trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
+                    ,finnhub_key as "finnhub_key!:String"
+                FROM t_settings_test
+                ORDER BY t_settings_test.dtg DESC
+                LIMIT 1
             "#
         ).fetch_one(pool).await;
 
