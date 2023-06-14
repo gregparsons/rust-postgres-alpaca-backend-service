@@ -25,7 +25,7 @@ pub async fn run() {
     let tokio_handle = Handle::current();
     let pool = create_sqlx_pg_pool().await;
 
-    /// spawn the entire rest client into a new OS thread
+    // spawn the entire rest client into a new OS thread
     std::thread::spawn(move || {
         tracing::debug!("[run]");
 
