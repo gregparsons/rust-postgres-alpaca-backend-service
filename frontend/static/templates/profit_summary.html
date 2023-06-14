@@ -1,0 +1,52 @@
+{{#*inline "page"}}
+<h2><p>{{title}}</p></h2>
+<style>
+    table {
+        font-family: arial, sans-serif;
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    td, th {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+    }
+
+    tr:nth-child(even) {
+        background-color: #dddddd;
+    }
+</style>
+<br>
+<table>
+    <tr>
+        <td>symbol</td>
+        <td>active</td>
+        <td>closed_pl</td>
+        <td>unrealized_pl</td>
+        <td>posn_pl</td>
+        <td>unrealized_pl_avg</td>
+        <td>qty_buy_today</td>
+        <td>qty_sell_today</td>
+        <td>count_buy_activity_today</td>
+        <td>count_sell_activity_today</td>
+        <td>dtg_latest_buy</td>
+    <tr>
+    {{#each data}}
+    <tr>
+       <td><a target="_blank" href="https://finance.yahoo.com/chart/{{this.symbol}}">{{this.symbol}}</a></td>
+        <td>{{this.active}}</td>
+        <td>{{this.closed_pl}}</td>
+        <td>{{this.unrealized_pl}}</td>
+        <td>{{this.posn_pl}}</td>
+        <td>{{this.unrealized_pl_avg}}</td>
+        <td>{{this.qty_buy_today}}</td>
+        <td>{{this.qty_sell_today}}</td>
+        <td>{{this.count_buy_activity_today}}</td>
+        <td>{{this.count_sell_activity_today}}</td>
+        <td>{{this.dtg_latest_buy}}</td>
+    </tr>
+    {{/each}}
+</table>
+{{/inline}}
+{{> (lookup this "parent")}}

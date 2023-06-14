@@ -33,7 +33,7 @@
     <tr>
     {{#each data}}
     <tr>
-        <td><a href="https://www.google.com/finance/quote/{{this.symbol}}:NASDAQ">{{this.symbol}}</a></td>
+        <td><a href="activity/{{this.symbol}}">{{this.symbol}}</a> <a target="_blank" href="https://finance.yahoo.com/chart/{{this.symbol}}">__</a></td>
         <td>{{this.side}}</td>
         <td>{{this.qty}}</td>
         <td>${{this.price}}</td>

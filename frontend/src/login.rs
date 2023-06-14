@@ -36,7 +36,9 @@ pub async fn post_login(
     db_pool: web::Data<PgPool>,
     session: Session,
 ) -> HttpResponse {
-    tracing::debug!("[post_login] {:?}", &form);
+
+    // dump password to log!
+    // tracing::debug!("[post_login] {:?}", &form);
 
     let login_result: Result<LoginResult, sqlx::Error> = sqlx::query_as!(
         LoginResult,
@@ -50,7 +52,9 @@ pub async fn post_login(
     )
     .fetch_one(db_pool.as_ref())
     .await;
-    tracing::debug!("[post_login] login_result: {:?}", &login_result);
+
+    // password hash shown here; log risk
+    // tracing::debug!("[post_login] login_result: {:?}", &login_result);
 
     let login_result_unwrapped = &login_result.unwrap();
 
