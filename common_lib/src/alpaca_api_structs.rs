@@ -1,8 +1,8 @@
-//! models.rs
+//! alpaca_api_structs
 //!
 
+use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
 // https://alpaca.markets/docs/api-documentation/api-v2/market-data/last-trade/#last-trade-entity
@@ -18,10 +18,8 @@ pub struct AlpActionAuth {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct AlpActionAuthData {
     action: String,
-    pub(crate) status: String,
+    pub status: String,
 }
-
-
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct AlpacaStreamQuote {
@@ -64,7 +62,7 @@ pub struct Trade {
     pub exchange: String, //	"x": "C",
 
     #[serde(rename = "p")]
-    pub price: Decimal, // "p": 387.62,
+    pub price: BigDecimal, // "p": 387.62,
 
     #[serde(rename = "s")]
     pub size: u64, // "s": 100,
@@ -121,22 +119,21 @@ pub struct AlpWsTrade {
     pub exchange: String,
 
     #[serde(rename = "p")]
-    pub price: Decimal,
+    pub price: BigDecimal,
 
     #[serde(rename = "s")]
-    pub size: usize,
+    pub size: BigDecimal,
 
-    // #[serde(with = "ts_nanoseconds")]
     #[serde(rename = "t")]
-    pub dtg: String, // DateTime<Utc>,
+    // pub dtg: String, // DateTime<Utc>,
+    pub dtg: DateTime<Utc>,
 
     // #[serde(default)]
     // pub c:Vec<usize>,
     #[serde(rename = "z")]
     pub id_tape: String,
-
-    #[serde(default = "Utc::now")]
-    pub dtg_updated: DateTime<Utc>,
+    // #[serde(default = "Utc::now")]
+    // pub dtg_updated: DateTime<Utc>,
 }
 
 /*
@@ -186,7 +183,7 @@ pub struct AlpWsQuote {
     pub exchange_bid: usize,
 
     #[serde(rename = "bp")]
-    pub price_bid: Decimal,
+    pub price_bid: BigDecimal,
 
     #[serde(rename = "bs")]
     pub size_bid: usize,
@@ -196,7 +193,7 @@ pub struct AlpWsQuote {
     pub exchange_ask: usize,
 
     #[serde(rename = "ap")]
-    pub price_ask: Decimal,
+    pub price_ask: BigDecimal,
 
     #[serde(rename = "as")]
     pub size_ask: usize,
@@ -280,6 +277,6 @@ pub struct QuoteCurrency {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct CoinToCurrencyTicker {
-    pub price: rust_decimal::Decimal,
+    pub price: BigDecimal,
     pub last_updated: DateTime<Utc>,
 }

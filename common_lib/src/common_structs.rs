@@ -4,13 +4,13 @@ use bigdecimal::BigDecimal;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-pub static SESSION_USER_ID:&str = "session_user_id";
-pub static SESSION_USERNAME:&str = "session_username";
+pub static SESSION_USER_ID: &str = "session_user_id";
+pub static SESSION_USERNAME: &str = "session_username";
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct FormData{
-    pub username:String,
-    pub password:String,
+pub struct FormData {
+    pub username: String,
+    pub password: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -18,12 +18,12 @@ pub struct QueryAverage {
     pub dtg: NaiveDateTime,
     pub symbol: String,
     pub price: BigDecimal,
-    pub size: BigDecimal,
-    pub exchange: Option<i32>,
+    // pub size: BigDecimal,
+    // pub exchange: Option<i32>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct MinuteBar{
+pub struct MinuteBar {
     #[serde(rename = "T")]
     msg_type: String,
     #[serde(rename = "S")]
@@ -42,6 +42,10 @@ pub struct MinuteBar{
     pub dtg: DateTime<Utc>,
 }
 
+#[derive(Serialize, Debug)]
+pub struct AlpacaPing {
+    pub dtg: DateTime<Utc>,
+}
 
 #[derive(Deserialize, Serialize, Debug)]
 pub struct WsAuthenticate {
@@ -61,3 +65,15 @@ pub struct WsListenMessage {
 pub struct WsListenMessageData {
     pub streams: Vec<String>,
 }
+
+// #[derive(Debug, Deserialize)]
+// #[serde(tag = "T", content = "msg")]
+// pub enum AlpacaPacket{
+//     // https://alpaca.markets/docs/api-references/market-data-api/stock-pricing-data/realtime/
+//     #[serde(rename="error")]
+//     Error,
+//     #[serde(rename="success")]
+//     Success,
+//     #[serde(rename="subscription")]
+//     Subscription
+// }
