@@ -36,15 +36,18 @@ impl DatabaseSettings {
 /// load configuration settings from configuration.toml
 /// somewhat inspired by zero2prod but its guidance for config is deprecated (1/16/2023)
 pub fn get_yaml_configuration() -> Result<Settings, ConfigError> {
-
-    let config_location = std::env::var("CONFIG_LOCATION").unwrap_or_else(|_| "not_docker".to_string());
+    let config_location =
+        std::env::var("CONFIG_LOCATION").unwrap_or_else(|_| "not_docker".to_string());
 
     let config_file_path = match config_location.as_ref() {
         "docker" => "config/configuration",
         _ => "frontend/config/configuration",
     };
 
-    tracing::debug!("[get_yaml_configuration] config_file_path: {}",&config_file_path);
+    tracing::debug!(
+        "[get_yaml_configuration] config_file_path: {}",
+        &config_file_path
+    );
 
     // this file path is different in Docker due to the cargo workspace; kind of annoying
     let settings = config::Config::builder()

@@ -3,12 +3,12 @@
 //!
 //!
 
-use std::fmt;
-use serde::{Serialize, Deserialize};
-use bigdecimal::BigDecimal;
-use sqlx::PgPool;
-use sqlx::postgres::PgQueryResult;
 use crate::settings::Settings;
+use bigdecimal::BigDecimal;
+use serde::{Deserialize, Serialize};
+use sqlx::postgres::PgQueryResult;
+use sqlx::PgPool;
+use std::fmt;
 
 ///
 /// curl -X GET \
@@ -65,8 +65,8 @@ pub struct Position {
     pub change_today: BigDecimal,
 }
 
-use std::fmt::{Debug, Display};
 use chrono::{DateTime, Utc};
+use std::fmt::{Debug, Display};
 
 /// From the web API deserialize to this then convert to Position
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -90,11 +90,9 @@ pub struct TempPosition {
     pub change_today: BigDecimal,
 }
 
-
-impl Position{
-
-    fn from_temp(timestamp:DateTime<Utc>, t:TempPosition)->Position{
-        Position{
+impl Position {
+    fn from_temp(timestamp: DateTime<Utc>, t: TempPosition) -> Position {
+        Position {
             dtg: timestamp,
             asset_id: t.asset_id,
             symbol: t.symbol,
@@ -116,11 +114,8 @@ impl Position{
         }
     }
 
-
-
     /// Get the most recent list of positions from the database
-    pub async fn get_open_positions_from_db(pool:&PgPool) -> Result<Vec<Position>, sqlx::Error> {
-
+    pub async fn get_open_positions_from_db(pool: &PgPool) -> Result<Vec<Position>, sqlx::Error> {
         // Assume the latest batch was inserted at the same time; get the most recent timestamp, get the most recent matching positions
         // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
         let result_vec = sqlx::query_as!(
@@ -149,15 +144,15 @@ from
 alpaca_position
 order by symbol
             "#
-        ).fetch_all(pool).await;
+        )
+        .fetch_all(pool)
+        .await;
 
         result_vec
-
     }
 
     // Call the Alpaca API to get the remote position snapshot
-    pub async fn get_remote(settings:&Settings) -> Result<Vec<Position>, reqwest::Error> {
-
+    pub async fn get_remote(settings: &Settings) -> Result<Vec<Position>, reqwest::Error> {
         let mut headers = reqwest::header::HeaderMap::new();
         let api_key_id = settings.alpaca_paper_id.clone();
         let api_secret = settings.alpaca_paper_secret.clone();
@@ -165,7 +160,8 @@ order by symbol
         headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
 
         let client = reqwest::Client::new();
-        let remote_positions:Vec<TempPosition> = client.get("https://paper-api.alpaca.markets/v2/positions")
+        let remote_positions: Vec<TempPosition> = client
+            .get("https://paper-api.alpaca.markets/v2/positions")
             .headers(headers)
             .send()
             .await?
@@ -173,18 +169,27 @@ order by symbol
             .await?;
 
         let now = Utc::now();
-        let remote_positions = remote_positions.iter().map(move |x| Position::from_temp(now, x.clone())).collect();
+        let remote_positions = remote_positions
+            .iter()
+            .map(move |x| Position::from_temp(now, x.clone()))
+            .collect();
 
         Ok(remote_positions)
     }
 
     /// delete_all_db
-    pub async fn delete_all_db(pool: &PgPool)-> Result<PgQueryResult,sqlx::Error> {
-        sqlx::query!(r#"delete from alpaca_position"#).execute(pool).await
+    pub async fn delete_all_db(pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
+        sqlx::query!(r#"delete from alpaca_position"#)
+            .execute(pool)
+            .await
     }
 
     /// save a single position to the database; not ideal to not insert the result of the alpaca api call as a bulk insert but not rocket science at the moment
-    pub async fn save_to_db(&self, timestamp: DateTime<Utc>, pool: &PgPool)-> Result<PgQueryResult, sqlx::Error> {
+    pub async fn save_to_db(
+        &self,
+        timestamp: DateTime<Utc>,
+        pool: &PgPool,
+    ) -> Result<PgQueryResult, sqlx::Error> {
         // tracing::debug!("[save_to_db]");
         let result = sqlx::query!(
             r#"
@@ -203,9 +208,6 @@ order by symbol
         tracing::debug!("[activity::save_to_db] insert result: {:?}", &result);
         result
     }
-
-
-
 }
 
 #[derive(sqlx::Type, Debug, Serialize, Deserialize, PartialEq, Clone)]
@@ -213,8 +215,7 @@ pub enum PositionSide {
     #[serde(rename = "long")]
     Long,
     #[serde(rename = "short")]
-    Short
-
+    Short,
 }
 
 impl Display for PositionSide {
@@ -225,11 +226,13 @@ impl Display for PositionSide {
     }
 }
 
-
 impl Display for Position {
-
     /// enable to_string()
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}\t{:?}\t{}\t{}\t{}", self.symbol, self.side, self.qty, self.cost_basis, self.asset_id)
+        write!(
+            f,
+            "{}\t{:?}\t{}\t{}\t{}",
+            self.symbol, self.side, self.qty, self.cost_basis, self.asset_id
+        )
     }
 }

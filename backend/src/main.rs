@@ -7,7 +7,6 @@ pub mod rest_client;
 pub mod websocket_service;
 pub mod ws_finnhub;
 
-
 use crate::data_collector::DataCollector;
 use common_lib::init::init;
 use common_lib::settings::Settings;
@@ -30,12 +29,11 @@ fn main() {
         .expect("Tokio runtime didn't start");
 
     tokio_runtime.block_on(async {
-
         let pool = create_sqlx_pg_pool().await;
-        match Settings::load(&pool).await{
-            Ok(settings) =>{
+        match Settings::load(&pool).await {
+            Ok(settings) => {
                 DataCollector::start(pool, &settings).await;
-            },
+            }
             Err(e) => {
                 tracing::debug!("[main] could not load settings: {:?}", &e);
             }

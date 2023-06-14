@@ -2,36 +2,33 @@
 //!
 //! model for settings store in postgres db
 
+use crate::trade_setting_profile::TradeSettingsProfile;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use sqlx::PgPool;
 use serde::{Deserialize, Serialize};
-use crate::trade_setting_profile::TradeSettingsProfile;
-
+use sqlx::PgPool;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Settings {
-    pub dtg:DateTime<Utc>,
-    pub alpaca_paper_id:String,
-    pub alpaca_paper_secret:String,
-    pub alpaca_live_id:String,
-    pub alpaca_live_secret:String,
-    pub trade_size:BigDecimal,
-    pub trade_enable_buy:bool,
-    pub trade_ema_small_size:i32,
-    pub trade_ema_large_size:i32,
-    pub trade_sell_high_per_cent_multiplier:BigDecimal,
-    pub trade_sell_high_upper_limit_cents:BigDecimal,
-    pub finnhub_key:String,
+    pub dtg: DateTime<Utc>,
+    pub alpaca_paper_id: String,
+    pub alpaca_paper_secret: String,
+    pub alpaca_live_id: String,
+    pub alpaca_live_secret: String,
+    pub trade_size: BigDecimal,
+    pub trade_enable_buy: bool,
+    pub trade_ema_small_size: i32,
+    pub trade_ema_large_size: i32,
+    pub trade_sell_high_per_cent_multiplier: BigDecimal,
+    pub trade_sell_high_upper_limit_cents: BigDecimal,
+    pub finnhub_key: String,
 }
 
 impl Settings {
-
     ///
     /// TODO: encrypt alpaca credentials in database and decrypt here using .env
     ///
-    pub async fn load(pool:&PgPool)->Result<Settings, sqlx::Error>{
-
+    pub async fn load(pool: &PgPool) -> Result<Settings, sqlx::Error> {
         let settings_result = sqlx::query_as!(
             Settings,
             r#"
@@ -52,17 +49,18 @@ impl Settings {
                 ORDER BY t_settings_test.dtg DESC
                 LIMIT 1
             "#
-        ).fetch_one(pool).await;
+        )
+        .fetch_one(pool)
+        .await;
 
         // don't spill credentials to log
         // tracing::debug!("[settings::load] {:?}", &settings_result);
 
         settings_result
-
     }
 
     /// return blank secret for front-end type uses
-    pub async fn load_no_secret(pool:&PgPool)->Result<Settings, sqlx::Error>{
+    pub async fn load_no_secret(pool: &PgPool) -> Result<Settings, sqlx::Error> {
         let settings_result = sqlx::query_as!(
             Settings,
             r#"
@@ -83,13 +81,17 @@ FROM t_settings_test
 ORDER BY t_settings_test.dtg DESC
 LIMIT 1
             "#
-        ).fetch_one(pool).await;
+        )
+        .fetch_one(pool)
+        .await;
         settings_result
     }
 
     /// change the settings and return blank secret for front-end type uses
-    pub async fn change_trade_profile(trade_settings_profile:&TradeSettingsProfile, pool:&PgPool) ->Result<Settings, sqlx::Error>{
-
+    pub async fn change_trade_profile(
+        trade_settings_profile: &TradeSettingsProfile,
+        pool: &PgPool,
+    ) -> Result<Settings, sqlx::Error> {
         let ts = trade_settings_profile.clone();
         let ts = ts.to_string(); // .as_str();
 
@@ -115,8 +117,9 @@ LIMIT 1
                 from fn_set_trade_settings($1);
             "#,
             &ts
-        ).fetch_one(pool).await;
+        )
+        .fetch_one(pool)
+        .await;
         settings_result
     }
-
 }

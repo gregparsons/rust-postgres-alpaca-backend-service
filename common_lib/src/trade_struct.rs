@@ -2,17 +2,17 @@
 //!
 
 use bigdecimal::BigDecimal;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 use strum::Display;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct JsonTrade{
-    pub(crate) symbol:String,
-    pub(crate) side:TradeSide,
-    pub(crate) time_in_force:TimeInForce,
-    pub(crate) qty:usize,
+pub struct JsonTrade {
+    pub(crate) symbol: String,
+    pub(crate) side: TradeSide,
+    pub(crate) time_in_force: TimeInForce,
+    pub(crate) qty: usize,
     #[serde(rename = "type")]
-    pub(crate) order_type:OrderType,
+    pub(crate) order_type: OrderType,
     pub(crate) limit_price: Option<BigDecimal>,
     pub(crate) extended_hours: Option<bool>,
 }
@@ -26,20 +26,20 @@ ref: https://github.com/cockroachdb/cockroach/issues/57411
 #[derive(sqlx::Type, Debug, Serialize, Deserialize, Clone, PartialEq, Display)]
 #[strum(serialize_all = "snake_case")]
 #[sqlx(type_name = "VARCHAR", rename_all = "lowercase")] // TODO: deprecated but works
-pub enum TradeSide{
+pub enum TradeSide {
     #[serde(rename = "buy")]
     Buy,
     #[serde(rename = "sell")]
     Sell,
     #[serde(rename = "sell_short")]
-    #[sqlx(rename="sell_short")]
+    #[sqlx(rename = "sell_short")]
     SellShort,
 }
 
 #[derive(sqlx::Type, Debug, Serialize, Deserialize, PartialEq, Clone, Display)]
 #[sqlx(type_name = "VARCHAR", rename_all = "lowercase")]
 #[strum(serialize_all = "snake_case")]
-pub enum TimeInForce{
+pub enum TimeInForce {
     #[serde(rename = "gtc")]
     Gtc,
     #[serde(rename = "day")]
@@ -49,11 +49,10 @@ pub enum TimeInForce{
     Ioc,
 }
 
-
 #[derive(sqlx::Type, Debug, Serialize, Deserialize, PartialEq, Clone, Display)]
 #[sqlx(type_name = "VARCHAR", rename_all = "lowercase")]
 #[strum(serialize_all = "snake_case")]
-pub enum OrderType{
+pub enum OrderType {
     #[serde(rename = "market")]
     Market,
     #[serde(rename = "limit")]

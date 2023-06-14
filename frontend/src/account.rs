@@ -2,22 +2,24 @@
 //!
 //! present account data in the frontend, retrieved from the alpaca API
 
-
 use actix_session::Session;
-use actix_web::{HttpResponse, Responder, web};
+use actix_web::{web, HttpResponse, Responder};
+use common_lib::common_structs::SESSION_USERNAME;
+use common_lib::http::redirect_home;
 use handlebars::Handlebars;
 use reqwest::header::HeaderMap;
 use serde_json::json;
 use sqlx::PgPool;
-use common_lib::common_structs::SESSION_USERNAME;
-use common_lib::http::redirect_home;
 // use serde::{Serialize, Deserialize};
 use common_lib::account::Account;
 use common_lib::settings::Settings;
 
 /// GET /account
-pub async fn get_account(hb: web::Data<Handlebars<'_>>, pool: web::Data<PgPool>, session:Session) -> impl Responder {
-
+pub async fn get_account(
+    hb: web::Data<Handlebars<'_>>,
+    pool: web::Data<PgPool>,
+    session: Session,
+) -> impl Responder {
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
         tracing::debug!("session id: {}", &session_username);
         let mut headers = HeaderMap::new();
@@ -35,10 +37,7 @@ pub async fn get_account(hb: web::Data<Handlebars<'_>>, pool: web::Data<PgPool>,
                 tracing::debug!("[load_fill_activities] calling API: {}", &url);
                 // get a single order
                 let client = reqwest::Client::new();
-                let http_result = client.get(url)
-                    .headers(headers)
-                    .send()
-                    .await;
+                let http_result = client.get(url).headers(headers).send().await;
                 let account_body: Account = match http_result {
                     Ok(resp) => {
                         let json_text = &resp.text().await.unwrap();
@@ -48,14 +47,14 @@ pub async fn get_account(hb: web::Data<Handlebars<'_>>, pool: web::Data<PgPool>,
                                 tracing::debug!("[get_account] account\n: {:?}", &account);
                                 // 3. merge remote results to local database
                                 account
-                            },
+                            }
                             Err(e) => {
                                 tracing::debug!("[get_account] json: {}", &json_text);
                                 tracing::debug!("[get_account] json error: {:?}", &e);
                                 Account::blank()
                             }
                         }
-                    },
+                    }
                     Err(e) => {
                         tracing::debug!("[get_account] reqwest error: {:?}", &e);
                         format!("reqwest error: {:?}", &e);
@@ -73,10 +72,15 @@ pub async fn get_account(hb: web::Data<Handlebars<'_>>, pool: web::Data<PgPool>,
                     "message": account_body,
                 });
                 let body = hb.render("account", &data).unwrap();
-                HttpResponse::Ok().append_header(("cache-control", "no-store")).body(body)
-            },
+                HttpResponse::Ok()
+                    .append_header(("cache-control", "no-store"))
+                    .body(body)
+            }
             Err(e) => {
-                tracing::debug!("[get_account] couldn't load settings (to get alpaca id/secret): {:?}", &e);
+                tracing::debug!(
+                    "[get_account] couldn't load settings (to get alpaca id/secret): {:?}",
+                    &e
+                );
                 redirect_home().await
             }
         }

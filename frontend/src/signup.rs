@@ -1,12 +1,13 @@
 //! signup.rs
 
-use actix_web::{HttpResponse, web};
+use actix_web::{web, HttpResponse};
+use argon2::password_hash::SaltString;
+use argon2::{Argon2, PasswordHasher};
+use common_lib::common_structs::FormData;
 use handlebars::Handlebars;
 use serde_json::json;
-use common_lib::common_structs::FormData;
-use argon2::password_hash::SaltString; use argon2::{Argon2, PasswordHasher};
-use sqlx::PgPool;
 use sqlx::types::Uuid;
+use sqlx::PgPool;
 
 /// authorization: none
 pub async fn _get_signup(hb: web::Data<Handlebars<'_>>) -> HttpResponse {
@@ -21,21 +22,25 @@ pub async fn _get_signup(hb: web::Data<Handlebars<'_>>) -> HttpResponse {
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-struct SignupResult{
-    user_id:Uuid,
+struct SignupResult {
+    user_id: Uuid,
 }
 
 /// ref: p. 360 zero2prod
-pub async fn _post_signup(form: web::Form<FormData>, hb: web::Data<Handlebars<'_>>, pool: web::Data<PgPool>) -> HttpResponse {
-
+pub async fn _post_signup(
+    form: web::Form<FormData>,
+    hb: web::Data<Handlebars<'_>>,
+    pool: web::Data<PgPool>,
+) -> HttpResponse {
     tracing::debug!("[post_signup] {:?}", &form);
 
     let salt = SaltString::generate(&mut rand::thread_rng()); // We don't care about the exact Argon2 parameters here // given that it's for testing purposes!
     let password_hash = Argon2::default()
-        .hash_password(form.password.as_bytes(), &salt) .unwrap()
+        .hash_password(form.password.as_bytes(), &salt)
+        .unwrap()
         .to_string();
 
-    let signup_result:Result<SignupResult, sqlx::Error> = sqlx::query_as!(
+    let signup_result: Result<SignupResult, sqlx::Error> = sqlx::query_as!(
         SignupResult,
         r#"
             with rows as (
@@ -45,15 +50,18 @@ pub async fn _post_signup(form: web::Form<FormData>, hb: web::Data<Handlebars<'_
                 values (gen_random_uuid(), $1, $2)
                 returning user_id
             ) select user_id from rows
-        "#, form.username, password_hash
-    ).fetch_one(pool.as_ref())
+        "#,
+        form.username,
+        password_hash
+    )
+    .fetch_one(pool.as_ref())
     .await;
 
     let message = match signup_result {
         Ok(signup) => {
             tracing::debug!("[post_signup] just signed up user id: {}", &signup.user_id);
             format!("Success. Signed up user id: {}", &signup.user_id)
-        },
+        }
         Err(e) => {
             // todo: extract Postgres error
             tracing::debug!("[post_signup] signup failed: {:?}", &e);
@@ -61,10 +69,7 @@ pub async fn _post_signup(form: web::Form<FormData>, hb: web::Data<Handlebars<'_
         }
     };
 
-
-
     // todo: result...
-
 
     let data = json!({
         "title": "signup result",

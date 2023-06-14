@@ -7,7 +7,7 @@ use actix_web::HttpResponse;
 
 /// 302 redirect to the relative root "/"
 /// authorization: TBD
-pub async fn redirect_home()->HttpResponse{
+pub async fn redirect_home() -> HttpResponse {
     tracing::debug!("[redirect_home]");
     // redirect to home via 302
     // https://docs.rs/actix-web/latest/actix_web/http/struct.StatusCode.html#associatedconstant.FOUND
@@ -16,7 +16,6 @@ pub async fn redirect_home()->HttpResponse{
         .append_header(("location", "/"))
         .append_header(("Cache-Control", "no-store"))
         .finish()
-
 }
 
 // pub async fn parse_http_result_to_vec<'a, T: Deserialize<'a>>(http_result:Result<Response,reqwest::Error>)->Result<Vec<T>,TradeWebError>{

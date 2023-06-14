@@ -14,16 +14,16 @@
 //! alpaca_order
 //!
 
-use std::fmt;
-use serde::{Serialize, Deserialize};
-use bigdecimal::BigDecimal;
-use chrono::{DateTime, Utc};
-use reqwest::header::HeaderMap;
-use sqlx::PgPool;
-use sqlx::postgres::PgQueryResult;
 use crate::error::TradeWebError;
 use crate::settings::Settings;
 use crate::trade_struct::{OrderType, TimeInForce, TradeSide};
+use bigdecimal::BigDecimal;
+use chrono::{DateTime, Utc};
+use reqwest::header::HeaderMap;
+use serde::{Deserialize, Serialize};
+use sqlx::postgres::PgQueryResult;
+use sqlx::PgPool;
+use std::fmt;
 
 ///
 ///
@@ -110,14 +110,11 @@ pub struct Order {
     pub trail_percent: Option<BigDecimal>,
     pub trail_price: Option<BigDecimal>,
     pub hwm: Option<BigDecimal>,
-
 }
 
 impl Order {
-
     /// Get all outstanding orders from Alpaca API
     pub async fn get_remote(settings: &Settings) -> Result<Vec<Order>, TradeWebError> {
-
         let mut headers = HeaderMap::new();
         let api_key = settings.alpaca_paper_id.clone();
         let api_secret = settings.alpaca_paper_secret.clone();
@@ -125,7 +122,8 @@ impl Order {
         headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
         let client = reqwest::Client::new();
 
-        let http_result = client.get("https://paper-api.alpaca.markets/v2/orders")
+        let http_result = client
+            .get("https://paper-api.alpaca.markets/v2/orders")
             .headers(headers)
             .send()
             .await;
@@ -133,23 +131,20 @@ impl Order {
         // parse_http_result_to_vec::<Order>(http_result).await
 
         let return_val = match http_result {
-            Ok(response) => {
-                match &response.text().await{
-                    Ok(response_text)=>{
-                        match serde_json::from_str::<Vec<Order>>(&response_text){
-                            Ok(orders)=> {
-                                Ok(orders)
-                            },
-                            Err(e)=>{
-                                tracing::debug!("[get_remote] deserialization to json vec failed: {:?}", &e);
-                                Err(TradeWebError::JsonError)
-                            }
-                        }
-                    },
-                    Err(e)=>{
-                        tracing::debug!("[get_remote] deserialization to json text failed: {:?}", &e);
+            Ok(response) => match &response.text().await {
+                Ok(response_text) => match serde_json::from_str::<Vec<Order>>(&response_text) {
+                    Ok(orders) => Ok(orders),
+                    Err(e) => {
+                        tracing::debug!(
+                            "[get_remote] deserialization to json vec failed: {:?}",
+                            &e
+                        );
                         Err(TradeWebError::JsonError)
                     }
+                },
+                Err(e) => {
+                    tracing::debug!("[get_remote] deserialization to json text failed: {:?}", &e);
+                    Err(TradeWebError::JsonError)
                 }
             },
             Err(e) => {
@@ -159,12 +154,10 @@ impl Order {
         };
 
         return_val
-
     }
 
     /// Get the most recent list of positions from the database
-    pub async fn get_unfilled_orders_from_db(pool:&PgPool) -> Result<Vec<Order>, sqlx::Error> {
-
+    pub async fn get_unfilled_orders_from_db(pool: &PgPool) -> Result<Vec<Order>, sqlx::Error> {
         // Assume the latest batch was inserted at the same time; get the most recent timestamp, get the most recent matching positions
         // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
         let result_vec = sqlx::query_as!(
@@ -205,12 +198,12 @@ impl Order {
                 where filled_at is null
                 order by updated_at desc
             "#
-        ).fetch_all(pool).await;
+        )
+        .fetch_all(pool)
+        .await;
 
         result_vec
-
     }
-
 
     /// Save a single order to the database
     pub async fn save_to_db(&self, pool: &sqlx::PgPool) {
@@ -272,31 +265,44 @@ impl Order {
         tracing::debug!("[save_to_db] result: {:?}", result);
     }
 
-    pub async fn delete_all_db(pool: &PgPool)-> Result<PgQueryResult,sqlx::Error> {
-        sqlx::query!(r#"delete from alpaca_order"#).execute(pool).await
+    pub async fn delete_all_db(pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
+        sqlx::query!(r#"delete from alpaca_order"#)
+            .execute(pool)
+            .await
     }
-
 }
 
 impl fmt::Display for Order {
-
     /// enable to_string() for Order
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         //fmt::Debug::fmt(self, f)
-        match self.limit_price.as_ref(){
+        match self.limit_price.as_ref() {
             Some(limit_p) => {
-                write!(f, "{}\t{}\t{}\t{}\t{}\t{:?}\t{}\t", self.symbol, self.side, self.qty, self.order_type_v2, limit_p, self.filled_at, self.id)
-            },
-            None=>{
-                write!(f, "{}\t{}\t{}\t{}\t{}\t{:?}\t{}\t", self.symbol, self.side, self.qty, self.order_type_v2, 0.0, self.filled_at, self.id)
+                write!(
+                    f,
+                    "{}\t{}\t{}\t{}\t{}\t{:?}\t{}\t",
+                    self.symbol,
+                    self.side,
+                    self.qty,
+                    self.order_type_v2,
+                    limit_p,
+                    self.filled_at,
+                    self.id
+                )
+            }
+            None => {
+                write!(
+                    f,
+                    "{}\t{}\t{}\t{}\t{}\t{:?}\t{}\t",
+                    self.symbol,
+                    self.side,
+                    self.qty,
+                    self.order_type_v2,
+                    0.0,
+                    self.filled_at,
+                    self.id
+                )
             }
         }
     }
 }
-
-
-
-
-
-
-

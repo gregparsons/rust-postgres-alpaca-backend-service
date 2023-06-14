@@ -22,7 +22,7 @@ pub struct Account {
     pub effective_buying_power: String,
     pub non_marginable_buying_power: String,
     pub bod_dtbp: String,
-    pub accrued_fees:String,
+    pub accrued_fees: String,
     pub pending_transfer_in: String,
     pub portfolio_value: String,
     pub trading_blocked: bool,
@@ -42,8 +42,8 @@ pub struct Account {
 }
 
 impl Account {
-    pub fn blank() -> Account{
-        Account{
+    pub fn blank() -> Account {
+        Account {
             cash: "".to_string(),
             position_market_value: "".to_string(),
             equity: "".to_string(),
@@ -76,7 +76,7 @@ impl Account {
             initial_margin: "".to_string(),
             maintenance_margin: "".to_string(),
             last_maintenance_margin: "".to_string(),
-            sma: "".to_string()
+            sma: "".to_string(),
         }
     }
 }

@@ -2,13 +2,13 @@
 //!
 
 use actix_session::Session;
-use actix_web::{HttpResponse, web};
+use actix_web::{web, HttpResponse};
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use handlebars::Handlebars;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::PgPool;
-use serde::{Deserialize, Serialize};
 
 use common_lib::common_structs::SESSION_USERNAME;
 use common_lib::http::redirect_home;
@@ -27,7 +27,6 @@ pub struct QueryProfit {
     pub profit_vs_volume: BigDecimal,
     pub trade_latest: NaiveDateTime,
     pub activity_latest: DateTime<Utc>,
-
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -37,8 +36,11 @@ pub struct QueryProfitTotal {
 
 /// GET /profit
 /// print a table of stocks P/L
-pub async fn get_profit(hb: web::Data<Handlebars<'_>>, db_pool: web::Data<PgPool>, session:Session) -> HttpResponse {
-
+pub async fn get_profit(
+    hb: web::Data<Handlebars<'_>>,
+    db_pool: web::Data<PgPool>,
+    session: Session,
+) -> HttpResponse {
     tracing::debug!("[get_profit]");
 
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
@@ -47,19 +49,21 @@ pub async fn get_profit(hb: web::Data<Handlebars<'_>>, db_pool: web::Data<PgPool
         // exclamation point means we're overriding sqlx requiring Option<> on nullables (assuming we know it'll never be null)
         let profit_vec = match sqlx::query_as!(
             QueryProfit,
-                r#"
+            r#"
                     select
                         *
                     from v_stats
                 "#,
-            ).fetch_all(db_pool.as_ref()).await {
+        )
+        .fetch_all(db_pool.as_ref())
+        .await
+        {
+            Ok(vec_of_profit) => vec_of_profit,
 
-                Ok(vec_of_profit) => vec_of_profit,
-
-                Err(e) => {
-                    tracing::debug!("[get_profit] profit report error: {:?}", &e);
-                    vec![]
-                }
+            Err(e) => {
+                tracing::debug!("[get_profit] profit report error: {:?}", &e);
+                vec![]
+            }
         };
 
         let data = json!({
@@ -72,8 +76,9 @@ pub async fn get_profit(hb: web::Data<Handlebars<'_>>, db_pool: web::Data<PgPool
 
         let body = hb.render("profit_table", &data).unwrap();
         // tracing::debug!("[get_profit] body: {:?}", &body);
-        HttpResponse::Ok().append_header(("cache-control", "no-store")).body(body)
-
+        HttpResponse::Ok()
+            .append_header(("cache-control", "no-store"))
+            .body(body)
     } else {
         redirect_home().await
     }

@@ -21,8 +21,6 @@ pub struct AlpActionAuthData {
     pub status: String,
 }
 
-
-
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct AlpacaStreamQuote {
     stream: String,
@@ -134,7 +132,6 @@ pub struct AlpWsTrade {
     // pub c:Vec<usize>,
     #[serde(rename = "z")]
     pub id_tape: String,
-
     // #[serde(default = "Utc::now")]
     // pub dtg_updated: DateTime<Utc>,
 }

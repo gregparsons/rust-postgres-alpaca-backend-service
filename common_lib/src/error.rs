@@ -3,9 +3,8 @@
 //!
 //!
 
-
 #[derive(Debug)]
-pub enum TradeWebError{
+pub enum TradeWebError {
     ReqwestError,
     JsonError,
 }
