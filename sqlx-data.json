@@ -461,84 +461,6 @@
     },
     "query": "\n            with rows as (\n                insert into users (\n                    user_id, username, password\n                )\n                values (gen_random_uuid(), $1, $2)\n                returning user_id\n            ) select user_id from rows\n        "
   },
-  "2793026aae81efe6f5db5a0a74efbd0b4e4e57a75078291be1fb6a07b181460d": {
-    "describe": {
-      "columns": [
-        {
-          "name": "symbol!",
-          "ordinal": 0,
-          "type_info": "Text"
-        },
-        {
-          "name": "active!",
-          "ordinal": 1,
-          "type_info": "Bool"
-        },
-        {
-          "name": "closed_pl!",
-          "ordinal": 2,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "unrealized_pl!",
-          "ordinal": 3,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "posn_pl!",
-          "ordinal": 4,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "unrealized_pl_avg!",
-          "ordinal": 5,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "qty_buy_today!",
-          "ordinal": 6,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "qty_sell_today!",
-          "ordinal": 7,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "count_buy_activity_today!",
-          "ordinal": 8,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "count_sell_activity_today!",
-          "ordinal": 9,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "dtg_latest_buy!",
-          "ordinal": 10,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n                select\n                    symbol as \"symbol!\"\n                    ,active as \"active!\"\n                    , closed_pl as \"closed_pl!\"\n                    , unrealized_pl as \"unrealized_pl!\"\n                    , posn_pl as \"posn_pl!\"\n                    , unrealized_pl_avg as \"unrealized_pl_avg!\"\n                    , qty_buy_today as \"qty_buy_today!\"\n                    , qty_sell_today as \"qty_sell_today!\"\n                    , count_buy_activity_today as \"count_buy_activity_today!\"\n                    , count_sell_activity_today as \"count_sell_activity_today!\"\n                    , dtg_latest_buy as \"dtg_latest_buy!\"\n                from v_posn_activity_summary\n            "
-  },
   "30f255854809dabc1008f3e29350fef9db68cbd1a7bf935d60c99c0b1e267339": {
     "describe": {
       "columns": [
@@ -1119,6 +1041,90 @@
       }
     },
     "query": "\n            insert into trade_fh_latest (dtg, symbol, price, volume)\n            values ($1, $2, $3, $4)\n            on conflict (symbol) do update set dtg=$1, price=$3, volume=$4;\n        "
+  },
+  "ede7c1386f213347c01dc3145194b9257b29660dc4e707db37325d5f49ff9be8": {
+    "describe": {
+      "columns": [
+        {
+          "name": "symbol!",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "active!",
+          "ordinal": 1,
+          "type_info": "Bool"
+        },
+        {
+          "name": "age_minute!",
+          "ordinal": 2,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "closed_pl!",
+          "ordinal": 3,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_pl!",
+          "ordinal": 4,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "posn_pl!",
+          "ordinal": 5,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_pl_avg!",
+          "ordinal": 6,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty_buy_today!",
+          "ordinal": 7,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty_sell_today!",
+          "ordinal": 8,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "count_buy_activity_today!",
+          "ordinal": 9,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "count_sell_activity_today!",
+          "ordinal": 10,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "dtg_latest_buy!",
+          "ordinal": 11,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                select\n                    symbol as \"symbol!\"\n                    ,active as \"active!\"\n                    ,age_minute as \"age_minute!\"\n                    , closed_pl as \"closed_pl!\"\n                    , unrealized_pl as \"unrealized_pl!\"\n                    , posn_pl as \"posn_pl!\"\n                    , unrealized_pl_avg as \"unrealized_pl_avg!\"\n                    , qty_buy_today as \"qty_buy_today!\"\n                    , qty_sell_today as \"qty_sell_today!\"\n                    , count_buy_activity_today as \"count_buy_activity_today!\"\n                    , count_sell_activity_today as \"count_sell_activity_today!\"\n                    , dtg_latest_buy as \"dtg_latest_buy!\"\n                from v_posn_activity_summary\n            "
   },
   "f46f0fffbdb0541edf45d7d8290f82fcaff502f2d63882686dc153f6e086b5e9": {
     "describe": {
