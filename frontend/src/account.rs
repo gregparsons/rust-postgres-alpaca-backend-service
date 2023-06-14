@@ -1,6 +1,6 @@
 //! account.rs
 //!
-//! present account data in the frontend, retrieved from the alpaca API
+//! Present account data in the frontend, retrieved from the alpaca API
 
 use actix_session::Session;
 use actix_web::{web, HttpResponse, Responder};
@@ -21,11 +21,8 @@ pub async fn get_account(
     session: Session,
 ) -> impl Responder {
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
-        tracing::debug!("session id: {}", &session_username);
-        let mut headers = HeaderMap::new();
 
-        // let api_key_id = std::env::var("ALPACA_API_ID").expect("ALPACA_API_ID environment variable not found");
-        // let api_secret = std::env::var("ALPACA_API_SECRET").expect("alpaca_secret environment variable not found");
+        let mut headers = HeaderMap::new();
 
         match Settings::load(&pool).await {
             Ok(settings) => {
@@ -34,7 +31,7 @@ pub async fn get_account(
                 headers.insert("APCA-API-KEY-ID", api_key.parse().unwrap());
                 headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
                 let url = format!("https://paper-api.alpaca.markets/v2/account");
-                tracing::debug!("[load_fill_activities] calling API: {}", &url);
+                tracing::debug!("[get_account] calling API: {}", &url);
                 // get a single order
                 let client = reqwest::Client::new();
                 let http_result = client.get(url).headers(headers).send().await;
@@ -61,8 +58,6 @@ pub async fn get_account(
                         Account::blank()
                     }
                 };
-
-                // HttpResponse::Ok().body(body)
 
                 let data = json!({
                     "title": "Account",

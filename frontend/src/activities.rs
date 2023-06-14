@@ -1,6 +1,6 @@
 //! symbols.rs
 //!
-//! get, post a list of stock symbols and whether they're actively traded.
+//! Render a list of all Alpaca trade activities. Can be filtered by symbol. (TODO: paging)
 //!
 
 use actix_session::Session;
@@ -13,9 +13,7 @@ use handlebars::Handlebars;
 use serde_json::json;
 use sqlx::PgPool;
 
-///
-/// GET /symbols
-///
+/// GET /activity
 pub async fn get_activities(
     pool: web::Data<PgPool>,
     hb: web::Data<Handlebars<'_>>,
@@ -30,8 +28,10 @@ async fn get_activities_with_message(
     session: Session,
     message: &str,
 ) -> HttpResponse {
+
     // require login
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
+
         let activity_vec_result = Activity::get_activities_from_db(&pool).await;
 
         let symbol_list = match SymbolList::get_all_symbols(&pool).await {
@@ -74,7 +74,7 @@ async fn get_activities_with_message(
     }
 }
 
-// GET /activity/{symbol}
+/// GET /activity/{symbol}
 pub async fn get_activity_for_symbol(
     symbol: web::Path<String>,
     pool: web::Data<PgPool>,

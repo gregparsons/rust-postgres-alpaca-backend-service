@@ -1,4 +1,6 @@
-//! metrics.rs
+/*//! metrics.rs
+//!
+//! not currently used
 
 use actix_session::Session;
 use actix_web::{web, HttpResponse, Responder};
@@ -88,3 +90,4 @@ async fn get_data(db_pool: &web::Data<PgPool>) -> String {
 
     json!(result_vector).to_string()
 }
+*/

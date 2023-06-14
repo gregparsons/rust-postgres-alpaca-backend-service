@@ -10,7 +10,8 @@ use handlebars::Handlebars;
 use serde_json::json;
 use sqlx::PgPool;
 
-pub async fn get_orders(
+/// GET /order
+pub async fn get_order(
     pool: web::Data<PgPool>,
     hb: web::Data<Handlebars<'_>>,
     session: Session,
@@ -18,12 +19,14 @@ pub async fn get_orders(
     // require login
     tracing::debug!("[get_orders]");
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
+
+        // no need to bring in passwords here
         let setting_result = Settings::load_no_secret(&pool).await;
+
         match setting_result {
             Ok(settings) => {
-                let orders = Order::get_unfilled_orders_from_db(&pool).await;
 
-                // tracing::debug!("[get_orders] orders: {:?}", &orders);
+                let orders = Order::get_unfilled_orders_from_db(&pool).await;
 
                 let (message, orders) = match orders {
                     Ok(orders) => {

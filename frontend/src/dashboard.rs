@@ -1,4 +1,6 @@
 //! dashboard.rs
+//!
+//! Under construction
 
 use actix_session::Session;
 use actix_web::{web, HttpResponse};
