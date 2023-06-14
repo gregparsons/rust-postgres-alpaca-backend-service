@@ -23,6 +23,7 @@ pub struct Settings {
     pub trade_sell_high_upper_limit_cents: BigDecimal,
     pub finnhub_key: String,
     pub account_start_value:BigDecimal,
+    pub max_position_age_minute:BigDecimal,
 }
 
 impl Settings {
@@ -47,6 +48,7 @@ impl Settings {
                     trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
                     ,finnhub_key as "finnhub_key!:String"
                     ,coalesce(account_start_value,0.0) as "account_start_value!"
+                    ,coalesce(max_position_age_minute,0.0) as "max_position_age_minute!"
                 FROM t_settings_test
                 ORDER BY t_settings_test.dtg DESC
                 LIMIT 1
@@ -80,6 +82,7 @@ impl Settings {
                     trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
                     ,finnhub_key as "finnhub_key!:String"
                     ,coalesce(account_start_value,0.0) as "account_start_value!"
+                    ,coalesce(max_position_age_minute,0.0) as "max_position_age_minute!"
 
                 FROM t_settings_test
                 ORDER BY t_settings_test.dtg DESC
@@ -119,6 +122,7 @@ impl Settings {
                     , trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
                     , finnhub_key as "finnhub_key!"
                     ,coalesce(account_start_value,0.0) as "account_start_value!"
+                    ,coalesce(max_position_age_minute,0.0) as "max_position_age_minute!"
                 from fn_set_trade_settings($1);
             "#,
             &ts
