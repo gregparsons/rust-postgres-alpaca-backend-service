@@ -89,6 +89,7 @@ pub async fn get_profit(
 pub struct ProfitSummary {
     pub symbol: String,
     pub active: bool,
+    pub age_minute: BigDecimal,
     pub closed_pl: BigDecimal,
     pub unrealized_pl: BigDecimal,
     pub unrealized_pl_avg: BigDecimal,
@@ -120,6 +121,7 @@ pub async fn get_profit_summary(
                 select
                     symbol as "symbol!"
                     ,active as "active!"
+                    ,age_minute as "age_minute!"
                     , closed_pl as "closed_pl!"
                     , unrealized_pl as "unrealized_pl!"
                     , posn_pl as "posn_pl!"
