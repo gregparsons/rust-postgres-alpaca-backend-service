@@ -12,8 +12,7 @@ use crate::activities::{get_activities, get_activity_for_symbol};
 use crate::dashboard::{get_dashboard, get_dashboard_with_symbol};
 use crate::edit_settings::{get_settings, get_settings_button};
 use crate::login::{get_login, get_logout, post_login};
-use crate::metrics::{get_avg, get_chart};
-use crate::order::get_orders;
+use crate::order::get_order;
 use crate::positions::get_positions;
 use crate::profit::get_profit;
 use crate::symbols::{get_symbols, post_symbols};
@@ -99,8 +98,8 @@ impl WebServer {
                 // .route("/signup", web::get().to(get_signup))
                 // .route("/signup", web::post().to(post_signup))
                 .route("/ping", web::get().to(get_ping))
-                .route("/avg", web::get().to(get_avg))
-                .route("/chart", web::get().to(get_chart))
+                // .route("/avg", web::get().to(get_avg))
+                // .route("/chart", web::get().to(get_chart))
                 .route("/profit", web::get().to(get_profit))
                 .route("/account", web::get().to(get_account))
                 .route("/logout", web::get().to(get_logout))
@@ -119,7 +118,7 @@ impl WebServer {
                     "/dashboard/{symbol}",
                     web::get().to(get_dashboard_with_symbol),
                 )
-                .route("/order", web::get().to(get_orders))
+                .route("/order", web::get().to(get_order))
             // .route("/order/{symbol}", web::get().to(get_orders))
         })
         .bind(("0.0.0.0", web_port))?

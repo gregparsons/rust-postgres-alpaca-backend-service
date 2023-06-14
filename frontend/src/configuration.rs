@@ -2,7 +2,7 @@
 //!
 //! Ref: Zero 2 Prod page 65
 //!
-//! TODO: move this to a common library
+//! TODO: move this to the common library, consolidate with .env, docker env, and database-based settings
 
 use config::{ConfigError, File, FileFormat};
 
@@ -54,15 +54,6 @@ pub fn get_yaml_configuration() -> Result<Settings, ConfigError> {
         .add_source(File::new(config_file_path, FileFormat::Yaml))
         .build()
         .unwrap();
-
-    // print settings (as a HashMap)
-    // doesn't work necessarily using a blank key "database"
-    // tracing::debug!(
-    //     "{:?}",
-    //     (settings.clone())
-    //         .try_deserialize::<HashMap<String, String>>()
-    //         .unwrap()
-    // );
 
     settings.try_deserialize()
 }
