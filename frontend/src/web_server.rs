@@ -14,7 +14,7 @@ use crate::edit_settings::{get_settings, get_settings_button};
 use crate::login::{get_login, get_logout, post_login};
 use crate::order::get_order;
 use crate::positions::get_positions;
-use crate::profit::get_profit;
+use crate::profit::{get_profit, get_profit_summary};
 use crate::symbols::{get_symbols, post_symbols};
 use crate::utils::*;
 
@@ -101,6 +101,7 @@ impl WebServer {
                 // .route("/avg", web::get().to(get_avg))
                 // .route("/chart", web::get().to(get_chart))
                 .route("/profit", web::get().to(get_profit))
+                .route("/profit_summary", web::get().to(get_profit_summary))
                 .route("/account", web::get().to(get_account))
                 .route("/logout", web::get().to(get_logout))
                 .route("/symbols", web::get().to(get_symbols))
