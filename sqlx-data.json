@@ -371,6 +371,84 @@
     },
     "query": "\n            with rows as (\n                insert into users (\n                    user_id, username, password\n                )\n                values (gen_random_uuid(), $1, $2)\n                returning user_id\n            ) select user_id from rows\n        "
   },
+  "2793026aae81efe6f5db5a0a74efbd0b4e4e57a75078291be1fb6a07b181460d": {
+    "describe": {
+      "columns": [
+        {
+          "name": "symbol!",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "active!",
+          "ordinal": 1,
+          "type_info": "Bool"
+        },
+        {
+          "name": "closed_pl!",
+          "ordinal": 2,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_pl!",
+          "ordinal": 3,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "posn_pl!",
+          "ordinal": 4,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_pl_avg!",
+          "ordinal": 5,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty_buy_today!",
+          "ordinal": 6,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty_sell_today!",
+          "ordinal": 7,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "count_buy_activity_today!",
+          "ordinal": 8,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "count_sell_activity_today!",
+          "ordinal": 9,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "dtg_latest_buy!",
+          "ordinal": 10,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                select\n                    symbol as \"symbol!\"\n                    ,active as \"active!\"\n                    , closed_pl as \"closed_pl!\"\n                    , unrealized_pl as \"unrealized_pl!\"\n                    , posn_pl as \"posn_pl!\"\n                    , unrealized_pl_avg as \"unrealized_pl_avg!\"\n                    , qty_buy_today as \"qty_buy_today!\"\n                    , qty_sell_today as \"qty_sell_today!\"\n                    , count_buy_activity_today as \"count_buy_activity_today!\"\n                    , count_sell_activity_today as \"count_sell_activity_today!\"\n                    , dtg_latest_buy as \"dtg_latest_buy!\"\n                from v_posn_activity_summary\n            "
+  },
   "2d98e5092c1fcc8f83c409c8253a433e47f78c77008cfc077b025bb500423d04": {
     "describe": {
       "columns": [
@@ -870,36 +948,6 @@
       }
     },
     "query": "\nSELECT\n    dtg as \"dtg!\",\n    alpaca_paper_id as \"alpaca_paper_id!:String\",\n    '' as \"alpaca_paper_secret!:String\",\n    alpaca_live_id as \"alpaca_live_id!:String\",\n    '' as \"alpaca_live_secret!:String\",\n    trade_size as \"trade_size!\",\n    trade_enable_buy as \"trade_enable_buy!\",\n    trade_ema_small_size as \"trade_ema_small_size!\",\n    trade_ema_large_size as \"trade_ema_large_size!\",\n    trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\",\n    trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n    ,finnhub_key as \"finnhub_key!:String\"\nFROM t_settings_test\nORDER BY t_settings_test.dtg DESC\nLIMIT 1\n            "
-  },
-  "909ac887376837390242f5a0bb4d481a828d7e0d608a82fc3912ed0dd26fedaa": {
-    "describe": {
-      "columns": [
-        {
-          "name": "dtg!",
-          "ordinal": 0,
-          "type_info": "Timestamp"
-        },
-        {
-          "name": "symbol!",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "price!",
-          "ordinal": 2,
-          "type_info": "Numeric"
-        }
-      ],
-      "nullable": [
-        true,
-        null,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n            select\n                dtg as \"dtg!\",\n                coalesce(symbol, '') as \"symbol!\",\n                price_close as \"price!\"\n                -- size as \"size!\",\n                -- exchange as \"exchange\"\n            from\n                -- v_trade_minute\n                bar_minute\n            order by dtg desc\n            limit 10000\n        "
   },
   "ab1c49e382e8644be418f1f6567297667b604bf4277bb639c4f716154a57e0d7": {
     "describe": {
