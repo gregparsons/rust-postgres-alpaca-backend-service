@@ -22,6 +22,7 @@ pub struct Settings {
     pub trade_sell_high_per_cent_multiplier: BigDecimal,
     pub trade_sell_high_upper_limit_cents: BigDecimal,
     pub finnhub_key: String,
+    pub account_start_value:BigDecimal,
 }
 
 impl Settings {
@@ -45,6 +46,7 @@ impl Settings {
                     trade_sell_high_per_cent_multiplier as "trade_sell_high_per_cent_multiplier!",
                     trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
                     ,finnhub_key as "finnhub_key!:String"
+                    ,coalesce(account_start_value,0.0) as "account_start_value!"
                 FROM t_settings_test
                 ORDER BY t_settings_test.dtg DESC
                 LIMIT 1
@@ -64,22 +66,24 @@ impl Settings {
         let settings_result = sqlx::query_as!(
             Settings,
             r#"
-SELECT
-    dtg as "dtg!",
-    alpaca_paper_id as "alpaca_paper_id!:String",
-    '' as "alpaca_paper_secret!:String",
-    alpaca_live_id as "alpaca_live_id!:String",
-    '' as "alpaca_live_secret!:String",
-    trade_size as "trade_size!",
-    trade_enable_buy as "trade_enable_buy!",
-    trade_ema_small_size as "trade_ema_small_size!",
-    trade_ema_large_size as "trade_ema_large_size!",
-    trade_sell_high_per_cent_multiplier as "trade_sell_high_per_cent_multiplier!",
-    trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
-    ,finnhub_key as "finnhub_key!:String"
-FROM t_settings_test
-ORDER BY t_settings_test.dtg DESC
-LIMIT 1
+                SELECT
+                    dtg as "dtg!",
+                    alpaca_paper_id as "alpaca_paper_id!:String",
+                    '' as "alpaca_paper_secret!:String",
+                    alpaca_live_id as "alpaca_live_id!:String",
+                    '' as "alpaca_live_secret!:String",
+                    trade_size as "trade_size!",
+                    trade_enable_buy as "trade_enable_buy!",
+                    trade_ema_small_size as "trade_ema_small_size!",
+                    trade_ema_large_size as "trade_ema_large_size!",
+                    trade_sell_high_per_cent_multiplier as "trade_sell_high_per_cent_multiplier!",
+                    trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
+                    ,finnhub_key as "finnhub_key!:String"
+                    ,coalesce(account_start_value,0.0) as "account_start_value!"
+
+                FROM t_settings_test
+                ORDER BY t_settings_test.dtg DESC
+                LIMIT 1
             "#
         )
         .fetch_one(pool)
@@ -114,6 +118,7 @@ LIMIT 1
                     , trade_sell_high_per_cent_multiplier as "trade_sell_high_per_cent_multiplier!"
                     , trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
                     , finnhub_key as "finnhub_key!"
+                    ,coalesce(account_start_value,0.0) as "account_start_value!"
                 from fn_set_trade_settings($1);
             "#,
             &ts

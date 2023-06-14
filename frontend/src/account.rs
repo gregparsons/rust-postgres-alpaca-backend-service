@@ -2,8 +2,10 @@
 //!
 //! Present account data in the frontend, retrieved from the alpaca API
 
+use std::str::FromStr;
 use actix_session::Session;
 use actix_web::{web, HttpResponse, Responder};
+use bigdecimal::BigDecimal;
 use common_lib::common_structs::SESSION_USERNAME;
 use common_lib::http::redirect_home;
 use handlebars::Handlebars;
@@ -25,6 +27,7 @@ pub async fn get_account(
         let mut headers = HeaderMap::new();
 
         match Settings::load(&pool).await {
+
             Ok(settings) => {
                 let api_key = settings.alpaca_paper_id.clone();
                 let api_secret = settings.alpaca_paper_secret.clone();
@@ -59,12 +62,18 @@ pub async fn get_account(
                     }
                 };
 
+                let equity = BigDecimal::from_str(&account_body.equity).unwrap_or_else(|_| BigDecimal::from(0));
+                let diff_from_start = equity.clone() - settings.account_start_value.clone();
+
+                // tracing::debug!("[get_account] account_start: {}, equity: {}, diff: {}", &settings.account_start_value, &equity, &settings.account_start_value - &equity);
+
                 let data = json!({
                     "title": "Account",
                     "parent": "base0",
                     "is_logged_in": true,
                     "session_username": &session_username,
                     "message": account_body,
+                    "diff_from_start": diff_from_start,
                 });
                 let body = hb.render("account", &data).unwrap();
                 HttpResponse::Ok()
