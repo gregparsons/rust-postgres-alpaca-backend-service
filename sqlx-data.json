@@ -192,30 +192,6 @@
     },
     "query": "\n                select\n                    id as \"id!\"\n                    , client_order_id as \"client_order_id!\"\n                    , created_at as \"created_at!\"\n                    , updated_at as \"updated_at!\"\n                    , submitted_at as \"submitted_at!\"\n                    , filled_at\n                    , expired_at\n                    , canceled_at\n                    , failed_at\n                    , replaced_at\n                    , replaced_by\n                    , replaces\n                    , asset_id as \"asset_id!:Option<String>\"\n                    , symbol as \"symbol!:String\"\n                    , asset_class as \"asset_class!:Option<String>\"\n                    , notional as \"notional!:Option<BigDecimal>\"\n                    , coalesce(qty, 0.0) as \"qty!:BigDecimal\"\n                    , filled_qty as \"filled_qty!:Option<BigDecimal>\"\n                    , filled_avg_price as \"filled_avg_price!:Option<BigDecimal>\"\n                    , order_class as \"order_class!:Option<String>\"\n                    , order_type_v2 as \"order_type_v2!:OrderType\"\n                    , side as \"side!:TradeSide\"\n                    , time_in_force as \"time_in_force!:TimeInForce\"\n                    , limit_price as \"limit_price!:Option<BigDecimal>\"\n                    , stop_price as \"stop_price!:Option<BigDecimal>\"\n                    , status as \"status!\"\n                    , coalesce(extended_hours, false) as \"extended_hours!\"\n                    , trail_percent\n                    , trail_price\n                    , hwm\n                from alpaca_order\n                where filled_at is null\n                order by updated_at desc\n            "
   },
-  "12039850688b33f617cc71a021e20d8fae6c5673d88b8f958323ef2920ffa84f": {
-    "describe": {
-      "columns": [
-        {
-          "name": "symbol!",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "active!",
-          "ordinal": 1,
-          "type_info": "Bool"
-        }
-      ],
-      "nullable": [
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n            select\n                symbol as \"symbol!\"\n             , active as \"active!\"\n            from t_symbol\n            order by symbol\n        "
-  },
   "15c27c09a68a0304bd5882a015bcedcbd91d77233e81ed3b8ef5cac3e0628203": {
     "describe": {
       "columns": [
@@ -503,19 +479,6 @@
     },
     "query": "\n                SELECT\n                    dtg as \"dtg!\",\n                    alpaca_paper_id as \"alpaca_paper_id!:String\",\n                    alpaca_paper_secret as \"alpaca_paper_secret!:String\",\n                    alpaca_live_id as \"alpaca_live_id!:String\",\n                    alpaca_live_secret as \"alpaca_live_secret!:String\",\n                    trade_size as \"trade_size!\",\n                    trade_enable_buy as \"trade_enable_buy!\",\n                    trade_ema_small_size as \"trade_ema_small_size!\",\n                    trade_ema_large_size as \"trade_ema_large_size!\",\n                    trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\",\n                    trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                    ,finnhub_key as \"finnhub_key!:String\"\n                    ,coalesce(account_start_value,0.0) as \"account_start_value!\"\n                    ,coalesce(max_position_age_minute,0.0) as \"max_position_age_minute!\"\n                FROM t_settings_test\n                ORDER BY t_settings_test.dtg DESC\n                LIMIT 1\n            "
   },
-  "4a999a6dde4afc6051bdf1ae67cb2a7a8c5062957d912336c2e2ecf1e2086de4": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Text",
-          "Bool"
-        ]
-      }
-    },
-    "query": "\n            update t_symbol set active = $2 where symbol = $1\n        "
-  },
   "4b83115f8f0ec54061af8a6c01c0b250474fe44691032338d2ea115e567c1616": {
     "describe": {
       "columns": [],
@@ -716,6 +679,20 @@
       }
     },
     "query": "insert into alpaca_order(\n                id,\n                client_order_id,\n                created_at,\n                updated_at,\n                submitted_at,\n                filled_at,\n\n                -- expired_at,\n                -- canceled_at,\n                -- failed_at,\n                -- replaced_at,\n                -- replaced_by,\n                -- replaces,\n                -- asset_id,\n\n                symbol,\n                -- asset_class,\n                -- notional,\n                qty,\n                filled_qty,\n                filled_avg_price,\n                -- order_class,\n                order_type_v2,\n                side,\n                time_in_force,\n                limit_price,\n                stop_price,\n                status\n                -- extended_hours,\n                -- trail_percent,\n                -- trail_price,\n                -- hwm\n                )\n            values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, lower($11), lower($12), lower($13), $14, $15, $16)\n\n            "
+  },
+  "70fa65dfd0ae2e2c69f02b37e6d9962bede5f93c360b90bf81e761d68cb1d1f8": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Bool",
+          "Numeric"
+        ]
+      }
+    },
+    "query": "\n                update t_symbol set active = $2, trade_size = $3 where symbol = $1\n            "
   },
   "710ae47c144dd8b3c04c82c821dde0c9e728394b19c640d41dec25288a19eb4b": {
     "describe": {
@@ -1143,6 +1120,42 @@
       }
     },
     "query": "\n                select\n                    symbol as \"symbol!\"\n                    ,active as \"active!\"\n                    ,age_minute as \"age_minute!\"\n                    , closed_pl as \"closed_pl!\"\n                    , unrealized_pl as \"unrealized_pl!\"\n                    , posn_pl as \"posn_pl!\"\n                    , unrealized_pl_avg as \"unrealized_pl_avg!\"\n                    , qty_buy_today as \"qty_buy_today!\"\n                    , qty_sell_today as \"qty_sell_today!\"\n                    , count_buy_activity_today as \"count_buy_activity_today!\"\n                    , count_sell_activity_today as \"count_sell_activity_today!\"\n                    , dtg_latest_buy as \"dtg_latest_buy!\"\n                from v_posn_activity_summary\n            "
+  },
+  "eff4a050ae1ff28b285fa6db51f70e066ecfc778b70685f95f4a7e198248bd62": {
+    "describe": {
+      "columns": [
+        {
+          "name": "symbol!",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "active!",
+          "ordinal": 1,
+          "type_info": "Bool"
+        },
+        {
+          "name": "trade_size!",
+          "ordinal": 2,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_last!",
+          "ordinal": 3,
+          "type_info": "Numeric"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                select\n                    a.symbol as \"symbol!\"\n                    , active as \"active!\"\n                    ,coalesce(trade_size, 0.0) as \"trade_size!\"\n                    ,coalesce(b.price,0.0) as \"price_last!\"\n                from t_symbol a left join trade_alp_latest b on upper(a.symbol)=upper(b.symbol)\n                order by a.symbol\n            "
   },
   "f46f0fffbdb0541edf45d7d8290f82fcaff502f2d63882686dc153f6e086b5e9": {
     "describe": {
