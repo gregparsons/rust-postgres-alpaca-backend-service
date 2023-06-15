@@ -23,6 +23,8 @@
     <tr>
         <td>Symbol</td>
         <td>Active</td>
+        <td>Trade Size</td>
+        <td>Recent Price</td>
         <td></td>
     <tr>
     {{#each data}}
@@ -33,18 +35,20 @@
             <input type="text" name="symbol" value="{{this.symbol}}" hidden="true"/>
         </td>
         <td>
-
             <select name="active">
                 <option value="{{this.active}}">{{this.active}}</option>
                 <option value="true">true</option>
                 <option value="false">false</option>
             </select>
         </td>
-        <td>
-            <input type="submit" value="Save">
-        </td>
+        <td><input type="text" name="trade_size" value="{{this.trade_size}}"/></td>
+        <td><input type="submit" value="Save"></td>
+        <td>{{this.price_last}}<input type="text" name="price_last" value="{{this.price_last}}" hidden="true"/></td>
+        </form>
+
     </tr>
-    </form>
+
+
     {{/each}}
 </table>
 {{/inline}}
