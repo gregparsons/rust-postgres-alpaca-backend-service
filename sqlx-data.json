@@ -296,7 +296,7 @@
           "type_info": "Numeric"
         },
         {
-          "name": "trade_latest!",
+          "name": "trade_latest",
           "ordinal": 10,
           "type_info": "Timestamp"
         },
@@ -978,66 +978,7 @@
     },
     "query": "delete from alpaca_position"
   },
-  "c7db98645f2c87a75c8daea86b4d69a6a28987f084eb765a6632aaf1716185c9": {
-    "describe": {
-      "columns": [
-        {
-          "name": "user_id",
-          "ordinal": 0,
-          "type_info": "Uuid"
-        },
-        {
-          "name": "username",
-          "ordinal": 1,
-          "type_info": "Text"
-        },
-        {
-          "name": "password",
-          "ordinal": 2,
-          "type_info": "Text"
-        }
-      ],
-      "nullable": [
-        false,
-        false,
-        false
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      }
-    },
-    "query": "\n            select\n                user_id, username, password\n            from users\n            where username = $1\n        "
-  },
-  "cc27b0861e395c6fc0bec92cd0d3cbc3f9389ee9f1c73bf858d813c38ccc985f": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Timestamp"
-        ]
-      }
-    },
-    "query": "insert into ping_alpaca (ping) values ($1)"
-  },
-  "d62927ad711a177a4e10c0413f2cfd253bc552b3839ab5a309a512ddb3e76f4e": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Timestamp",
-          "Varchar",
-          "Numeric",
-          "Numeric"
-        ]
-      }
-    },
-    "query": "\n            insert into trade_fh_latest (dtg, symbol, price, volume)\n            values ($1, $2, $3, $4)\n            on conflict (symbol) do update set dtg=$1, price=$3, volume=$4;\n        "
-  },
-  "ede7c1386f213347c01dc3145194b9257b29660dc4e707db37325d5f49ff9be8": {
+  "bf579456afa58585ab2a25326f47f17561011a2dfc000cb80500e5a5c1f89cd8": {
     "describe": {
       "columns": [
         {
@@ -1096,7 +1037,7 @@
           "type_info": "Numeric"
         },
         {
-          "name": "dtg_latest_buy!",
+          "name": "dtg_position",
           "ordinal": 11,
           "type_info": "Timestamptz"
         }
@@ -1119,7 +1060,66 @@
         "Left": []
       }
     },
-    "query": "\n                select\n                    symbol as \"symbol!\"\n                    ,active as \"active!\"\n                    ,age_minute as \"age_minute!\"\n                    , closed_pl as \"closed_pl!\"\n                    , unrealized_pl as \"unrealized_pl!\"\n                    , posn_pl as \"posn_pl!\"\n                    , unrealized_pl_avg as \"unrealized_pl_avg!\"\n                    , qty_buy_today as \"qty_buy_today!\"\n                    , qty_sell_today as \"qty_sell_today!\"\n                    , count_buy_activity_today as \"count_buy_activity_today!\"\n                    , count_sell_activity_today as \"count_sell_activity_today!\"\n                    , dtg_latest_buy as \"dtg_latest_buy!\"\n                from v_posn_activity_summary\n            "
+    "query": "\n                select\n                    symbol as \"symbol!\"\n                    ,active as \"active!\"\n                    ,age_minute as \"age_minute!\"\n                    , closed_pl as \"closed_pl!\"\n                    , unrealized_pl as \"unrealized_pl!\"\n                    , posn_pl as \"posn_pl!\"\n                    , unrealized_pl_avg as \"unrealized_pl_avg!\"\n                    , qty_buy_today as \"qty_buy_today!\"\n                    , qty_sell_today as \"qty_sell_today!\"\n                    , count_buy_activity_today as \"count_buy_activity_today!\"\n                    , count_sell_activity_today as \"count_sell_activity_today!\"\n                    , dtg_latest_buy as \"dtg_position\"\n                from v_posn_activity_summary\n            "
+  },
+  "c7db98645f2c87a75c8daea86b4d69a6a28987f084eb765a6632aaf1716185c9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "user_id",
+          "ordinal": 0,
+          "type_info": "Uuid"
+        },
+        {
+          "name": "username",
+          "ordinal": 1,
+          "type_info": "Text"
+        },
+        {
+          "name": "password",
+          "ordinal": 2,
+          "type_info": "Text"
+        }
+      ],
+      "nullable": [
+        false,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n            select\n                user_id, username, password\n            from users\n            where username = $1\n        "
+  },
+  "cc27b0861e395c6fc0bec92cd0d3cbc3f9389ee9f1c73bf858d813c38ccc985f": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamp"
+        ]
+      }
+    },
+    "query": "insert into ping_alpaca (ping) values ($1)"
+  },
+  "d62927ad711a177a4e10c0413f2cfd253bc552b3839ab5a309a512ddb3e76f4e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamp",
+          "Varchar",
+          "Numeric",
+          "Numeric"
+        ]
+      }
+    },
+    "query": "\n            insert into trade_fh_latest (dtg, symbol, price, volume)\n            values ($1, $2, $3, $4)\n            on conflict (symbol) do update set dtg=$1, price=$3, volume=$4;\n        "
   },
   "eff4a050ae1ff28b285fa6db51f70e066ecfc778b70685f95f4a7e198248bd62": {
     "describe": {

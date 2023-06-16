@@ -25,7 +25,7 @@ pub struct QueryProfit {
     pub profit_vs_activities: BigDecimal,
     pub profit_vs_price: BigDecimal,
     pub profit_vs_volume: BigDecimal,
-    pub trade_latest: NaiveDateTime,
+    pub trade_latest: Option<NaiveDateTime>,
     pub activity_latest: DateTime<Utc>,
 }
 
@@ -98,16 +98,12 @@ pub struct ProfitSummary {
     pub qty_sell_today: BigDecimal,
     pub count_buy_activity_today: BigDecimal,
     pub count_sell_activity_today: BigDecimal,
-    pub dtg_latest_buy: DateTime<Utc>,
+    pub dtg_position: Option<DateTime<Utc>>,
 }
 
 /// GET /profit_summary
 /// print a table of stocks P/L
-pub async fn get_profit_summary(
-    hb: web::Data<Handlebars<'_>>,
-    db_pool: web::Data<PgPool>,
-    session: Session,
-) -> HttpResponse {
+pub async fn get_profit_summary(hb: web::Data<Handlebars<'_>>, db_pool: web::Data<PgPool>, session: Session) -> HttpResponse {
     tracing::debug!("[get_profit]");
 
     // require authentication (authorization tbd)
@@ -130,7 +126,7 @@ pub async fn get_profit_summary(
                     , qty_sell_today as "qty_sell_today!"
                     , count_buy_activity_today as "count_buy_activity_today!"
                     , count_sell_activity_today as "count_sell_activity_today!"
-                    , dtg_latest_buy as "dtg_latest_buy!"
+                    , dtg_latest_buy as "dtg_position"
                 from v_posn_activity_summary
             "#,
         ).fetch_all(db_pool.as_ref()).await {
@@ -151,7 +147,6 @@ pub async fn get_profit_summary(
         });
 
         let body = hb.render("profit_summary", &data).unwrap();
-        // tracing::debug!("[get_profit] body: {:?}", &body);
         HttpResponse::Ok()
             .append_header(("cache-control", "no-store"))
             .body(body)
