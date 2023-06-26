@@ -3,6 +3,7 @@
 //! Restful Alpaca Poller
 
 use chrono::Utc;
+use sqlx::PgPool;
 use common_lib::alpaca_activity::Activity;
 use common_lib::alpaca_order::Order;
 use common_lib::alpaca_position::Position;
@@ -15,8 +16,17 @@ const REST_POLL_RATE_OPEN_MILLIS_STR: &str = "5000";
 const REST_POLL_RATE_OPEN_MILLIS: u64 = 5000;
 const REST_POLL_RATE_CLOSED_MILLIS: u64 = 30000;
 
+// quickly disable pieces of the Alpaca API
+const ENABLE_REST_POSITION: bool = true;
+const ENABLE_REST_ACTIVITY: bool = true;
+const ENABLE_REST_ORDER: bool = true;
+
+
 /// Spawn a new thread to poll the Alpaca REST API
 pub async fn run() {
+
+    tracing::debug!("[rest_client::run] starting alpaca rest client");
+
     // run an async runtime inside the thread; it's a mess to try to run code copied from elsewhere
     // that normally runs async but is now running in a thread; much easier to just start a new
     // tokio runtime than to try to deal with FnOnce etc
@@ -65,70 +75,26 @@ pub async fn run() {
                 }
             };
 
-            // Poll the activity API; spawn into a new Tokio-managed thread because it's three web API calls that could take a while.
+            // Poll the Alpaca APIs
+            // Spawn into a new Tokio-managed thread because it's three web API calls that could take a while.
             // https://stackoverflow.com/questions/61292425/how-to-run-an-asynchronous-task-from-a-non-main-thread-in-tokio/63434522#63434522
-            tokio_handle.spawn( async move {
+            tokio_handle.spawn(async move {
 
                 // refresh settings from the database
                 match Settings::load(&pool3).await {
-                    Ok(settings)=>{
+                    Ok(settings) => {
 
-                        // update alpaca activities
-                        match Activity::get_remote(&settings).await{
-                            Ok(activities) => {
-                                tracing::debug!("[alpaca_activities] got activities: {}", activities.len());
-                                // save to postgres
-                                for a in activities {
-                                    let _ = a.save_to_db(&pool3).await;
-                                }
-                            },
-                            Err(e) => {
-                                tracing::error!("[alpaca_activity] error: {:?}", &e);
-                            }
+                        if ENABLE_REST_ACTIVITY {
+                            load_activities(&pool3, &settings).await;
                         }
 
-                        // Positions: sync from Alpaca
-                        match Position::get_remote(&settings).await {
+                        if ENABLE_REST_POSITION {
 
-                            Ok(positions)=>{
-
-                                // clear the database table
-                                match Position::delete_all_db(&pool3).await{
-                                    Ok(_)=>tracing::debug!("[alpaca_position] positions cleared"),
-                                    Err(e)=> tracing::error!("[alpaca_position] positions not cleared: {:?}", &e),
-                                }
-
-                                // save to database
-                                let now = Utc::now();
-                                for position in positions.iter() {
-                                    let _ = position.save_to_db(now, &pool3).await;
-                                }
-                                tracing::debug!("[alpaca_position] updated positions at {:?}", &now);
-                            },
-                            Err(e) => {
-                                tracing::error!("[alpaca_position] could not load positions from Alpaca web API: {:?}", &e);
-                            }
+                            load_positions(&pool3, &settings).await;
                         }
 
-                        // get alpaca orders
-                        match Order::get_remote(&settings).await {
-                            Ok(orders) => {
-                                tracing::debug!("[alpaca_order] orders: {}", &orders.len());
-
-                                // clear out the database assuming the table will only hold what alpaca's showing as open orders
-                                match Order::delete_all_db(&pool3).await {
-                                    Ok(_)=>tracing::debug!("[alpaca_order] orders cleared"),
-                                    Err(e)=>tracing::error!("[alpaca_order] orders not cleared: {:?}", &e)
-                                }
-
-                                // save to postgres
-                                for order in orders.iter(){
-                                    let _ = order.save_to_db(&pool3).await;
-                                }
-                            },
-                            Err(e)=>{
-                                tracing::error!("[alpaca_order] could not load orders from Alpaca web API: {:?}", &e);
-                            }
+                        if ENABLE_REST_ORDER {
+                            load_orders(&pool3, &settings).await;
                         }
                     },
                     Err(e) => {
@@ -136,7 +102,76 @@ pub async fn run() {
                     }
                 }
             });
+
             std::thread::sleep(std::time::Duration::from_millis(alpaca_poll_rate_ms));
         }
+
     });
+
+    tracing::debug!("[Market::start] alpaca rest client thread started");
+
+}
+
+async fn load_activities(pool:&PgPool, settings:&Settings){
+    // update alpaca activities
+    match Activity::get_remote(&settings).await {
+        Ok(activities) => {
+            tracing::debug!("[alpaca_activities] got activities: {}", activities.len());
+            // save to postgres
+            for a in activities {
+                let _ = a.save_to_db(pool).await;
+            }
+        },
+        Err(e) => {
+            tracing::error!("[alpaca_activity] error: {:?}", &e);
+        }
+    }
+}
+
+
+async fn load_positions(pool:&PgPool, settings:&Settings){
+    // Positions: sync from Alpaca
+    match Position::get_remote(&settings).await {
+        Ok(positions) => {
+
+            // clear the database table
+            match Position::delete_all_db(pool).await {
+                Ok(_) => tracing::debug!("[alpaca_position] positions cleared"),
+                Err(e) => tracing::error!("[alpaca_position] positions not cleared: {:?}", &e),
+            }
+
+            // save to database
+            let now = Utc::now();
+            for position in positions.iter() {
+                let _ = position.save_to_db(now, pool).await;
+            }
+            tracing::debug!("[alpaca_position] updated positions at {:?}", &now);
+        },
+        Err(e) => {
+            tracing::error!("[alpaca_position] could not load positions from Alpaca web API: {:?}", &e);
+        }
+    }
+}
+
+async fn load_orders(pool:&PgPool, settings:&Settings){
+    // get alpaca orders
+    match Order::get_remote(&settings).await {
+        Ok(orders) => {
+            tracing::debug!("[alpaca_order] orders: {}", &orders.len());
+
+            // clear out the database assuming the table will only hold what alpaca's showing as open orders
+            match Order::delete_all_db(pool).await {
+                Ok(_) => tracing::debug!("[alpaca_order] orders cleared"),
+                Err(e) => tracing::error!("[alpaca_order] orders not cleared: {:?}", &e)
+            }
+
+            // save to postgres
+            for order in orders.iter() {
+                let _ = order.save_to_db(pool).await;
+            }
+        },
+        Err(e) => {
+            tracing::error!("[alpaca_order] could not load orders from Alpaca web API: {:?}", &e);
+        }
+    }
 }

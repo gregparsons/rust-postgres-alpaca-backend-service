@@ -20,9 +20,9 @@ fn stock_list_to_uppercase(lower_stock: &Vec<String>) -> Vec<String> {
     lower_stock.iter().map(|x| x.to_uppercase()).collect()
 }
 
-pub struct WsFinnhub;
+pub struct FinnhubWebsocket;
 
-impl WsFinnhub {
+impl FinnhubWebsocket {
     pub async fn run(
         tx_db: Sender<DbMsg>,
         stream_type: &FinnhubStream,
@@ -30,7 +30,7 @@ impl WsFinnhub {
         settings: Settings,
     ) {
         tracing::debug!("[WsFinnhub::run]");
-        WsFinnhub::connect(tx_db, stream_type, symbols, &settings).await;
+        FinnhubWebsocket::connect(tx_db, stream_type, symbols, &settings).await;
     }
 
     async fn connect(

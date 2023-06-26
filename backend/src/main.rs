@@ -32,7 +32,7 @@ fn main() {
         let pool = create_sqlx_pg_pool().await;
         match Settings::load(&pool).await {
             Ok(settings) => {
-                DataCollector::start(pool, &settings).await;
+                DataCollector::run(pool, &settings).await;
             }
             Err(e) => {
                 tracing::debug!("[main] could not load settings: {:?}", &e);

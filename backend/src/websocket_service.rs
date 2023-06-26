@@ -40,9 +40,9 @@ fn stock_list_to_uppercase(lower_stock: &Vec<String>) -> Vec<String> {
     lower_stock.iter().map(|x| x.to_uppercase()).collect()
 }
 
-pub struct Ws;
+pub struct AlpacaWebsocket;
 
-impl Ws {
+impl AlpacaWebsocket {
     pub fn run(
         tx_db: Sender<DbMsg>,
         stream_type: &AlpacaStream,
@@ -50,7 +50,7 @@ impl Ws {
         settings: Settings,
     ) {
         tracing::debug!("[run]");
-        Ws::ws_connect(tx_db, stream_type, symbols, &settings);
+        AlpacaWebsocket::ws_connect(tx_db, stream_type, symbols, &settings);
     }
 
     fn ws_connect(
