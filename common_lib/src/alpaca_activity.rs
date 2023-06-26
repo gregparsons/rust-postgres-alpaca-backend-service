@@ -151,7 +151,7 @@ impl Activity {
         .execute(pool)
         .await;
 
-        tracing::debug!("[get_remote] insert result: {:?}", &result);
+        // tracing::debug!("[get_remote] insert result: {:?}", &result);
         result
     }
 

@@ -14,9 +14,8 @@
 */
 
 use crate::db::DbActor;
-use crate::websocket_service::{AlpacaStream, AlpacaWebsocket};
-use crate::ws_finnhub::FinnhubWebsocket;
-use common_lib::finnhub::FinnhubStream;
+use crate::alpaca_websocket::{AlpacaStream, AlpacaWebsocket};
+use crate::finnhub_websocket::FinnhubWebsocket;
 use common_lib::settings::Settings;
 use common_lib::symbol_list::SymbolList;
 use sqlx::PgPool;
@@ -32,6 +31,10 @@ impl DataCollector {
 
     pub async fn run(pool: PgPool, settings: &Settings) {
 
+        let mut handles = vec![];
+
+
+
         /****** alpaca websocket ******/
         let tx_db = DbActor::start().await;
         tracing::debug!("[Market::start] db start() complete");
@@ -45,7 +48,8 @@ impl DataCollector {
             let settings2 = (*settings).clone();
             match SymbolList::get_active_symbols(&ws_pool).await {
                 Ok(symbols) => {
-                    let _jh = std::thread::spawn(move || {  AlpacaWebsocket::run(tx_db_ws, &AlpacaStream::TextData, symbols, settings2); });
+                    let join_handle = std::thread::spawn(|| {  AlpacaWebsocket::run(tx_db_ws, &AlpacaStream::TextData, symbols, settings2); });
+                    handles.push(join_handle);
                 },
                 Err(e) => tracing::debug!("[start] error getting symbols for websocket: {:?}", &e),
             }
@@ -63,7 +67,10 @@ impl DataCollector {
             // this symbol call is repeated because eventually finnhub may use a different symbol list
             match SymbolList::get_active_symbols(&ws_pool).await {
                 Ok(symbols) => {
-                    let _jh = std::thread::spawn(|| async move { FinnhubWebsocket::run(tx_db_ws, &FinnhubStream::TextData, symbols, settings2).await; });
+                    let join_handle = std::thread::spawn(|| {
+                        FinnhubWebsocket::run(tx_db_ws, symbols, settings2);
+                    });
+                    handles.push(join_handle);
                 },
                 Err(e) => tracing::debug!("[start] error getting symbols for websocket: {:?}", &e),
             }
@@ -78,10 +85,15 @@ impl DataCollector {
         }
 
 
-        // infinite loop to keep child threads alive
-        loop {
-            // TODO: join all thread handles instead
-            std::thread::sleep(std::time::Duration::from_secs(5));
+        // // infinite loop to keep child threads alive
+        // loop {
+        //     // TODO: join all thread handles instead
+        //     std::thread::sleep(std::time::Duration::from_secs(5));
+        // }
+
+        for h in handles {
+            h.join().expect("thread stopped: {:?}");
         }
+
     }
 }

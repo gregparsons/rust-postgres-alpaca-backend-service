@@ -4,8 +4,8 @@
 pub mod data_collector;
 pub mod db;
 pub mod rest_client;
-pub mod websocket_service;
-pub mod ws_finnhub;
+pub mod alpaca_websocket;
+pub mod finnhub_websocket;
 
 use crate::data_collector::DataCollector;
 use common_lib::init::init;

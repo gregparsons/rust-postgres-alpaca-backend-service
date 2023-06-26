@@ -205,7 +205,7 @@ order by symbol
             self.lastday_price, self.change_today, self.asset_id
         ).execute(pool).await;
 
-        tracing::debug!("[activity::save_to_db] insert result: {:?}", &result);
+        // tracing::debug!("[activity::save_to_db] insert result: {:?}", &result);
         result
     }
 }

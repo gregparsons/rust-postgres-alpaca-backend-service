@@ -14,12 +14,6 @@ pub enum FinnhubPacket {
     Trade(Vec<FinnhubTrade>),
 }
 
-#[derive(PartialEq)]
-pub enum FinnhubStream {
-    TextData,
-    BinaryUpdates,
-}
-
 #[derive(Serialize, Debug)]
 pub struct FinnhubPing {
     pub dtg: DateTime<Utc>,

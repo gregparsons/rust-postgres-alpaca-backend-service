@@ -22,7 +22,8 @@ tokio-postgres = { version = "0.7.7", features = ["with-chrono-0_4"]}
 # https://github.com/sdroege/async-tungstenite/blob/master/Cargo.toml
 #tungstenite = {version = "0.18.0", features = ["native-tls"]}
 tungstenite = {version = "0.18.0", features = ["rustls-tls-webpki-roots"]}
-futures-util = { version = "0.3.21", default-features = false, features = ["sink", "std"] }
+futures-util = { version = "0.3.28", default-features = false, features = ["sink", "std"] }
+#futures = "0.3.28"
 url = "2.2.2"
 
 serde = { version = "1.0.152", features = ["derive"] }
