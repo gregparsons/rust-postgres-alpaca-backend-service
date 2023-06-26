@@ -3,7 +3,7 @@
 
 pub mod data_collector;
 pub mod db;
-pub mod rest_client;
+pub mod alpaca_rest;
 pub mod alpaca_websocket;
 pub mod finnhub_websocket;
 

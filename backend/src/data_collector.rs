@@ -20,7 +20,7 @@ use common_lib::settings::Settings;
 use common_lib::symbol_list::SymbolList;
 use sqlx::PgPool;
 use std::str::FromStr;
-use crate::rest_client;
+use crate::alpaca_rest::AlpacaRest;
 
 /// Spawn threads to collect Alpaca and Finnhub websocket feeds into a Postgresql database
 pub struct DataCollector {}
@@ -81,7 +81,7 @@ impl DataCollector {
         let alpaca_rest_on = bool::from_str(std::env::var("ALPACA_REST_ON").unwrap_or_else(|_| "false".to_owned()).as_str()).unwrap_or(false);
         tracing::info!("ALPACA_REST_ON is: {}", alpaca_rest_on);
         if alpaca_rest_on {
-            rest_client::run().await;
+            AlpacaRest::run().await;
         }
 
 

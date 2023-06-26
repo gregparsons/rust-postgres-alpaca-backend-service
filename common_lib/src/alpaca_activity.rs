@@ -72,7 +72,7 @@ impl Activity {
 
         let url = format!("https://paper-api.alpaca.markets/v2/account/activities/FILL");
 
-        tracing::debug!("[load_fill_activities] calling API: {}", &url);
+        tracing::debug!("[get_remote] calling API: {}", &url);
         let client = reqwest::Client::new();
 
         let http_result = client.get(url).headers(headers).send().await;
