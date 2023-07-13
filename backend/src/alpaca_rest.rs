@@ -123,9 +123,7 @@ impl AlpacaRest {
                     let _ = a.save_to_db(pool).await;
                 }
             },
-            Err(e) => {
-                tracing::error!("[alpaca_activity] error: {:?}", &e);
-            }
+            Err(e) => tracing::error!("[alpaca_activity] error: {:?}", &e),
         }
     }
 
@@ -149,9 +147,7 @@ impl AlpacaRest {
                 }
                 tracing::debug!("[alpaca_position] updated positions at {:?}", &now);
             },
-            Err(e) => {
-                tracing::error!("[alpaca_position] could not load positions from Alpaca web API: {:?}", &e);
-            }
+            Err(e) => tracing::error!("[alpaca_position] could not load positions from Alpaca web API: {:?}", &e),
         }
     }
 
@@ -173,9 +169,7 @@ impl AlpacaRest {
                     let _ = order.save_to_db(pool).await;
                 }
             },
-            Err(e) => {
-                tracing::error!("[alpaca_order] could not load orders from Alpaca web API: {:?}", &e);
-            }
+            Err(e) => tracing::error!("[alpaca_order] could not load orders from Alpaca web API: {:?}", &e),
         }
     }
 

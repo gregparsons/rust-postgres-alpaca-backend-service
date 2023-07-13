@@ -21,6 +21,7 @@ use common_lib::symbol_list::SymbolList;
 use sqlx::PgPool;
 use std::str::FromStr;
 use crate::alpaca_rest::AlpacaRest;
+use crate::stock_rating;
 
 /// Spawn threads to collect Alpaca and Finnhub websocket feeds into a Postgresql database
 pub struct DataCollector {}
@@ -33,10 +34,11 @@ impl DataCollector {
 
         let mut handles = vec![];
 
-
+        /****** database actor thread ******/
+        // use this crossbeam channel to transmit messages to the database
+        let tx_db = DbActor::start().await;
 
         /****** alpaca websocket ******/
-        let tx_db = DbActor::start().await;
         tracing::debug!("[Market::start] db start() complete");
         let alpaca_ws_on = bool::from_str(std::env::var("ALPACA_WEBSOCKET_ON").unwrap_or_else(|_| "true".to_owned()).as_str()).unwrap_or(false);
         tracing::info!("ALPACA_WEBSOCKET_ON is: {}", &alpaca_ws_on);
@@ -85,15 +87,24 @@ impl DataCollector {
         }
 
 
-        // // infinite loop to keep child threads alive
-        // loop {
-        //     // TODO: join all thread handles instead
-        //     std::thread::sleep(std::time::Duration::from_secs(5));
-        // }
 
+        // start the stock rating system
+        // default on
+        let stock_rating_on = bool::from_str(std::env::var("STOCK_RATING_ON").unwrap_or_else(|_| "true".to_owned()).as_str()).unwrap_or(true);
+        tracing::info!("STOCK_RATING_ON is: {}", stock_rating_on);
+        let tx_db2 = tx_db.clone();
+        if stock_rating_on {
+            let join_handle = std::thread::spawn(|| {
+                stock_rating::run(tx_db2);
+            });
+            handles.push(join_handle);
+        }
+
+
+
+        // collect all the threads (which will never happen unless they all crash)
         for h in handles {
             h.join().expect("thread stopped: {:?}");
         }
-
     }
 }

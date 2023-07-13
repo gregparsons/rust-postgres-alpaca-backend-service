@@ -347,43 +347,7 @@
     },
     "query": "\n            with rows as (\n                insert into users (\n                    user_id, username, password\n                )\n                values (gen_random_uuid(), $1, $2)\n                returning user_id\n            ) select user_id from rows\n        "
   },
-  "30f255854809dabc1008f3e29350fef9db68cbd1a7bf935d60c99c0b1e267339": {
-    "describe": {
-      "columns": [
-        {
-          "name": "symbol!",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "select symbol as \"symbol!\" from t_symbol order by symbol"
-  },
-  "41e310b7a132e9b1fe68c9c9549392df44f6206231105591f371d00e75d6342b": {
-    "describe": {
-      "columns": [
-        {
-          "name": "symbol!",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "select symbol as \"symbol!\" from t_symbol where active=true"
-  },
-  "4413876f79b15558f5290fcd0651ad586fd41e51cc7652d4643a8fa7e622081b": {
+  "301f213e650dfb14f6c65bd32aca14e2504c6a06212d992d074056b5fc92289e": {
     "describe": {
       "columns": [
         {
@@ -455,6 +419,26 @@
           "name": "max_position_age_minute!",
           "ordinal": 13,
           "type_info": "Numeric"
+        },
+        {
+          "name": "upgrade_min_profit!",
+          "ordinal": 14,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "upgrade_sell_elapsed_minutes_min!",
+          "ordinal": 15,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "upgrade_posn_max_elapsed_minutes!",
+          "ordinal": 16,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "upgrade_posn_loss_allowed_dollars!",
+          "ordinal": 17,
+          "type_info": "Numeric"
         }
       ],
       "nullable": [
@@ -471,13 +455,53 @@
         true,
         true,
         null,
+        null,
+        null,
+        null,
+        null,
         null
       ],
       "parameters": {
         "Left": []
       }
     },
-    "query": "\n                SELECT\n                    dtg as \"dtg!\",\n                    alpaca_paper_id as \"alpaca_paper_id!:String\",\n                    alpaca_paper_secret as \"alpaca_paper_secret!:String\",\n                    alpaca_live_id as \"alpaca_live_id!:String\",\n                    alpaca_live_secret as \"alpaca_live_secret!:String\",\n                    trade_size as \"trade_size!\",\n                    trade_enable_buy as \"trade_enable_buy!\",\n                    trade_ema_small_size as \"trade_ema_small_size!\",\n                    trade_ema_large_size as \"trade_ema_large_size!\",\n                    trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\",\n                    trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                    ,finnhub_key as \"finnhub_key!:String\"\n                    ,coalesce(account_start_value,0.0) as \"account_start_value!\"\n                    ,coalesce(max_position_age_minute,0.0) as \"max_position_age_minute!\"\n                FROM t_settings_test\n                ORDER BY t_settings_test.dtg DESC\n                LIMIT 1\n            "
+    "query": "\n                SELECT\n                    dtg as \"dtg!\",\n                    alpaca_paper_id as \"alpaca_paper_id!:String\",\n                    alpaca_paper_secret as \"alpaca_paper_secret!:String\",\n                    alpaca_live_id as \"alpaca_live_id!:String\",\n                    alpaca_live_secret as \"alpaca_live_secret!:String\",\n                    trade_size as \"trade_size!\",\n                    trade_enable_buy as \"trade_enable_buy!\",\n                    trade_ema_small_size as \"trade_ema_small_size!\",\n                    trade_ema_large_size as \"trade_ema_large_size!\",\n                    trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\",\n                    trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                    ,finnhub_key as \"finnhub_key!:String\"\n                    ,coalesce(account_start_value,0.0) as \"account_start_value!\"\n                    ,coalesce(max_position_age_minute,0.0) as \"max_position_age_minute!\"\n                    ,coalesce(upgrade_min_profit,0.0) as \"upgrade_min_profit!\"\n                    ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as \"upgrade_sell_elapsed_minutes_min!\"\n                    ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as \"upgrade_posn_max_elapsed_minutes!\"\n                    ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as \"upgrade_posn_loss_allowed_dollars!\"\n\n                FROM t_settings_test\n                ORDER BY t_settings_test.dtg DESC\n                LIMIT 1\n            "
+  },
+  "30f255854809dabc1008f3e29350fef9db68cbd1a7bf935d60c99c0b1e267339": {
+    "describe": {
+      "columns": [
+        {
+          "name": "symbol!",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "select symbol as \"symbol!\" from t_symbol order by symbol"
+  },
+  "41e310b7a132e9b1fe68c9c9549392df44f6206231105591f371d00e75d6342b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "symbol!",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "select symbol as \"symbol!\" from t_symbol where active=true"
   },
   "4b83115f8f0ec54061af8a6c01c0b250474fe44691032338d2ea115e567c1616": {
     "describe": {
@@ -554,104 +578,6 @@
       }
     },
     "query": "insert into trade_alp_latest(dtg,symbol,price,size)\n            values ($1, $2, $3, $4)\n            on conflict (symbol) do update set dtg=$1, price=$3, size=$4;\n        "
-  },
-  "5b02309a6750e9b0d35a2cc643eb8dfe3265fa0264945987f039333feec6b21d": {
-    "describe": {
-      "columns": [
-        {
-          "name": "dtg!",
-          "ordinal": 0,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "alpaca_paper_id!",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "alpaca_paper_secret!",
-          "ordinal": 2,
-          "type_info": "Text"
-        },
-        {
-          "name": "alpaca_live_id!",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "alpaca_live_secret!",
-          "ordinal": 4,
-          "type_info": "Text"
-        },
-        {
-          "name": "trade_size!",
-          "ordinal": 5,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "trade_enable_buy!",
-          "ordinal": 6,
-          "type_info": "Bool"
-        },
-        {
-          "name": "trade_ema_small_size!",
-          "ordinal": 7,
-          "type_info": "Int4"
-        },
-        {
-          "name": "trade_ema_large_size!",
-          "ordinal": 8,
-          "type_info": "Int4"
-        },
-        {
-          "name": "trade_sell_high_per_cent_multiplier!",
-          "ordinal": 9,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "trade_sell_high_upper_limit_cents!",
-          "ordinal": 10,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "finnhub_key!",
-          "ordinal": 11,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "account_start_value!",
-          "ordinal": 12,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "max_position_age_minute!",
-          "ordinal": 13,
-          "type_info": "Numeric"
-        }
-      ],
-      "nullable": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Varchar"
-        ]
-      }
-    },
-    "query": "\n                select\n                    dtg as \"dtg!\"\n                    , alpaca_paper_id as \"alpaca_paper_id!\"\n                    , '' as \"alpaca_paper_secret!\"\n                    , alpaca_live_id as \"alpaca_live_id!\"\n                    , '' as \"alpaca_live_secret!\"\n                    , trade_size as \"trade_size!\"\n                    , trade_enable_buy as \"trade_enable_buy!\"\n                    , trade_ema_small_size as \"trade_ema_small_size!\"\n                    , trade_ema_large_size as \"trade_ema_large_size!\"\n                    , trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\"\n                    , trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                    , finnhub_key as \"finnhub_key!\"\n                    ,coalesce(account_start_value,0.0) as \"account_start_value!\"\n                    ,coalesce(max_position_age_minute,0.0) as \"max_position_age_minute!\"\n                from fn_set_trade_settings($1);\n            "
   },
   "7075f9dfd124b73b780d1918570aeff82176454a7d8621ae652026c3908afcf9": {
     "describe": {
@@ -742,126 +668,6 @@
     },
     "query": "\n                select\n                    transaction_time::timestamp as \"dtg_utc!\"\n                    ,timezone('US/Pacific', transaction_time) as \"dtg_pacific!\"\n                    ,symbol as \"symbol!\"\n                    ,side as \"side!:TradeSide\"\n                    ,qty as \"qty!\"\n                    ,price as \"price!\"\n                from alpaca_activity\n                order by transaction_time desc\n            "
   },
-  "80e437ad789b879a357b50012cc3677198b4475a328261eed21053ad9b00ada6": {
-    "describe": {
-      "columns": [
-        {
-          "name": "dtg!",
-          "ordinal": 0,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "symbol!",
-          "ordinal": 1,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "exchange!",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "asset_class!",
-          "ordinal": 3,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "avg_entry_price!",
-          "ordinal": 4,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "qty!",
-          "ordinal": 5,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "qty_available!",
-          "ordinal": 6,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "side!:PositionSide",
-          "ordinal": 7,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "market_value!",
-          "ordinal": 8,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "cost_basis!",
-          "ordinal": 9,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "unrealized_pl!",
-          "ordinal": 10,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "unrealized_plpc!",
-          "ordinal": 11,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "unrealized_intraday_pl!",
-          "ordinal": 12,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "unrealized_intraday_plpc!",
-          "ordinal": 13,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "current_price!",
-          "ordinal": 14,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "lastday_price!",
-          "ordinal": 15,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "change_today!",
-          "ordinal": 16,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "asset_id!",
-          "ordinal": 17,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        true,
-        false,
-        true,
-        true,
-        null,
-        null,
-        null,
-        true,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\nselect\n    dtg as \"dtg!\"\n    ,symbol as \"symbol!\"\n    ,exchange as \"exchange!\"\n    ,asset_class as \"asset_class!\"\n    ,coalesce(avg_entry_price, 0.0) as \"avg_entry_price!\"\n    ,coalesce(qty,0.0) as \"qty!\"\n    ,coalesce(qty_available,0.0) as \"qty_available!\"\n    ,side as \"side!:PositionSide\"\n    ,coalesce(market_value,0.0) as \"market_value!\"\n    ,coalesce(cost_basis,0.0) as \"cost_basis!\"\n    ,coalesce(unrealized_pl,0.0) as \"unrealized_pl!\"\n    ,coalesce(unrealized_plpc,0.0) as \"unrealized_plpc!\"\n    ,coalesce(unrealized_intraday_pl,0.0) as \"unrealized_intraday_pl!\"\n    ,coalesce(unrealized_intraday_plpc,0.0) as \"unrealized_intraday_plpc!\"\n    ,coalesce(current_price,0.0) as \"current_price!\"\n    ,coalesce(lastday_price,0.0) as \"lastday_price!\"\n    ,coalesce(change_today,0.0) as \"change_today!\"\n    ,asset_id as \"asset_id!\"\nfrom\nalpaca_position\norder by symbol\n            "
-  },
   "884ca4bfd2aaadf5a8429b50cc543000263f123dbe4c96f678a3fc9203793484": {
     "describe": {
       "columns": [],
@@ -872,7 +678,7 @@
     },
     "query": "delete from alpaca_order"
   },
-  "ac77ef28993562aaebb5bbf0957ef0366f93b5ac547bd4f93a190bf20a41f045": {
+  "8fc60728be661f712258e76dffe29aec6d1f60e016a44f9c5bb86b3a8fefec33": {
     "describe": {
       "columns": [
         {
@@ -944,6 +750,26 @@
           "name": "max_position_age_minute!",
           "ordinal": 13,
           "type_info": "Numeric"
+        },
+        {
+          "name": "upgrade_min_profit!",
+          "ordinal": 14,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "upgrade_sell_elapsed_minutes_min!",
+          "ordinal": 15,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "upgrade_posn_max_elapsed_minutes!",
+          "ordinal": 16,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "upgrade_posn_loss_allowed_dollars!",
+          "ordinal": 17,
+          "type_info": "Numeric"
         }
       ],
       "nullable": [
@@ -960,13 +786,17 @@
         true,
         true,
         null,
+        null,
+        null,
+        null,
+        null,
         null
       ],
       "parameters": {
         "Left": []
       }
     },
-    "query": "\n                SELECT\n                    dtg as \"dtg!\",\n                    alpaca_paper_id as \"alpaca_paper_id!:String\",\n                    '' as \"alpaca_paper_secret!:String\",\n                    alpaca_live_id as \"alpaca_live_id!:String\",\n                    '' as \"alpaca_live_secret!:String\",\n                    trade_size as \"trade_size!\",\n                    trade_enable_buy as \"trade_enable_buy!\",\n                    trade_ema_small_size as \"trade_ema_small_size!\",\n                    trade_ema_large_size as \"trade_ema_large_size!\",\n                    trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\",\n                    trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                    ,finnhub_key as \"finnhub_key!:String\"\n                    ,coalesce(account_start_value,0.0) as \"account_start_value!\"\n                    ,coalesce(max_position_age_minute,0.0) as \"max_position_age_minute!\"\n\n                FROM t_settings_test\n                ORDER BY t_settings_test.dtg DESC\n                LIMIT 1\n            "
+    "query": "\n                SELECT\n                    dtg as \"dtg!\",\n                    alpaca_paper_id as \"alpaca_paper_id!:String\",\n                    '' as \"alpaca_paper_secret!:String\",\n                    alpaca_live_id as \"alpaca_live_id!:String\",\n                    '' as \"alpaca_live_secret!:String\",\n                    trade_size as \"trade_size!\",\n                    trade_enable_buy as \"trade_enable_buy!\",\n                    trade_ema_small_size as \"trade_ema_small_size!\",\n                    trade_ema_large_size as \"trade_ema_large_size!\",\n                    trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\",\n                    trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                    ,finnhub_key as \"finnhub_key!:String\"\n                    ,coalesce(account_start_value,0.0) as \"account_start_value!\"\n                    ,coalesce(max_position_age_minute,0.0) as \"max_position_age_minute!\"\n                    ,coalesce(upgrade_min_profit,0.0) as \"upgrade_min_profit!\"\n                    ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as \"upgrade_sell_elapsed_minutes_min!\"\n                    ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as \"upgrade_posn_max_elapsed_minutes!\"\n                    ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as \"upgrade_posn_loss_allowed_dollars!\"\n\n\n                FROM t_settings_test\n                ORDER BY t_settings_test.dtg DESC\n                LIMIT 1\n            "
   },
   "b2fa705f5ff94831630c8927f722c6cecece0d825e9256b70fd9c2b55f6148d5": {
     "describe": {
@@ -1062,6 +892,24 @@
     },
     "query": "\n                select\n                    symbol as \"symbol!\"\n                    ,active as \"active!\"\n                    ,age_minute as \"age_minute!\"\n                    , closed_pl as \"closed_pl!\"\n                    , unrealized_pl as \"unrealized_pl!\"\n                    , posn_pl as \"posn_pl!\"\n                    , unrealized_pl_avg as \"unrealized_pl_avg!\"\n                    , qty_buy_today as \"qty_buy_today!\"\n                    , qty_sell_today as \"qty_sell_today!\"\n                    , count_buy_activity_today as \"count_buy_activity_today!\"\n                    , count_sell_activity_today as \"count_sell_activity_today!\"\n                    , dtg_latest_buy as \"dtg_position\"\n                from v_posn_activity_summary\n            "
   },
+  "c243f022f6ae728ead04c7260773743c27a513247e308a930cd8e0e6375b3c14": {
+    "describe": {
+      "columns": [
+        {
+          "name": "fn_grade_stocks",
+          "ordinal": 0,
+          "type_info": "Void"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "select * from fn_grade_stocks()"
+  },
   "c7db98645f2c87a75c8daea86b4d69a6a28987f084eb765a6632aaf1716185c9": {
     "describe": {
       "columns": [
@@ -1120,6 +968,254 @@
       }
     },
     "query": "\n            insert into trade_fh_latest (dtg, symbol, price, volume)\n            values ($1, $2, $3, $4)\n            on conflict (symbol) do update set dtg=$1, price=$3, volume=$4;\n        "
+  },
+  "dc5dd88b9dcdf204f388ce3364d1b7b96c3c4140e02d4619033f6107b6bf2bb9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "dtg!",
+          "ordinal": 0,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "alpaca_paper_id!",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "alpaca_paper_secret!",
+          "ordinal": 2,
+          "type_info": "Text"
+        },
+        {
+          "name": "alpaca_live_id!",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "alpaca_live_secret!",
+          "ordinal": 4,
+          "type_info": "Text"
+        },
+        {
+          "name": "trade_size!",
+          "ordinal": 5,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "trade_enable_buy!",
+          "ordinal": 6,
+          "type_info": "Bool"
+        },
+        {
+          "name": "trade_ema_small_size!",
+          "ordinal": 7,
+          "type_info": "Int4"
+        },
+        {
+          "name": "trade_ema_large_size!",
+          "ordinal": 8,
+          "type_info": "Int4"
+        },
+        {
+          "name": "trade_sell_high_per_cent_multiplier!",
+          "ordinal": 9,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "trade_sell_high_upper_limit_cents!",
+          "ordinal": 10,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "finnhub_key!",
+          "ordinal": 11,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "account_start_value!",
+          "ordinal": 12,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "max_position_age_minute!",
+          "ordinal": 13,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "upgrade_min_profit!",
+          "ordinal": 14,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "upgrade_sell_elapsed_minutes_min!",
+          "ordinal": 15,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "upgrade_posn_max_elapsed_minutes!",
+          "ordinal": 16,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "upgrade_posn_loss_allowed_dollars!",
+          "ordinal": 17,
+          "type_info": "Numeric"
+        }
+      ],
+      "nullable": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar"
+        ]
+      }
+    },
+    "query": "\n                select\n                    dtg as \"dtg!\"\n                    , alpaca_paper_id as \"alpaca_paper_id!\"\n                    , '' as \"alpaca_paper_secret!\"\n                    , alpaca_live_id as \"alpaca_live_id!\"\n                    , '' as \"alpaca_live_secret!\"\n                    , trade_size as \"trade_size!\"\n                    , trade_enable_buy as \"trade_enable_buy!\"\n                    , trade_ema_small_size as \"trade_ema_small_size!\"\n                    , trade_ema_large_size as \"trade_ema_large_size!\"\n                    , trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\"\n                    , trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                    , finnhub_key as \"finnhub_key!\"\n                    ,coalesce(account_start_value,0.0) as \"account_start_value!\"\n                    ,coalesce(max_position_age_minute,0.0) as \"max_position_age_minute!\"\n                    ,coalesce(upgrade_min_profit,0.0) as \"upgrade_min_profit!\"\n                    ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as \"upgrade_sell_elapsed_minutes_min!\"\n                    ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as \"upgrade_posn_max_elapsed_minutes!\"\n                    ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as \"upgrade_posn_loss_allowed_dollars!\"\n\n                from fn_set_trade_settings($1);\n            "
+  },
+  "ee7c5fc84618ea4a17d5e39cd829520fd7f6eac73140bdf27012e5aec0a42239": {
+    "describe": {
+      "columns": [
+        {
+          "name": "dtg!",
+          "ordinal": 0,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "symbol!",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "exchange!",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "asset_class!",
+          "ordinal": 3,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "avg_entry_price!",
+          "ordinal": 4,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty!",
+          "ordinal": 5,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty_available!",
+          "ordinal": 6,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "side!:PositionSide",
+          "ordinal": 7,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "market_value!",
+          "ordinal": 8,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "cost_basis!",
+          "ordinal": 9,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_pl!",
+          "ordinal": 10,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_plpc!",
+          "ordinal": 11,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_intraday_pl!",
+          "ordinal": 12,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_intraday_plpc!",
+          "ordinal": 13,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "current_price!",
+          "ordinal": 14,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "lastday_price!",
+          "ordinal": 15,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "change_today!",
+          "ordinal": 16,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "asset_id!",
+          "ordinal": 17,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "dtg_updated!",
+          "ordinal": 18,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        true,
+        false,
+        true,
+        true,
+        null,
+        null,
+        null,
+        true,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                select\n                    dtg as \"dtg!\"\n                    ,symbol as \"symbol!\"\n                    ,exchange as \"exchange!\"\n                    ,asset_class as \"asset_class!\"\n                    ,coalesce(avg_entry_price, 0.0) as \"avg_entry_price!\"\n                    ,coalesce(qty,0.0) as \"qty!\"\n                    ,coalesce(qty_available,0.0) as \"qty_available!\"\n                    ,side as \"side!:PositionSide\"\n                    ,coalesce(market_value,0.0) as \"market_value!\"\n                    ,coalesce(cost_basis,0.0) as \"cost_basis!\"\n                    ,coalesce(unrealized_pl,0.0) as \"unrealized_pl!\"\n                    ,coalesce(unrealized_plpc,0.0) as \"unrealized_plpc!\"\n                    ,coalesce(unrealized_intraday_pl,0.0) as \"unrealized_intraday_pl!\"\n                    ,coalesce(unrealized_intraday_plpc,0.0) as \"unrealized_intraday_plpc!\"\n                    ,coalesce(current_price,0.0) as \"current_price!\"\n                    ,coalesce(lastday_price,0.0) as \"lastday_price!\"\n                    ,coalesce(change_today,0.0) as \"change_today!\"\n                    ,asset_id as \"asset_id!\"\n                    ,dtg_updated as \"dtg_updated!\"\n                from\n                alpaca_position\n                order by symbol\n            "
   },
   "eff4a050ae1ff28b285fa6db51f70e066ecfc778b70685f95f4a7e198248bd62": {
     "describe": {

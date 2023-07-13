@@ -22,6 +22,9 @@ pub enum DbMsg {
     FhTrade(FinnhubTrade),
     FhPing(FinnhubPing),
     AlpacaPing(AlpacaPing),
+    RefreshRating,
+
+
 }
 
 pub struct DbActor {}
@@ -102,10 +105,12 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
                 if let Ok(msg) = result {
                     match msg {
 
-                        // DbMsg::LastTrade(last_trade) => {
-                        //     tracing::debug!("[db_thread, DbMsg::LastTrade] {:?}", &last_trade);
-                        //     crate::db::insert_trade_rest(&client, last_trade).await;
-                        // },
+                        DbMsg::RefreshRating => {
+
+                            tracing::debug!("[db] received DbMsg::RefreshRating");
+                            refresh_rating(&pool).await;
+
+                        }
 
                         DbMsg::WsQuote(q) => {
                             tracing::debug!("[db_thread, DbMsg::WsQuote] quote: {:?}", &q);
@@ -166,6 +171,17 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
         }
     }
 }
+
+/// call an SQL function to poll the recent
+async fn refresh_rating(pool:&PgPool){
+    tracing::debug!("[refresh_rating] starting...");
+    let _result = sqlx::query!(r#"select * from fn_grade_stocks()"#).execute(pool).await;
+    tracing::debug!("[refresh_rating] refresh done");
+
+}
+
+
+
 
 /// deprecated
 // async fn insert_alpaca_websocket_trade(client: &Client, t: &AlpWsTrade) {

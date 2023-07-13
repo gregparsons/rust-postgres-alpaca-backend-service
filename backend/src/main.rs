@@ -6,6 +6,7 @@ pub mod db;
 pub mod alpaca_rest;
 pub mod alpaca_websocket;
 pub mod finnhub_websocket;
+mod stock_rating;
 
 use crate::data_collector::DataCollector;
 use common_lib::init::init;
@@ -35,7 +36,7 @@ fn main() {
                 DataCollector::run(pool, &settings).await;
             }
             Err(e) => {
-                tracing::debug!("[main] could not load settings: {:?}", &e);
+                tracing::error!("[main] could not load settings: {:?}", &e);
             }
         }
     });
