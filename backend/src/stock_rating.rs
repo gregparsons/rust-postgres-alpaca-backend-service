@@ -12,6 +12,7 @@
 
 use std::time::Duration;
 use crossbeam_channel::{Sender, tick};
+use common_lib::market_hours::MarketHours;
 use crate::db::DbMsg;
 
 const RATING_REFRESH_SECS:u64=30;
@@ -23,14 +24,14 @@ pub fn run(tx: Sender<DbMsg>){
 
     loop {
 
-        tracing::debug!("[run] sending DbMsg::RefreshRating");
-        let _send_result = tx.send(DbMsg::RefreshRating);
+        if MarketHours::is_open(){
+            tracing::debug!("[run] sending DbMsg::RefreshRating");
+            let _send_result = tx.send(DbMsg::RefreshRating);
+        }else{
+            tracing::debug!("[run] not sending DbMsg::RefreshRating, market closed");
+        }
+
         ticker.recv().unwrap();
-
     }
-
-
-    // std::thread::sleep(Duration::from_secs(5));
-
 }
 

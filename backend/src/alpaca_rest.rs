@@ -7,7 +7,7 @@ use sqlx::PgPool;
 use common_lib::alpaca_activity::Activity;
 use common_lib::alpaca_order::Order;
 use common_lib::alpaca_position::Position;
-use common_lib::market_hours::{MARKET_CLOSE_EXTENDED, MARKET_OPEN_EXTENDED};
+use common_lib::market_hours::{MARKET_CLOSE_EXT, MARKET_OPEN_EXT};
 use common_lib::settings::Settings;
 use common_lib::sqlx_pool::create_sqlx_pg_pool;
 use tokio::runtime::Handle;
@@ -43,8 +43,8 @@ impl AlpacaRest {
             let mut alpaca_poll_rate_ms: u64;
 
             // this is set in all.sh via docker run
-            let time_open_ny = MARKET_OPEN_EXTENDED.clone();
-            let time_close_ny = MARKET_CLOSE_EXTENDED.clone();
+            let time_open_ny = MARKET_OPEN_EXT.clone();
+            let time_close_ny = MARKET_CLOSE_EXT.clone();
             // Call the API if the market is open in NYC
 
             loop {
