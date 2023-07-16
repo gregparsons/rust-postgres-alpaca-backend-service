@@ -1,9 +1,11 @@
 //! alpaca_api_structs
 //!
 
+use std::fmt;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use crate::alpaca_order::Order;
 
 // https://alpaca.markets/docs/api-documentation/api-v2/market-data/last-trade/#last-trade-entity
 
@@ -21,11 +23,11 @@ pub struct AlpActionAuthData {
     pub status: String,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
-struct AlpacaStreamQuote {
-    stream: String,
-    data: AlpWsQuote,
-}
+// #[derive(Deserialize, Serialize, Debug, Clone)]
+// struct AlpacaStreamQuote {
+//     stream: String,
+//     data: AlpWsQuote,
+// }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 struct AlpacaStreamTrade {
@@ -151,7 +153,7 @@ pub struct AlpWsTrade {
     }
 
 */
-
+/*
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct AlpWsQuote {
     /*
@@ -249,11 +251,11 @@ pub struct Quote {
     // pub qt_updated:chrono::DateTime<chrono::FixedOffset>,
     // pub last_updated:String,
 }
-
-#[derive(Deserialize, Serialize, Debug, Clone)]
-pub struct Status {
-    pub timestamp: DateTime<Utc>,
-}
+*/
+// #[derive(Deserialize, Serialize, Debug, Clone)]
+// pub struct Status {
+//     pub timestamp: DateTime<Utc>,
+// }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct Data {
@@ -279,4 +281,151 @@ pub struct QuoteCurrency {
 pub struct CoinToCurrencyTicker {
     pub price: BigDecimal,
     pub last_updated: DateTime<Utc>,
+}
+
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct MinuteBar {
+    #[serde(rename = "T")]
+    msg_type: String,
+    #[serde(rename = "S")]
+    pub symbol: String,
+    #[serde(rename = "o")]
+    pub price_open: BigDecimal,
+    #[serde(rename = "h")]
+    pub price_high: BigDecimal,
+    #[serde(rename = "l")]
+    pub price_low: BigDecimal,
+    #[serde(rename = "c")]
+    pub price_close: BigDecimal,
+    #[serde(rename = "v")]
+    pub volume: usize,
+    #[serde(rename = "t")]
+    pub dtg: DateTime<Utc>,
+}
+
+#[derive(Serialize, Debug)]
+pub struct AlpacaPing {
+    pub dtg: DateTime<Utc>,
+}
+
+
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct WsAuthenticate {
+    pub action: ActionAlpaca,
+    pub key: String,
+    pub secret: String,
+}
+
+
+
+
+
+#[derive(Debug, Deserialize)]
+#[serde(content = "data", tag = "stream")]
+#[serde(rename_all = "snake_case")]
+pub enum StreamAlpaca {
+
+    Authorization(StreamAuthorization),
+
+    Listening(AlpacaListeningList),
+
+    TradeUpdates(UpdateOrder),
+
+    AccountUpdates,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct StreamAuthorization {
+    pub status: StatusAuth,
+    pub action: ActionAlpaca,
+}
+
+#[derive(Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum StatusAuth {
+    Authorized,
+    Unauthorized,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ActionAlpaca {
+    Authenticate,
+    // outgoing
+    Listen,
+    Auth,
+    Subscribe,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ActionOutboundAlpaca {
+    Listen,
+    TradeUpdates,
+    AccountUpdates,
+}
+
+// enable to_string(); print enum in lowercase
+impl fmt::Display for ActionOutboundAlpaca {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}", snakecase::ascii::to_snakecase(format!("{:?}", self)))
+    }
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct AlpacaListeningList {
+    pub streams: Vec<String>
+}
+
+// { "action": "listen", "data": { "streams": ["T.TSLA", "Q.TSLA", "Q.AAPL", "T.AAPL"]}}
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct WsListenMessage {
+    pub action: ActionAlpaca,
+    pub data: WsListenMessageData,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+pub struct WsListenMessageData {
+    pub streams: Vec<String>,
+}
+
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case", tag = "event")]
+pub enum UpdateOrder {
+    Accepted { order:Order},
+    Calculated { order: Order },
+    Canceled {
+        timestamp: DateTime<Utc>,
+        order: Order
+    },
+    DoneForDay { order: Order },
+    Expired {
+        timestamp: DateTime<Utc>
+        , order: Order
+    },
+    Fill {
+        timestamp: DateTime<Utc>,
+        price: BigDecimal,
+        qty: BigDecimal,
+        order: Order
+    },
+    New { order: Order },
+    OrderCancelRejected { order: Order },
+    OrderReplaceRejected { order: Order },
+    PartialFill {
+        timestamp: DateTime<Utc>,
+        price: BigDecimal,
+        qty: BigDecimal,
+        order: Order
+    },
+    PendingCancel { order: Order },
+    PendingNew { order: Order },
+    PendingReplace { order: Order },
+    Rejected { timestamp: DateTime<Utc>, order: Order },
+    Replaced { timestamp: DateTime<Utc>, order: Order },
+    Stopped { order: Order },
+    Suspended { order: Order },
 }

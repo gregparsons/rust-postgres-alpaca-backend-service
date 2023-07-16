@@ -3,8 +3,7 @@
 //! start() spawns a long-running thread to maintain an open connection to a database pool
 //!
 
-use common_lib::alpaca_api_structs::{AlpWsQuote, AlpWsTrade};
-use common_lib::common_structs::{AlpacaPing, MinuteBar};
+use common_lib::alpaca_api_structs::{AlpacaPing, /*AlpWsQuote, */AlpWsTrade, MinuteBar};
 use common_lib::finnhub::{FinnhubPing, FinnhubTrade};
 use common_lib::sqlx_pool::create_sqlx_pg_pool;
 use crossbeam::channel::Sender;
@@ -17,14 +16,12 @@ use tokio_postgres::{Client, SimpleQueryMessage};
 pub enum DbMsg {
     // LastTrade(AlpacaTradeRest),
     WsTrade(AlpWsTrade),
-    WsQuote(AlpWsQuote),
+    // WsQuote(AlpWsQuote),
     MinuteBar(MinuteBar),
     FhTrade(FinnhubTrade),
     FhPing(FinnhubPing),
     AlpacaPing(AlpacaPing),
     RefreshRating,
-
-
 }
 
 pub struct DbActor {}
@@ -112,10 +109,10 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
 
                         }
 
-                        DbMsg::WsQuote(q) => {
-                            tracing::debug!("[db_thread, DbMsg::WsQuote] quote: {:?}", &q);
-                            crate::db::insert_ws_quote(&client, q).await;
-                        },
+                        // DbMsg::WsQuote(q) => {
+                        //     tracing::debug!("[db_thread, DbMsg::WsQuote] quote: {:?}", &q);
+                        //     crate::db::insert_ws_quote(&client, q).await;
+                        // },
 
                         DbMsg::WsTrade(t) => {
                             tracing::debug!("[db_thread, DbMsg::WsTrade] trade: {:?}", &t);
@@ -225,56 +222,56 @@ async fn refresh_rating(pool:&PgPool){
 //     }
 // }
 
-/// TODO: convert this to SQLX; it currently does not use a connection pool
-async fn insert_ws_quote(client: &Client, t: AlpWsQuote) {
-    let sql = format!(
-        r"
-		insert into t_ws_quote(
-			dtg,
-			dtg_updated,
-			event,
-			symbol,
-
-			exchange_bid,
-			price_bid,
-			size_bid,
-
-			exchange_ask,
-			price_ask,
-			size_ask
-		)
-		values ('{}','{}','{}','{}',
-			{},{},{},
-			{},{},{});",
-        t.dtg,
-        t.dtg_updated,
-        t.event,
-        t.symbol,
-        t.exchange_bid,
-        t.price_bid,
-        t.size_bid,
-        t.exchange_ask,
-        t.price_ask,
-        t.size_ask
-    );
-
-    // tracing::debug!("[insert_ws_quote] sql: {}", &sql);
-
-    // run query
-    if let Ok(result_vec) = client.simple_query(&sql).await {
-        for i in result_vec {
-            match i {
-                SimpleQueryMessage::CommandComplete(row_count) => {
-                    tracing::debug!("[insert_ws_quote] {} row(s) inserted", row_count);
-                }
-                SimpleQueryMessage::Row(_row) => {}
-                _ => tracing::debug!("[insert_ws_quote] Something weird happened on log query."),
-            }
-        }
-    } else {
-        tracing::debug!("[insert_ws_quote] log insert failed");
-    }
-}
+// /// TODO: convert this to SQLX; it currently does not use a connection pool
+// async fn insert_ws_quote(client: &Client, t: AlpWsQuote) {
+//     let sql = format!(
+//         r"
+// 		insert into t_ws_quote(
+// 			dtg,
+// 			dtg_updated,
+// 			event,
+// 			symbol,
+//
+// 			exchange_bid,
+// 			price_bid,
+// 			size_bid,
+//
+// 			exchange_ask,
+// 			price_ask,
+// 			size_ask
+// 		)
+// 		values ('{}','{}','{}','{}',
+// 			{},{},{},
+// 			{},{},{});",
+//         t.dtg,
+//         t.dtg_updated,
+//         t.event,
+//         t.symbol,
+//         t.exchange_bid,
+//         t.price_bid,
+//         t.size_bid,
+//         t.exchange_ask,
+//         t.price_ask,
+//         t.size_ask
+//     );
+//
+//     // tracing::debug!("[insert_ws_quote] sql: {}", &sql);
+//
+//     // run query
+//     if let Ok(result_vec) = client.simple_query(&sql).await {
+//         for i in result_vec {
+//             match i {
+//                 SimpleQueryMessage::CommandComplete(row_count) => {
+//                     tracing::debug!("[insert_ws_quote] {} row(s) inserted", row_count);
+//                 }
+//                 SimpleQueryMessage::Row(_row) => {}
+//                 _ => tracing::debug!("[insert_ws_quote] Something weird happened on log query."),
+//             }
+//         }
+//     } else {
+//         tracing::debug!("[insert_ws_quote] log insert failed");
+//     }
+// }
 
 // /// insert a result from polling the rest API
 // /// TODO: convert this to SQLX; it currently does not use a connection pool

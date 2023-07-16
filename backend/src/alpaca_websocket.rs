@@ -15,10 +15,7 @@
 */
 // use crossbeam_channel::{after, select, tick};
 use crate::db::DbMsg;
-use common_lib::alpaca_api_structs::AlpWsTrade;
-use common_lib::common_structs::{
-    AlpacaPing, MinuteBar, WsAuthenticate, WsListenMessage, WsListenMessageData,
-};
+use common_lib::alpaca_api_structs::{AlpacaPing, StreamAlpaca, AlpWsTrade, MinuteBar, ActionAlpaca, WsAuthenticate, WsListenMessage, WsListenMessageData, StatusAuth, ActionOutboundAlpaca};
 use common_lib::settings::Settings;
 use crossbeam::channel::Sender;
 use serde_json::{json, Value};
@@ -27,7 +24,7 @@ use tungstenite::client::IntoClientRequest;
 use tungstenite::Message;
 
 #[derive(PartialEq)]
-pub enum AlpacaStream {
+pub enum AlpacaData {
     TextData,
     BinaryUpdates,
 }
@@ -36,12 +33,12 @@ pub struct AlpacaWebsocket;
 
 impl AlpacaWebsocket {
 
-    pub fn run(tx_db: Sender<DbMsg>, stream_type: &AlpacaStream, symbols: Vec<String>, settings: Settings) {
+    pub fn run(tx_db: Sender<DbMsg>, stream_type: &AlpacaData, symbols: Vec<String>, settings: Settings) {
         tracing::debug!("[run]");
         AlpacaWebsocket::ws_connect(tx_db, stream_type, symbols, &settings);
     }
 
-    fn ws_connect(tx_db: Sender<DbMsg>, stream_type: &AlpacaStream, symbols: Vec<String>, settings: &Settings) {
+    fn ws_connect(tx_db: Sender<DbMsg>, stream_type: &AlpacaData, symbols: Vec<String>, settings: &Settings) {
 
         // ***** a test for times when the websocket feed is down
         // TODO: add a crossbeam_channel timer to simulate an inbound stream
@@ -51,10 +48,10 @@ impl AlpacaWebsocket {
         // let _ = tx_db.send(DbMsg::WsTrade(trade.to_owned()));
 
         let ws_url = match stream_type {
-            AlpacaStream::TextData => {
+            AlpacaData::TextData => {
                 std::env::var("ALPACA_WS_URL_TEXT").expect("ALPACA_WS_URL_TEXT not found")
             }
-            AlpacaStream::BinaryUpdates => {
+            AlpacaData::BinaryUpdates => {
                 std::env::var("ALPACA_WS_URL_BIN").expect("ALPACA_WS_URL_BIN not found")
             }
         };
@@ -91,39 +88,57 @@ impl AlpacaWebsocket {
                                 }
 
                                 Message::Binary(b_msg) => {
-                                    tracing::debug!("[ws_connect][binary] {:?}", &b_msg);
-                                    match serde_json::from_slice::<Value>(&b_msg) {
-                                        Ok(json) => {
-                                            tracing::debug!(
-                                                "[ws_connect][binary] binary json: {:?}",
-                                                &json
-                                            );
-                                            tracing::debug!("[ws_connect][binary] json[data][stream].as_str(): {:?}", json["stream"].as_str());
-                                            if json["stream"].as_str().unwrap() == "authorization" {
-                                                if json["data"]["action"].as_str().unwrap() == "authenticate" && json["data"]["status"].as_str().unwrap() == "authorized" {
-                                                    tracing::debug!(
-                                                        "[ws_connect][binary] authorized"
-                                                    );
+                                    tracing::debug!("[ws_connect][binary] b_msg: {:?}", String::from_utf8(b_msg.clone()).unwrap());
 
-                                                    // SEND trade_updates request
-                                                    let listen_msg = generate_ws_listen_message(vec!["trade_updates".to_string()]);
-                                                    tracing::debug!("[ws_connect][binary] outgoing listen msg: {}", &listen_msg);
-                                                    let _ =
-                                                        ws.write_message(Message::Text(listen_msg));
-                                                } else {
-                                                    tracing::debug!("[ws_connect][binary] not authorized");
-                                                }
-                                            } else if json["stream"].as_str().unwrap() == "listening"
-                                            {
-                                                if let Ok(streams) = serde_json::from_value::<Vec<String>>(json["data"]["streams"].clone()) {
-                                                    for stream in streams {
-                                                        tracing::debug!("[ws_connect][binary] listening to stream: {}", &stream);
+                                    // match serde_json::from_slice::<Value>(&b_msg) {
+
+                                    // match
+                                    let stream_result = serde_json::from_slice::<StreamAlpaca>(&b_msg);
+
+                                    tracing::debug!("[ws_connect][binary] AlpacaStream parse: {:?}", &stream_result);
+
+                                    match stream_result{
+
+                                        Ok(StreamAlpaca::Authorization(auth))=>{
+                                            match auth.action{
+                                                ActionAlpaca::Authenticate=>{
+                                                    match auth.status {
+                                                        StatusAuth::Authorized=>{
+                                                            tracing::debug!("[ws_connect][binary] authorized, sending listen request");
+
+                                                            // SEND trade_updates request
+                                                            // let listen_msg = generate_ws_listen_message(vec!["trade_updates".to_string()]);
+                                                            let listen_msg = generate_ws_listen_message(vec![ActionOutboundAlpaca::TradeUpdates, ActionOutboundAlpaca::AccountUpdates]);
+                                                            tracing::debug!("[ws_connect][binary] outgoing listen msg: {}", &listen_msg);
+                                                            let _ = ws.write_message(Message::Text(listen_msg));
+
+                                                        },
+                                                        StatusAuth::Unauthorized=>{
+                                                            tracing::debug!("[ws_connect][binary] unauthorized");
+                                                        },
                                                     }
+                                                },
+                                                _ => {
+                                                    // don't care, not possible
                                                 }
                                             }
-                                        }
-                                        Err(e) => {
-                                            tracing::debug!("[ws_connect][binary] binary json conversion error: {:?}", &e);
+
+                                        },
+
+                                        Ok(StreamAlpaca::AccountUpdates)=> {
+                                            tracing::debug!("[ws_connect][binary] account_update: {:?}", stream_result);
+                                        },
+
+                                        Ok(StreamAlpaca::Listening(listen_list))=>{
+                                            tracing::debug!("[ws_connect][binary] listening to: {:?}", listen_list.streams);
+                                        },
+
+                                        Ok(StreamAlpaca::TradeUpdates(order_update))=>{
+                                            tracing::debug!("[ws_connect][binary][TradeUpdates] order_update: {:?}", &order_update);
+                                        },
+
+                                        Err(e)=>{
+                                            tracing::debug!("[ws_connect][binary] error: {:?}", &e);
                                         }
                                     }
                                 }
@@ -133,6 +148,7 @@ impl AlpacaWebsocket {
                                     let json_vec: Vec<Value> =
                                         serde_json::from_str(&t_msg).unwrap();
                                     for json in json_vec {
+
                                         // https://alpaca.markets/docs/api-references/market-data-api/stock-pricing-data/realtime/
                                         // [{"T":"success","msg":"connected"}]
                                         // https://alpaca.markets/docs/api-references/market-data-api/stock-pricing-data/realtime/#minute-bar-schema
@@ -142,7 +158,9 @@ impl AlpacaWebsocket {
                                             match alpaca_msg_type {
                                                 "error" => {
                                                     if let Some(_msg) = &json["msg"].as_str() {
-                                                        tracing::debug!("[ws_connect][text] msg: {}({})",&json["msg"].as_str().unwrap(),&json["code"].as_u64().unwrap());
+                                                        tracing::debug!("[ws_connect][text] msg: {}({})",
+                                                            &json["msg"].as_str().unwrap(),
+                                                            &json["code"].as_u64().unwrap());
                                                     }
                                                 }
                                                 "success" => {
@@ -159,6 +177,8 @@ impl AlpacaWebsocket {
                                                                 if msg == "authenticated" {
                                                                     // subscribe to stock feeds
                                                                     // https://alpaca.markets/docs/api-references/market-data-api/stock-pricing-data/realtime/#subscribe
+
+
                                                                     let json = json!({
                                                                         "action": "subscribe",
                                                                         "trades":  stock_list_to_uppercase(&symbols),
@@ -168,6 +188,9 @@ impl AlpacaWebsocket {
                                                                     tracing::debug!("[ws_connect] sending subscription request...\n{}", &json);
                                                                     let result = ws.write_message(Message::Text(json.to_string()));
                                                                     tracing::debug!("[ws_connect] subscription request sent: {:?}", &result);
+
+
+
                                                                 }
                                                             }
                                                             None => tracing::debug!("[ws_connect][text][success] no message, needed 'authenticated'"),
@@ -177,10 +200,7 @@ impl AlpacaWebsocket {
                                                 "subscription" => {
                                                     // subscription confirmation
                                                     // [{"T":"subscription","trades":["AAPL"],"quotes":["AMD","CLDR"],"bars":["IBM","AAPL","VOO"]}]
-                                                    tracing::debug!(
-                                                        "[ws_connect][subscription] {:?}",
-                                                        &json
-                                                    );
+                                                    tracing::debug!("[ws_connect][subscription] {:?}",&json);
 
                                                     // subscription confirmed; get the latest; change the state machine to accepting updates
                                                     // (though not really necessary, can take them if they come)
@@ -191,9 +211,7 @@ impl AlpacaWebsocket {
                                                     {
                                                         Ok(trade) => {
                                                             tracing::debug!("[ws_connect][text] trade: {:?}",&trade);
-                                                            let _ = tx_db.send(DbMsg::WsTrade(
-                                                                trade.to_owned(),
-                                                            ));
+                                                            let _ = tx_db.send(DbMsg::WsTrade(trade.to_owned()));
                                                         }
                                                         Err(e) => {
                                                             tracing::debug!("[ws_connect][text] trade parse failed: {:?}", &e);
@@ -289,7 +307,7 @@ fn generate_ws_authentication_message(settings: &Settings) -> String {
     let api_secret = settings.alpaca_paper_secret.clone(); //std::env::var("ALPACA_API_SECRET").expect("ALPACA_API_SECRET");
 
     let json_obj = WsAuthenticate {
-        action: "auth".to_owned(),
+        action: ActionAlpaca::Auth, //  "auth".to_owned(),
         key: api_key,
         secret: api_secret,
     };
@@ -307,13 +325,15 @@ fn generate_ws_authentication_message(settings: &Settings) -> String {
 /// frames, which differs from the text frames that comes from the wss://data.alpaca.markets/stream stream."
 /// (https://alpaca.markets/docs/api-references/trading-api/streaming/#streaming)
 ///
-fn generate_ws_listen_message(streams_to_subscribe: Vec<String>) -> String {
+fn generate_ws_listen_message(streams: Vec<ActionOutboundAlpaca>) -> String {
+
+    let streams:Vec<String> = streams.iter().map(|x| x.to_string()).collect();
+
     let listen_message = WsListenMessage {
-        action: "listen".to_string(),
-        data: WsListenMessageData {
-            streams: streams_to_subscribe,
-        },
+        action: ActionAlpaca::Listen,
+        data: WsListenMessageData { streams },
     };
+
     tracing::debug!("[gen_listen_json] listen_message: {:?}", &listen_message);
     serde_json::to_value(&listen_message)
         .expect("[gen_listen_json] json serialize failed")

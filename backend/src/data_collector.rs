@@ -14,7 +14,7 @@
 */
 
 use crate::db::DbActor;
-use crate::alpaca_websocket::{AlpacaStream, AlpacaWebsocket};
+use crate::alpaca_websocket::{AlpacaData, AlpacaWebsocket};
 use crate::finnhub_websocket::FinnhubWebsocket;
 use common_lib::settings::Settings;
 use common_lib::symbol_list::SymbolList;
@@ -52,7 +52,7 @@ impl DataCollector {
                 Ok(symbols) => {
                     let join_handle = std::thread::spawn(|| {
                         // AlpacaWebsocket::run(tx_db_ws, &AlpacaStream::TextData, symbols, settings2);
-                        AlpacaWebsocket::run(tx_db_ws, &AlpacaStream::BinaryUpdates, symbols, settings2);
+                        AlpacaWebsocket::run(tx_db_ws, &AlpacaData::BinaryUpdates, symbols, settings2);
                     });
                     handles.push(join_handle);
                 },
