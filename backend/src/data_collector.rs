@@ -50,7 +50,10 @@ impl DataCollector {
             let settings2 = (*settings).clone();
             match SymbolList::get_active_symbols(&ws_pool).await {
                 Ok(symbols) => {
-                    let join_handle = std::thread::spawn(|| {  AlpacaWebsocket::run(tx_db_ws, &AlpacaStream::TextData, symbols, settings2); });
+                    let join_handle = std::thread::spawn(|| {
+                        // AlpacaWebsocket::run(tx_db_ws, &AlpacaStream::TextData, symbols, settings2);
+                        AlpacaWebsocket::run(tx_db_ws, &AlpacaStream::BinaryUpdates, symbols, settings2);
+                    });
                     handles.push(join_handle);
                 },
                 Err(e) => tracing::debug!("[start] error getting symbols for websocket: {:?}", &e),
