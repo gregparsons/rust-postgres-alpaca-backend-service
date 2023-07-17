@@ -96,8 +96,7 @@ pub struct Order {
     pub filled_qty: Option<BigDecimal>,
     pub filled_avg_price: Option<BigDecimal>,
     pub order_class: Option<String>,
-    // deprecated (so they could use "type" screw up every programming language reserved keyword SERDE)
-    // order_type: String,
+    // deprecated
     #[serde(rename = "type")]
     pub order_type_v2: OrderType,
     pub side: TradeSide,

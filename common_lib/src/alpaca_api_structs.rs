@@ -455,10 +455,13 @@ pub enum DataSuccess{
 pub struct SubscriptionList{
     pub trades:Vec<String>,
     pub quotes:Vec<String>,
-    pub updatedBars:Vec<String>,
-    pub cancelErrors:Vec<String>,
+    #[serde(rename="updatedBars")]
+    pub updated_bars:Vec<String>,
+    #[serde(rename="cancelErrors")]
+    pub cancel_errors:Vec<String>,
     pub corrections:Vec<String>,
-    pub dailyBars:Vec<String>,
+    #[serde(rename="dailyBars")]
+    pub daily_bars:Vec<String>,
     pub statuses:Vec<String>,
     pub lulds:Vec<String>,
 }

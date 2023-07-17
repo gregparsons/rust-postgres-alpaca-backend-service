@@ -46,9 +46,9 @@ impl AlpacaWebsocket {
         // let _ = tx_db.send(DbMsg::WsTrade(trade.to_owned()));
 
         let ws_url = match stream_type {
-            AlpacaData::TextData => std::env::var("ALPACA_WS_URL_TEXT").expect("ALPACA_WS_URL_TEXT not found")
-            AlpacaData::BinaryUpdates => std::env::var("ALPACA_WS_URL_BIN").expect("ALPACA_WS_URL_BIN not found")
-            
+            AlpacaData::TextData => std::env::var("ALPACA_WS_URL_TEXT").expect("ALPACA_WS_URL_TEXT not found"),
+            AlpacaData::BinaryUpdates => std::env::var("ALPACA_WS_URL_BIN").expect("ALPACA_WS_URL_BIN not found"),
+
         };
 
         // websocket restart loop
@@ -128,7 +128,6 @@ impl AlpacaWebsocket {
                                                     // don't care, not possible
                                                 }
                                             }
-
                                         },
 
                                         Ok(StreamAlpaca::AccountUpdates)=> {
