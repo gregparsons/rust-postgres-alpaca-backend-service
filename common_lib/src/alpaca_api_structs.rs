@@ -319,7 +319,7 @@ pub struct Quote {
                 "total_supply": Number(18530887)
             }
         )
-    }*/
+    }
     // timestamps can be in string here because they insert fine to postgres as an rfc string
     // pub id:i64,
     // pub dtg:chrono::DateTime<chrono::FixedOffset>,
