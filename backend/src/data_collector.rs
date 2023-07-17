@@ -20,7 +20,7 @@ use common_lib::settings::Settings;
 use common_lib::symbol_list::SymbolList;
 use sqlx::PgPool;
 use std::str::FromStr;
-use common_lib::alpaca_api_structs::AlpacaData;
+use common_lib::alpaca_api_structs::WebsocketMessageFormat;
 use crate::alpaca_rest::AlpacaRest;
 use crate::stock_rating;
 
@@ -48,7 +48,6 @@ impl DataCollector {
             // spawn long-running text thread
             let tx_db_ws = tx_db.clone();
             let ws_pool = pool.clone();
-            let settings2 = (*settings).clone();
             match SymbolList::get_active_symbols(&ws_pool).await {
 
                 Ok(symbols) => {
@@ -59,7 +58,7 @@ impl DataCollector {
 
                     let join_handle = std::thread::spawn(|| {
                         tracing::debug!("[run] starting text data websocket");
-                        AlpacaWebsocket::run(tx_db_ws, &AlpacaData::TextData, symbols, settings3);
+                        AlpacaWebsocket::run(tx_db_ws, &WebsocketMessageFormat::TextData, symbols, settings3);
                         // AlpacaWebsocket::run(tx_db_ws.clone(), &AlpacaData::BinaryUpdates, symbols.clone(), settings2.clone());
                     });
                     handles.push(join_handle);
@@ -67,7 +66,7 @@ impl DataCollector {
                     let join_handle = std::thread::spawn(|| {
                         tracing::debug!("[run] starting binary data for 'trade_updates'");
                         // AlpacaWebsocket::run(tx_db_ws, &AlpacaData::TextData, symbols, settings2);
-                        AlpacaWebsocket::run(tx_db_ws2, &AlpacaData::BinaryUpdates, symbols2, settings2);
+                        AlpacaWebsocket::run(tx_db_ws2, &WebsocketMessageFormat::BinaryUpdates, symbols2, settings2);
                     });
                     handles.push(join_handle);
 

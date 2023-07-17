@@ -3,7 +3,7 @@
 //! start() spawns a long-running thread to maintain an open connection to a database pool
 //!
 
-use common_lib::alpaca_api_structs::{AlpacaPing, /*AlpWsQuote, */AlpWsTrade, MinuteBar};
+use common_lib::alpaca_api_structs::{Ping, /*AlpWsQuote, */AlpacaTradeWs, MinuteBar};
 use common_lib::finnhub::{FinnhubPing, FinnhubTrade};
 use common_lib::sqlx_pool::create_sqlx_pg_pool;
 use crossbeam::channel::Sender;
@@ -15,12 +15,12 @@ use tokio_postgres::{Client, SimpleQueryMessage};
 #[derive(Debug)]
 pub enum DbMsg {
     // LastTrade(AlpacaTradeRest),
-    WsTrade(AlpWsTrade),
+    TradeAlpaca(AlpacaTradeWs),
     // WsQuote(AlpWsQuote),
     MinuteBar(MinuteBar),
-    FhTrade(FinnhubTrade),
-    FhPing(FinnhubPing),
-    AlpacaPing(AlpacaPing),
+    TradeFinnhub(FinnhubTrade),
+    PingFinnhub(FinnhubPing),
+    PingAlpaca(Ping),
     RefreshRating,
 }
 
@@ -114,7 +114,7 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
                         //     crate::db::insert_ws_quote(&client, q).await;
                         // },
 
-                        DbMsg::WsTrade(t) => {
+                        DbMsg::TradeAlpaca(t) => {
                             tracing::debug!("[db_thread, DbMsg::WsTrade] trade: {:?}", &t);
 
                             // old; uses tokio::postgres w/o a connection pool
@@ -137,7 +137,7 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
                             crate::db::insert_minute_bar(&client, &minute_bar).await;
                         }
 
-                        DbMsg::FhTrade(finnhub_trade) => {
+                        DbMsg::TradeFinnhub(finnhub_trade) => {
 
                             // tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub_trade received by db thread: {:?}", &finnhub_trade);
                             match insert_finnhub_trade(&finnhub_trade, &pool).await {
@@ -154,11 +154,11 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
 
                         },
 
-                        DbMsg::FhPing(ping) => {
+                        DbMsg::PingFinnhub(ping) => {
                             let _ = insert_finnhub_ping(&ping, &pool).await;
 
                         },
-                        DbMsg::AlpacaPing(ping) => {
+                        DbMsg::PingAlpaca(ping) => {
                             let _ = insert_alpaca_ping(&ping, &pool).await;
 
                         }
@@ -389,7 +389,7 @@ async fn insert_finnhub_trade_latest(
 }
 
 /// Insert an Alpaca trade received on the websocket
-async fn insert_alpaca_trade(t: &AlpWsTrade, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
+async fn insert_alpaca_trade(t: &AlpacaTradeWs, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
     sqlx::query!(
         r#"
         insert into trade_alp (dtg, symbol, price, size)
@@ -406,7 +406,7 @@ async fn insert_alpaca_trade(t: &AlpWsTrade, pool: &PgPool) -> Result<PgQueryRes
 
 /// Continuously overwrite only the latest trade for a given symbol so we have a fast way of getting the most recent price.
 async fn insert_alpaca_trade_latest(
-    trade: &AlpWsTrade,
+    trade: &AlpacaTradeWs,
     pool: &PgPool,
 ) -> Result<PgQueryResult, sqlx::Error> {
     sqlx::query!(
@@ -438,7 +438,7 @@ async fn insert_finnhub_ping(
 
 /// Append a timestamp to the ping table whenever the Finnhub websocket pings. Use it to determine if the websocket goes down.
 async fn insert_alpaca_ping(
-    ping: &AlpacaPing,
+    ping: &Ping,
     pool: &PgPool,
 ) -> Result<PgQueryResult, sqlx::Error> {
     sqlx::query!(

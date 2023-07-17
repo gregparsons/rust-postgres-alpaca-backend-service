@@ -86,13 +86,13 @@ impl FinnhubWebsocket {
                                                 // tracing::debug!("[deserialize] {:?}", &trades);
 
                                                 for trade in &trades {
-                                                    let _ = tx_db.send(DbMsg::FhTrade(trade.clone()));
+                                                    let _ = tx_db.send(DbMsg::TradeFinnhub(trade.clone()));
                                                 }
                                             }
 
                                             Ok(FinnhubPacket::Ping) => {
                                                 tracing::info!("[Finnhub] ping");
-                                                let _ = tx_db.send(DbMsg::FhPing(FinnhubPing { dtg: chrono::Utc::now() }));
+                                                let _ = tx_db.send(DbMsg::PingFinnhub(FinnhubPing { dtg: chrono::Utc::now() }));
                                             }
 
                                             Err(e) => tracing::debug!("[deserialize] FinnhubPacket json error {:?}",&e),
