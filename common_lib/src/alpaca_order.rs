@@ -96,8 +96,7 @@ pub struct Order {
     pub filled_qty: Option<BigDecimal>,
     pub filled_avg_price: Option<BigDecimal>,
     pub order_class: Option<String>,
-    // deprecated (so they could use "type" screw up every programming language reserved keyword SERDE)
-    // order_type: String,
+    // deprecated
     #[serde(rename = "type")]
     pub order_type_v2: OrderType,
     pub side: TradeSide,
@@ -306,3 +305,57 @@ impl fmt::Display for Order {
         }
     }
 }
+
+
+#[cfg(test)]
+mod tests{
+    use crate::alpaca_order::{Order};
+
+    #[test]
+    /// confirm parsing from json to struct of inbound (over api and websocket) Orders works
+    fn parse_order(){
+        println!("test_order: {}", TEST_ORDER);
+        let order_result = serde_json::from_str::<Order>(TEST_ORDER);
+        println!("order_result: {:?}", &order_result);
+        assert!(order_result.is_ok(), "order result was not okay");
+    }
+
+    const TEST_ORDER:&str = r#"
+        {
+           "id": "559320e3-acf7-4952-ac95-bff7910c6a6a",
+           "client_order_id": "559320e3-acf7-4952-ac95-bff7910c6a6a",
+           "created_at": "2023-01-01T01:10:10Z",
+           "updated_at": "2023-01-01T01:10:10Z",
+           "submitted_at": "2023-01-01T01:10:10Z",
+           "filled_at": "2023-01-01T01:10:10Z",
+           "expired_at": "2023-01-01T01:10:10Z",
+           "canceled_at": "2023-01-01T01:10:10Z",
+           "failed_at": "2023-01-01T01:10:10Z",
+           "replaced_at": "2023-01-01T01:10:10Z",
+           "replaced_by": "2023-01-01T01:10:10Z",
+           "replaces": null,
+           "asset_id": "904837e3-3b76-47ec-b432-046db621571b",
+           "symbol": "AAPL",
+           "asset_class": "us_equity",
+           "qty": "99",
+           "filled_qty": "98",
+           "filled_avg_price": "499.99",
+           "order_class": "unknown",
+           "type": "market",
+           "side": "buy",
+           "time_in_force": "day",
+           "limit_price": "599.99",
+           "stop_price": "600.00",
+           "status": "accepted",
+           "extended_hours": false,
+           "legs": null,
+           "trail_percent": null,
+           "trail_price": null,
+           "hwm": null
+        }
+    "#;
+
+
+
+}
+

@@ -24,6 +24,7 @@
         <td>Qty</td>
         <td>Price</td>
         <td>updated_at</td>
+        <td>client_order_id</td>
     <tr>
     {{#each orders}}
     <tr>
@@ -32,6 +33,7 @@
         <td>{{this.qty}}</td>
         <td>${{this.price}}</td>
         <td>{{this.updated_at}}</td>
+        <td>{{this.client_order_id}}</td>
     </tr>
     {{/each}}
 </table>

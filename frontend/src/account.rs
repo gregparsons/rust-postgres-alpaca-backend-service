@@ -81,7 +81,7 @@ pub async fn get_account(
                     .body(body)
             }
             Err(e) => {
-                tracing::debug!(
+                tracing::error!(
                     "[get_account] couldn't load settings (to get alpaca id/secret): {:?}",
                     &e
                 );

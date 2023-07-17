@@ -58,7 +58,7 @@ pub async fn get_order(
             }
             Err(e) => {
                 // TODO: redirect to error message
-                tracing::debug!("[get_settings] error getting symbols: {:?}", &e);
+                tracing::error!("[get_settings] error getting settings: {:?}", &e);
                 redirect_home().await
             }
         }

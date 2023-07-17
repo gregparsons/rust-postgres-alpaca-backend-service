@@ -1,4 +1,4 @@
-//! ws_finnhub.rs
+//! finnhub_websocket.rs
 
 /**
     Websocket client for Alpaca
@@ -8,7 +8,7 @@
 */
 // use crossbeam_channel::{after, select, tick};
 use crate::db::DbMsg;
-use common_lib::finnhub::{FinnhubPacket, FinnhubPing, FinnhubStream, FinnhubSubscribe};
+use common_lib::finnhub::{FinnhubPacket, FinnhubPing, FinnhubSubscribe};
 use common_lib::settings::Settings;
 use crossbeam::channel::Sender;
 use serde_json::json;
@@ -20,35 +20,21 @@ fn stock_list_to_uppercase(lower_stock: &Vec<String>) -> Vec<String> {
     lower_stock.iter().map(|x| x.to_uppercase()).collect()
 }
 
-pub struct WsFinnhub;
+pub struct FinnhubWebsocket;
 
-impl WsFinnhub {
-    pub async fn run(
-        tx_db: Sender<DbMsg>,
-        stream_type: &FinnhubStream,
-        symbols: Vec<String>,
-        settings: Settings,
-    ) {
+impl FinnhubWebsocket {
+
+    pub fn run(tx_db: Sender<DbMsg>, symbols: Vec<String>, settings: Settings) {
         tracing::debug!("[WsFinnhub::run]");
-        WsFinnhub::connect(tx_db, stream_type, symbols, &settings).await;
+        FinnhubWebsocket::connect(tx_db, symbols, &settings);
     }
 
-    async fn connect(
-        tx_db: Sender<DbMsg>,
-        stream_type: &FinnhubStream,
-        symbols: Vec<String>,
-        settings: &Settings,
-    ) {
+    fn connect(tx_db: Sender<DbMsg>, symbols: Vec<String>, settings: &Settings) {
+
         // wss://ws.finnhub.io?token=xxxxxxxx
         // .env includes everything except the api key value (xxxxxx); called token here
-        // TODO: binary not needed for finnhub
-        let ws_url = match stream_type {
-            FinnhubStream::TextData => std::env::var("FINNHUB_URL").expect("FINNHUB_URL not found"),
-            FinnhubStream::BinaryUpdates => {
-                std::env::var("FINNHUB_URL").expect("FINNHUB_URL not found")
-            }
-        };
 
+        let ws_url = std::env::var("FINNHUB_URL").expect("FINNHUB_URL not found");
         let ws_url = format!("{}{}", ws_url, settings.finnhub_key);
 
         // websocket restart loop
@@ -61,10 +47,8 @@ impl WsFinnhub {
                 Err(e) => tracing::debug!("[WsFinnhub::connect] websocket connect error: {:?}", e),
 
                 Ok((mut ws, _response)) => {
-                    tracing::debug!(
-                        "[WsFinnhub::connect] successful websocket connection; response: {:?}",
-                        _response
-                    );
+
+                    tracing::debug!("[WsFinnhub::connect] successful websocket connection; response: {:?}",_response);
 
                     /*
                     2023-05-31T21:23:42.256121Z DEBUG backend::ws_finnhub: [WsFinnhub::connect] successful websocket connection; response: Response { status: 101, version: HTTP/1.1, headers: {"date": "Wed, 31 May 2023 21:23:43 GMT", "connection": "upgrade", "upgrade": "websocket", "sec-websocket-accept": "XLvDaH0hCELNbMnjEJFm/AZcf8I=", "cf-cache-status": "DYNAMIC", "report-to": "{\"endpoints\":[{\"url\":\"https:\/\/a.nel.cloudflare.com\/report\/v3?s=0B5jxuyY0Bc%2FaXpEeJ67xAOdM%2B4GMmAXGJpSdZuGlpB%2FzOVJLibsbfUL3Mf%2F1yZkFUAs%2BKX3KXRzpYmdq%2B%2FgXoRE81lt4TaesP1aUtcsP0eyDfrjMEL9yImHrXWfQzeU\"}],\"group\":\"cf-nel\",\"max_age\":604800}", "nel": "{\"success_fraction\":0,\"report_to\":\"cf-nel\",\"max_age\":604800}", "server": "cloudflare", "cf-ray": "7d0247931bbece94-SJC", "alt-svc": "h3=\":443\"; ma=86400"}, body: None }
@@ -85,42 +69,33 @@ impl WsFinnhub {
                         // tracing::debug!("[ws_connect] reading websocket...");
                         match ws.read_message() {
                             Ok(msg) => {
-                                tracing::debug!("[WsFinnhub::connect] read websocket...");
+                                // tracing::debug!("[WsFinnhub::connect] read websocket...");
+
                                 match msg {
-                                    Message::Ping(t) => {
-                                        // not used by finnhub; they use json over Text
-                                        tracing::debug!("[WsFinnhub::connect][ping] {:?}", &t);
-                                    }
-                                    Message::Binary(b_msg) => {
-                                        tracing::debug!(
-                                            "[WsFinnhub::connect][binary] {:?}",
-                                            &b_msg
-                                        );
-                                    }
+
+                                    // Ping is not used by finnhub; they use a message over Text
+                                    Message::Ping(t) => tracing::debug!("[WsFinnhub::connect][ping] {:?}", &t),
+                                    Message::Binary(b_msg) => tracing::debug!("[WsFinnhub::connect][binary] {:?}",&b_msg),
                                     Message::Text(t_msg) => {
                                         tracing::debug!("[WsFinnhub::connect][text] {}", &t_msg);
 
                                         match serde_json::from_str::<FinnhubPacket>(&t_msg) {
+
                                             Ok(FinnhubPacket::Trade(trades)) => {
-                                                tracing::debug!("[deserialize] {:?}", &trades);
+
+                                                // tracing::debug!("[deserialize] {:?}", &trades);
 
                                                 for trade in &trades {
-                                                    let _ =
-                                                        tx_db.send(DbMsg::FhTrade(trade.clone()));
+                                                    let _ = tx_db.send(DbMsg::TradeFinnhub(trade.clone()));
                                                 }
                                             }
+
                                             Ok(FinnhubPacket::Ping) => {
                                                 tracing::info!("[Finnhub] ping");
-                                                let _ = tx_db.send(DbMsg::FhPing(FinnhubPing {
-                                                    dtg: chrono::Utc::now(),
-                                                }));
+                                                let _ = tx_db.send(DbMsg::PingFinnhub(FinnhubPing { dtg: chrono::Utc::now() }));
                                             }
-                                            Err(e) => {
-                                                tracing::debug!(
-                                                    "[deserialize] FinnhubPacket json error {:?}",
-                                                    &e
-                                                );
-                                            }
+
+                                            Err(e) => tracing::debug!("[deserialize] FinnhubPacket json error {:?}",&e),
                                         }
                                     }
                                     _ => {
@@ -128,12 +103,7 @@ impl WsFinnhub {
                                     }
                                 }
                             }
-                            Err(e) => {
-                                tracing::debug!(
-                                    "[ws_finnhub::connect] error reading message: {:?}",
-                                    &e
-                                );
-                            }
+                            Err(e) => tracing::debug!("[ws_finnhub::connect] error reading message: {:?}",&e),
                         }
                     }
                 }

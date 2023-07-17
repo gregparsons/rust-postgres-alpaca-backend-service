@@ -72,7 +72,7 @@ impl Activity {
 
         let url = format!("https://paper-api.alpaca.markets/v2/account/activities/FILL");
 
-        tracing::debug!("[load_fill_activities] calling API: {}", &url);
+        tracing::debug!("[get_remote] calling API: {}", &url);
         let client = reqwest::Client::new();
 
         let http_result = client.get(url).headers(headers).send().await;
@@ -151,7 +151,7 @@ impl Activity {
         .execute(pool)
         .await;
 
-        tracing::debug!("[get_remote] insert result: {:?}", &result);
+        // tracing::debug!("[get_remote] insert result: {:?}", &result);
         result
     }
 
@@ -169,6 +169,7 @@ impl Activity {
                     ,side as "side!:TradeSide"
                     ,qty as "qty!"
                     ,price as "price!"
+                    ,order_id as "client_order_id!"
                 from alpaca_activity
                 order by transaction_time desc
             "#
@@ -193,6 +194,7 @@ impl Activity {
                     ,side as "side!:TradeSide"
                     ,qty as "qty!"
                     ,price as "price!"
+                    ,order_id as "client_order_id!"
                 from alpaca_activity
                 where symbol = upper($1)
                 order by transaction_time desc
@@ -248,4 +250,6 @@ pub struct ActivityQuery {
     // pub cum_qty: BigDecimal,
     // pub leaves_qty: BigDecimal,
     // pub order_id: String,
+    #[serde(rename="order_id")]
+    pub client_order_id:String,
 }

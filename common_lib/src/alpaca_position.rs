@@ -63,6 +63,7 @@ pub struct Position {
     pub current_price: BigDecimal,
     pub lastday_price: BigDecimal,
     pub change_today: BigDecimal,
+    pub dtg_updated: DateTime<Utc>,
 }
 
 use chrono::{DateTime, Utc};
@@ -91,9 +92,11 @@ pub struct TempPosition {
 }
 
 impl Position {
-    fn from_temp(timestamp: DateTime<Utc>, t: TempPosition) -> Position {
+    fn from_temp(dt_updated_now: DateTime<Utc>, t: TempPosition) -> Position {
         Position {
-            dtg: timestamp,
+            // TODO: alpaca doesn't provide a timestamp of when the position started; it needs to be gleaned
+            // from the Activity API; but it'd be useful to be able to know how old a position is
+            dtg: dt_updated_now,
             asset_id: t.asset_id,
             symbol: t.symbol,
             exchange: t.exchange,
@@ -111,6 +114,7 @@ impl Position {
             current_price: t.current_price,
             lastday_price: t.lastday_price,
             change_today: t.change_today,
+            dtg_updated: dt_updated_now
         }
     }
 
@@ -121,28 +125,29 @@ impl Position {
         let result_vec = sqlx::query_as!(
             Position,
             r#"
-select
-    dtg as "dtg!"
-    ,symbol as "symbol!"
-    ,exchange as "exchange!"
-    ,asset_class as "asset_class!"
-    ,coalesce(avg_entry_price, 0.0) as "avg_entry_price!"
-    ,coalesce(qty,0.0) as "qty!"
-    ,coalesce(qty_available,0.0) as "qty_available!"
-    ,side as "side!:PositionSide"
-    ,coalesce(market_value,0.0) as "market_value!"
-    ,coalesce(cost_basis,0.0) as "cost_basis!"
-    ,coalesce(unrealized_pl,0.0) as "unrealized_pl!"
-    ,coalesce(unrealized_plpc,0.0) as "unrealized_plpc!"
-    ,coalesce(unrealized_intraday_pl,0.0) as "unrealized_intraday_pl!"
-    ,coalesce(unrealized_intraday_plpc,0.0) as "unrealized_intraday_plpc!"
-    ,coalesce(current_price,0.0) as "current_price!"
-    ,coalesce(lastday_price,0.0) as "lastday_price!"
-    ,coalesce(change_today,0.0) as "change_today!"
-    ,asset_id as "asset_id!"
-from
-alpaca_position
-order by symbol
+                select
+                    dtg as "dtg!"
+                    ,symbol as "symbol!"
+                    ,exchange as "exchange!"
+                    ,asset_class as "asset_class!"
+                    ,coalesce(avg_entry_price, 0.0) as "avg_entry_price!"
+                    ,coalesce(qty,0.0) as "qty!"
+                    ,coalesce(qty_available,0.0) as "qty_available!"
+                    ,side as "side!:PositionSide"
+                    ,coalesce(market_value,0.0) as "market_value!"
+                    ,coalesce(cost_basis,0.0) as "cost_basis!"
+                    ,coalesce(unrealized_pl,0.0) as "unrealized_pl!"
+                    ,coalesce(unrealized_plpc,0.0) as "unrealized_plpc!"
+                    ,coalesce(unrealized_intraday_pl,0.0) as "unrealized_intraday_pl!"
+                    ,coalesce(unrealized_intraday_plpc,0.0) as "unrealized_intraday_plpc!"
+                    ,coalesce(current_price,0.0) as "current_price!"
+                    ,coalesce(lastday_price,0.0) as "lastday_price!"
+                    ,coalesce(change_today,0.0) as "change_today!"
+                    ,asset_id as "asset_id!"
+                    ,dtg_updated as "dtg_updated!"
+                from
+                alpaca_position
+                order by symbol
             "#
         )
         .fetch_all(pool)
@@ -205,7 +210,7 @@ order by symbol
             self.lastday_price, self.change_today, self.asset_id
         ).execute(pool).await;
 
-        tracing::debug!("[activity::save_to_db] insert result: {:?}", &result);
+        // tracing::debug!("[activity::save_to_db] insert result: {:?}", &result);
         result
     }
 }
@@ -236,3 +241,4 @@ impl Display for Position {
         )
     }
 }
+

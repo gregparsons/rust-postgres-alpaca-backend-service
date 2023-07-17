@@ -1,4 +1,6 @@
 //! account.rs
+//!
+//! https://alpaca.markets/docs/api-references/trading-api/account/
 
 use serde::{Deserialize, Serialize};
 
@@ -24,7 +26,7 @@ pub struct Account {
     pub bod_dtbp: String,
     pub accrued_fees: String,
     pub pending_transfer_in: String,
-    pub portfolio_value: String,
+    pub portfolio_value: String,    // deprecated (same as equity field)
     pub trading_blocked: bool,
     pub transfers_blocked: bool,
     pub account_blocked: bool,

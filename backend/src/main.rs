@@ -3,9 +3,10 @@
 
 pub mod data_collector;
 pub mod db;
-pub mod rest_client;
-pub mod websocket_service;
-pub mod ws_finnhub;
+pub mod alpaca_rest;
+pub mod alpaca_websocket;
+pub mod finnhub_websocket;
+mod stock_rating;
 
 use crate::data_collector::DataCollector;
 use common_lib::init::init;
@@ -32,10 +33,10 @@ fn main() {
         let pool = create_sqlx_pg_pool().await;
         match Settings::load(&pool).await {
             Ok(settings) => {
-                DataCollector::start(pool, &settings).await;
+                DataCollector::run(pool, &settings).await;
             }
             Err(e) => {
-                tracing::debug!("[main] could not load settings: {:?}", &e);
+                tracing::error!("[main] could not load settings: {:?}", &e);
             }
         }
     });

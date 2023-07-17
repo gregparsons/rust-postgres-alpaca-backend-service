@@ -23,6 +23,12 @@ pub struct Settings {
     pub trade_sell_high_upper_limit_cents: BigDecimal,
     pub finnhub_key: String,
     pub account_start_value:BigDecimal,
+    pub max_position_age_minute:BigDecimal,
+    pub upgrade_min_profit:BigDecimal,
+    pub upgrade_sell_elapsed_minutes_min:BigDecimal,
+    pub upgrade_posn_max_elapsed_minutes:BigDecimal,
+    pub upgrade_posn_loss_allowed_dollars:BigDecimal,
+
 }
 
 impl Settings {
@@ -47,6 +53,12 @@ impl Settings {
                     trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
                     ,finnhub_key as "finnhub_key!:String"
                     ,coalesce(account_start_value,0.0) as "account_start_value!"
+                    ,coalesce(max_position_age_minute,0.0) as "max_position_age_minute!"
+                    ,coalesce(upgrade_min_profit,0.0) as "upgrade_min_profit!"
+                    ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as "upgrade_sell_elapsed_minutes_min!"
+                    ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as "upgrade_posn_max_elapsed_minutes!"
+                    ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as "upgrade_posn_loss_allowed_dollars!"
+
                 FROM t_settings_test
                 ORDER BY t_settings_test.dtg DESC
                 LIMIT 1
@@ -80,6 +92,12 @@ impl Settings {
                     trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
                     ,finnhub_key as "finnhub_key!:String"
                     ,coalesce(account_start_value,0.0) as "account_start_value!"
+                    ,coalesce(max_position_age_minute,0.0) as "max_position_age_minute!"
+                    ,coalesce(upgrade_min_profit,0.0) as "upgrade_min_profit!"
+                    ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as "upgrade_sell_elapsed_minutes_min!"
+                    ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as "upgrade_posn_max_elapsed_minutes!"
+                    ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as "upgrade_posn_loss_allowed_dollars!"
+
 
                 FROM t_settings_test
                 ORDER BY t_settings_test.dtg DESC
@@ -119,6 +137,12 @@ impl Settings {
                     , trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
                     , finnhub_key as "finnhub_key!"
                     ,coalesce(account_start_value,0.0) as "account_start_value!"
+                    ,coalesce(max_position_age_minute,0.0) as "max_position_age_minute!"
+                    ,coalesce(upgrade_min_profit,0.0) as "upgrade_min_profit!"
+                    ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as "upgrade_sell_elapsed_minutes_min!"
+                    ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as "upgrade_posn_max_elapsed_minutes!"
+                    ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as "upgrade_posn_loss_allowed_dollars!"
+
                 from fn_set_trade_settings($1);
             "#,
             &ts
