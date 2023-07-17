@@ -311,17 +311,6 @@ pub struct AlpacaPing {
 
 
 
-#[derive(Deserialize, Serialize, Debug)]
-pub struct WsAuthenticate {
-    pub action: ActionAlpaca,
-    pub key: String,
-    pub secret: String,
-}
-
-
-
-
-
 #[derive(Debug, Deserialize)]
 #[serde(content = "data", tag = "stream")]
 #[serde(rename_all = "snake_case")]
@@ -334,6 +323,13 @@ pub enum StreamAlpaca {
     TradeUpdates(UpdateOrder),
 
     AccountUpdates,
+}
+
+#[derive(Deserialize, Serialize, Debug)]
+pub struct WsAuthenticate {
+    pub action: ActionOutboundAlpaca,
+    pub key: String,
+    pub secret: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -353,18 +349,17 @@ pub enum StatusAuth {
 #[serde(rename_all = "snake_case")]
 pub enum ActionAlpaca {
     Authenticate,
-    // outgoing
-    Listen,
-    Auth,
-    Subscribe,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum ActionOutboundAlpaca {
+    Auth,
     Listen,
     TradeUpdates,
     AccountUpdates,
+    // {"action":"subscribe","bars":["TSLA","ARNC","BBAI","FFIE","ARVL","SKLZ","LYG","AMZN","AAPL","T","SOFI","PLUG","WBD","NIO","BRDS","PACW","MULN","AMD"],"trades":["TSLA","ARNC","BBAI","FFIE","ARVL","SKLZ","LYG","AMZN","AAPL","T","SOFI","PLUG","WBD","NIO","BRDS","PACW","MULN","AMD"]}
+    Subscribe,
 }
 
 // enable to_string(); print enum in lowercase
@@ -382,7 +377,7 @@ pub struct AlpacaListeningList {
 // { "action": "listen", "data": { "streams": ["T.TSLA", "Q.TSLA", "Q.AAPL", "T.AAPL"]}}
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct WsListenMessage {
-    pub action: ActionAlpaca,
+    pub action: ActionOutboundAlpaca,
     pub data: WsListenMessageData,
 }
 
@@ -390,7 +385,6 @@ pub struct WsListenMessage {
 pub struct WsListenMessageData {
     pub streams: Vec<String>,
 }
-
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "event")]
@@ -428,4 +422,63 @@ pub enum UpdateOrder {
     Replaced { timestamp: DateTime<Utc>, order: Order },
     Stopped { order: Order },
     Suspended { order: Order },
+}
+
+#[derive(PartialEq)]
+pub enum AlpacaData {
+    TextData,
+    BinaryUpdates,
+}
+
+// [{"T":"success","msg":"connected"}]
+// [{"T":"success","msg":"authenticated"}]
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case", tag="msg")]
+pub enum DataSuccess{
+    Connected,
+    Authenticated,
+}
+
+/*
+[{"T":"subscription",
+"trades":["AAPL","AMD","AMZN","ARNC","ARVL","BBAI","BRDS","FFIE","LYG","MULN","NIO","PACW","PLUG","SKLZ","SOFI","T","TSLA","WBD"],
+"quotes":[],"bars":["AAPL","AMD","AMZN","ARNC","ARVL","BBAI","BRDS","FFIE","LYG","MULN","NIO","PACW","PLUG","SKLZ","SOFI","T","TSLA","WBD"],
+"updatedBars":[],
+"dailyBars":[],
+"statuses":[],
+"lulds":[],
+"corrections":["AAPL","AMD","AMZN","ARNC","ARVL","BBAI","BRDS","FFIE","LYG","MULN","NIO","PACW","PLUG","SKLZ","SOFI","T","TSLA","WBD"],
+"cancelErrors":["AAPL","AMD","AMZN","ARNC","ARVL","BBAI","BRDS","FFIE","LYG","MULN","NIO","PACW","PLUG","SKLZ","SOFI","T","TSLA","WBD"]}]
+ */
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub struct SubscriptionList{
+    pub trades:Vec<String>,
+    pub quotes:Vec<String>,
+    pub updatedBars:Vec<String>,
+    pub cancelErrors:Vec<String>,
+    pub corrections:Vec<String>,
+    pub dailyBars:Vec<String>,
+    pub statuses:Vec<String>,
+    pub lulds:Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+#[serde(tag = "T")] /*, content = "msg"*/
+pub enum DataMessage{
+    Error,
+    Success(DataSuccess),
+    Subscription(SubscriptionList),
+    #[serde(rename = "t")]
+    Trade(AlpWsTrade),
+    #[serde(rename = "b")]
+    Bar,
+    #[serde(rename = "q")]
+    Quote,
+    #[serde(rename = "d")]
+    DailyBar,
+    #[serde(rename = "s")]
+    Status,
+
 }

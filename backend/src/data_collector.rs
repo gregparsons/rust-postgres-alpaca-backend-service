@@ -14,12 +14,13 @@
 */
 
 use crate::db::DbActor;
-use crate::alpaca_websocket::{AlpacaData, AlpacaWebsocket};
+use crate::alpaca_websocket::{AlpacaWebsocket};
 use crate::finnhub_websocket::FinnhubWebsocket;
 use common_lib::settings::Settings;
 use common_lib::symbol_list::SymbolList;
 use sqlx::PgPool;
 use std::str::FromStr;
+use common_lib::alpaca_api_structs::AlpacaData;
 use crate::alpaca_rest::AlpacaRest;
 use crate::stock_rating;
 
@@ -49,12 +50,27 @@ impl DataCollector {
             let ws_pool = pool.clone();
             let settings2 = (*settings).clone();
             match SymbolList::get_active_symbols(&ws_pool).await {
+
                 Ok(symbols) => {
+                    let tx_db_ws2 = tx_db_ws.clone();
+                    let symbols2 = symbols.clone();
+                    let settings2 = settings.clone();
+                    let settings3 = settings.clone();
+
                     let join_handle = std::thread::spawn(|| {
-                        // AlpacaWebsocket::run(tx_db_ws, &AlpacaStream::TextData, symbols, settings2);
-                        AlpacaWebsocket::run(tx_db_ws, &AlpacaData::BinaryUpdates, symbols, settings2);
+                        tracing::debug!("[run] starting text data websocket");
+                        AlpacaWebsocket::run(tx_db_ws, &AlpacaData::TextData, symbols, settings3);
+                        // AlpacaWebsocket::run(tx_db_ws.clone(), &AlpacaData::BinaryUpdates, symbols.clone(), settings2.clone());
                     });
                     handles.push(join_handle);
+
+                    let join_handle = std::thread::spawn(|| {
+                        tracing::debug!("[run] starting binary data for 'trade_updates'");
+                        // AlpacaWebsocket::run(tx_db_ws, &AlpacaData::TextData, symbols, settings2);
+                        AlpacaWebsocket::run(tx_db_ws2, &AlpacaData::BinaryUpdates, symbols2, settings2);
+                    });
+                    handles.push(join_handle);
+
                 },
                 Err(e) => tracing::debug!("[start] error getting symbols for websocket: {:?}", &e),
             }
@@ -63,7 +79,9 @@ impl DataCollector {
         /****** finnhub websocket ******/
         let finnhub_on = bool::from_str(std::env::var("FINNHUB_ON").unwrap_or_else(|_| "true".to_owned()).as_str()).unwrap_or(true);
         tracing::info!("FINNHUB_ON is: {}", &finnhub_on);
+
         if finnhub_on {
+
             tracing::debug!("Starting Finnhub text websocket service in new thread...");
             // spawn long-running text thread
             let tx_db_ws = tx_db.clone();

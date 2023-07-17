@@ -24,14 +24,4 @@ pub struct QueryAverage {
 }
 
 
-// #[derive(Debug, Deserialize)]
-// #[serde(tag = "T", content = "msg")]
-// pub enum AlpacaPacket{
-//     // https://alpaca.markets/docs/api-references/market-data-api/stock-pricing-data/realtime/
-//     #[serde(rename="error")]
-//     Error,
-//     #[serde(rename="success")]
-//     Success,
-//     #[serde(rename="subscription")]
-//     Subscription
-// }
+
