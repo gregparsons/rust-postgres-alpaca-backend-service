@@ -112,22 +112,30 @@ pub enum AuthAction {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(rename_all = "snake_case")]
-#[serde(tag = "T")] /*, content = "msg"*/
+#[serde(rename_all = "snake_case", tag = "T")]
+// #[serde(tag = "T")] /*, content = "msg"*/
 pub enum DataMessage{
-    Error,
+
     Success(DataMesgSuccess),
+
     Subscription(DataMesgSubscriptionList),
+
     #[serde(rename = "t")]
     Trade(AlpacaTradeWs),
+
     #[serde(rename = "b")]
     Bar,
+
     #[serde(rename = "q")]
     Quote,
+
     #[serde(rename = "d")]
     DailyBar,
+
     #[serde(rename = "s")]
     Status,
+
+    Error,
 
 }
 
@@ -182,8 +190,8 @@ pub struct DataMesgSubscriptionList {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct AlpacaTradeWs {
 
-    #[serde(rename = "T")]
-    pub event: String,
+    // #[serde(rename = "T")]
+    // pub event: String,
 
     #[serde(rename = "S")]
     pub symbol: String,
@@ -414,3 +422,8 @@ pub struct MinuteBar {
 //     #[serde(default = "Utc::now")]
 //     pub dtg_updated: DateTime<Utc>,
 // }
+
+
+// TODO: trade parse test
+// [{"T":"t","S":"TSLA","i":5471,"x":"V","p":286.39,"s":100,"c":["@"],"z":"C","t":"2023-07-17T15:21:55.787214158Z"}]
+// [{"T":"t","S":"T","i":54191554971494,"x":"V","p":13.77,"s":41,"c":[" ","I"],"z":"A","t":"2023-07-17T15:21:55.585613056Z"},{"T":"t","S":"T","i":54191554971509,"x":"V","p":13.77,"s":100,"c":[" "],"z":"A","t":"2023-07-17T15:21:55.585622016Z"},{"T":"t","S":"T","i":54191554971717,"x":"V","p":13.77,"s":59,"c":[" ","I"],"z":"A","t":"2023-07-17T15:21:55.58563712Z"}]
