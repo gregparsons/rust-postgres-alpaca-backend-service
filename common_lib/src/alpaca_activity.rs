@@ -82,8 +82,8 @@ impl Activity {
     ///
     /// curl --request GET \
     ///      --url 'https://paper-api.alpaca.markets/v2/account/activities/FILL?after=2023-07-17T19%3A57%3A00.0Z' \
-    ///     --header 'APCA-API-KEY-ID: PKDVWQ73DIUK8AD0II7W' \
-    ///      --header 'APCA-API-SECRET-KEY: cfcNtYUdoMxnG3NfTeTpB6unc0rrYPPvugWv1nbz' \
+    ///     --header 'APCA-API-KEY-ID: ' \
+    ///      --header 'APCA-API-SECRET-KEY: ' \
     ///      --header 'accept: application/json'
     ///
     pub async fn get_remote(since_filter:Option<DateTime<Utc>>, settings: &Settings) -> Result<Vec<Activity>, TradeWebError> {
