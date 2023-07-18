@@ -16,3 +16,4 @@ pub mod sqlx_pool;
 pub mod symbol_list;
 pub mod trade_setting_profile;
 pub mod trade_struct;
+pub mod alpaca_order_log;

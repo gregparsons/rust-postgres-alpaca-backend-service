@@ -76,6 +76,14 @@ pub struct MesgListening {
     pub streams: Vec<String>
 }
 
+/*
+
+
+"{\"stream\":\"trade_updates\",\"data\":{\"event\":\"new\",\"timestamp\":\"2023-07-17T15:46:32.738504149Z\",\"order\":{\"id\":\"506f20d6-0921-41a2-9938-653f2481383c\",\"client_order_id\":\"2cc88458-0b51-4ec6-8c9b-6b27079943b3---8f0905f0-e2e6-4db1-baae-153c0c63e700\",\"created_at\":\"2023-07-17T15:46:32.729647106Z\",\"updated_at\":\"2023-07-17T15:46:32.740005225Z\",\"submitted_at\":\"2023-07-17T15:46:32.738505019Z\",\"filled_at\":null,\"expired_at\":null,\"cancel_requested_at\":null,\"canceled_at\":null,\"failed_at\":null,\"replaced_at\":null,\"replaced_by\":null,\"replaces\":null,\"asset_id\":\"b5a245fd-cf59-4eb8-878c-97241b9dd807\",\"symbol\":\"PACW\",\"asset_class\":\"us_equity\",\"notional\":null,\"qty\":\"1\",\"filled_qty\":\"0\",\"filled_avg_price\":null,\"order_class\":\"\",\"order_type\":\"limit\",\"type\":\"limit\",\"side\":\"sell\",\"time_in_force\":\"day\",\"limit_price\":\"8.21\",\"stop_price\":null,\"status\":\"new\",\"extended_hours\":true,\"legs\":null,\"trail_percent\":null,\"trail_price\":null,\"hwm\":null},\"execution_id\":\"4e1027dc-0fee-4a29-b48b-fe4253d998d9\"}}"
+
+
+
+ */
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "event")]
 pub enum MesgOrderUpdate {
@@ -113,7 +121,6 @@ pub enum AuthAction {
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case", tag = "T")]
-// #[serde(tag = "T")] /*, content = "msg"*/
 pub enum DataMessage{
 
     Success(DataMesgSuccess),
@@ -190,6 +197,7 @@ pub struct DataMesgSubscriptionList {
 #[derive(Deserialize, Serialize, Debug, Clone)]
 pub struct AlpacaTradeWs {
 
+    // not needed with #[serde(tag="T")] in DataMessage
     // #[serde(rename = "T")]
     // pub event: String,
 

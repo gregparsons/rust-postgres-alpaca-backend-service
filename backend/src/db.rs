@@ -11,6 +11,7 @@ use sqlx::postgres::PgQueryResult;
 use sqlx::PgPool;
 use std::thread::JoinHandle;
 use tokio_postgres::{Client, SimpleQueryMessage};
+use common_lib::alpaca_order_log::AlpacaOrderLogEvent;
 
 #[derive(Debug)]
 pub enum DbMsg {
@@ -22,6 +23,8 @@ pub enum DbMsg {
     PingFinnhub(FinnhubPing),
     PingAlpaca(Ping),
     RefreshRating,
+    OrderLogEvent(AlpacaOrderLogEvent),
+
 }
 
 pub struct DbActor {}
@@ -101,6 +104,14 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
             recv(rx) -> result => {
                 if let Ok(msg) = result {
                     match msg {
+
+                        DbMsg::OrderLogEvent(log_evt)=>{
+                            tracing::debug!("[db] received DbMsg::OrderLogEvent: {:?}", &log_evt);
+
+                            log_evt.save_to_db(&pool).await;
+
+                        },
+
 
                         DbMsg::RefreshRating => {
 

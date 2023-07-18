@@ -8,18 +8,20 @@
 //!     -H "APCA-API-KEY-ID: xxxx" \
 //!     -H "APCA-API-SECRET-KEY: xxxx"\
 //!     https://paper-api.alpaca.markets/v2/account/activities/FILL?date='2023-03-24'
-//!
 
-use crate::error::TradeWebError;
-use crate::settings::Settings;
-use crate::trade_struct::TradeSide;
+
+
+
+use std::fmt;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use reqwest::header::HeaderMap;
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::PgQueryResult;
 use sqlx::PgPool;
-use std::fmt;
+use sqlx::postgres::PgQueryResult;
+use crate::error::TradeWebError;
+use crate::settings::Settings;
+use crate::trade_struct::TradeSide;
 
 /// load all the most recent activities
 /// 1. get the most recent activity in the database
@@ -48,7 +50,8 @@ pub struct Activity {
     // fill or partial_fill
     #[serde(rename = "type")]
     pub activity_subtype: ActivitySubtype,
-    pub transaction_time: DateTime<Utc>,
+    #[serde(rename="transaction_time")]
+    pub dtg: DateTime<Utc>,
     pub symbol: String,
     pub side: TradeSide,
     pub qty: BigDecimal,
@@ -58,37 +61,64 @@ pub struct Activity {
     pub order_id: String,
 }
 
+#[derive(Deserialize)]
+struct ActivityLatest{
+    pub dtg:DateTime<Utc>
+}
+
 impl Activity {
+
+    /// latest_dtg: get the date of the most recent activity; used to filter the activity API
+    pub async fn latest_dtg(pool:&PgPool, settings: &Settings)->Result<DateTime<Utc>, TradeWebError>{
+        match sqlx::query_as!(ActivityLatest, r#"select max(dtg)::timestamptz as "dtg!" from alpaca_activity"#).fetch_one(pool).await{
+            Ok(latest_dtg)=> Ok(latest_dtg.dtg),
+            Err(e)=>Err(TradeWebError::ReqwestError),
+        }
+    }
+
     /// Get FILL activities
     ///
     /// https://alpaca.markets/docs/api-references/trading-api/account-activities/#properties
     ///
-    pub async fn get_remote(settings: &Settings) -> Result<Vec<Activity>, TradeWebError> {
+    /// curl --request GET \
+    ///      --url 'https://paper-api.alpaca.markets/v2/account/activities/FILL?after=2023-07-17T19%3A57%3A00.0Z' \
+    ///     --header 'APCA-API-KEY-ID: PKDVWQ73DIUK8AD0II7W' \
+    ///      --header 'APCA-API-SECRET-KEY: cfcNtYUdoMxnG3NfTeTpB6unc0rrYPPvugWv1nbz' \
+    ///      --header 'accept: application/json'
+    ///
+    pub async fn get_remote(since_filter:Option<DateTime<Utc>>, settings: &Settings) -> Result<Vec<Activity>, TradeWebError> {
         let mut headers = HeaderMap::new();
         let api_key = settings.alpaca_paper_id.clone();
         let api_secret = settings.alpaca_paper_secret.clone();
         headers.insert("APCA-API-KEY-ID", api_key.parse().unwrap());
         headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
 
-        let url = format!("https://paper-api.alpaca.markets/v2/account/activities/FILL");
+
+        let url = match since_filter{
+            Some(since) =>{
+                format!("https://paper-api.alpaca.markets/v2/account/activities/FILL?after={}", urlencoding::encode(since.to_rfc3339().as_str()))
+            },
+            None => {
+                // TODO: put in today's date at least
+                format!("https://paper-api.alpaca.markets/v2/account/activities/FILL")
+            }
+        };
+
+
+        tracing::debug!("[get_remote] getting activities since: {:?}", &since_filter);
+
+
+
 
         tracing::debug!("[get_remote] calling API: {}", &url);
         let client = reqwest::Client::new();
-
         let http_result = client.get(url).headers(headers).send().await;
-
-        // let result = parse_http_result_to_vec::<Activity>(http_result).await;
-        // result
-
         let return_val = match http_result {
             Ok(response) => match &response.text().await {
                 Ok(response_text) => match serde_json::from_str::<Vec<Activity>>(&response_text) {
                     Ok(results) => Ok(results),
                     Err(e) => {
-                        tracing::debug!(
-                            "[get_remote] deserialization to json vec failed: {:?}",
-                            &e
-                        );
+                        tracing::debug!("[get_remote] deserialization to json vec failed: {:?}",&e);
                         Err(TradeWebError::JsonError)
                     }
                 },
@@ -102,7 +132,6 @@ impl Activity {
                 Err(TradeWebError::ReqwestError)
             }
         };
-
         return_val
     }
 
@@ -114,7 +143,7 @@ impl Activity {
                 id
                 , activity_type
                 , activity_subtype
-                , transaction_time
+                , dtg
                 , symbol
                 , side
                 , qty
@@ -139,7 +168,7 @@ impl Activity {
             self.id,
             self.activity_type.to_string(),
             self.activity_subtype.to_string(),
-            self.transaction_time,
+            self.dtg,
             self.symbol,
             self.side.to_string(),
             self.qty,
@@ -147,11 +176,9 @@ impl Activity {
             self.cum_qty,
             self.leaves_qty,
             self.order_id
-        )
-        .execute(pool)
-        .await;
+        ).execute(pool).await;
 
-        // tracing::debug!("[get_remote] insert result: {:?}", &result);
+        tracing::debug!("[save_to_db] insert result: {:?}", &result);
         result
     }
 
@@ -163,19 +190,19 @@ impl Activity {
             ActivityQuery,
             r#"
                 select
-                    transaction_time::timestamp as "dtg_utc!"
-                    ,timezone('US/Pacific', transaction_time) as "dtg_pacific!"
+                    dtg::timestamp as "dtg_utc!"
+                    ,timezone('US/Pacific', dtg) as "dtg_pacific!"
                     ,symbol as "symbol!"
                     ,side as "side!:TradeSide"
                     ,qty as "qty!"
                     ,price as "price!"
                     ,order_id as "client_order_id!"
                 from alpaca_activity
-                order by transaction_time desc
+                order by dtg desc
             "#
         )
-        .fetch_all(pool)
-        .await
+            .fetch_all(pool)
+            .await
     }
 
     pub async fn get_activities_from_db_for_symbol(
@@ -188,8 +215,8 @@ impl Activity {
             ActivityQuery,
             r#"
                 select
-                    transaction_time::timestamp as "dtg_utc!"
-                    ,timezone('US/Pacific', transaction_time) as "dtg_pacific!"
+                    dtg::timestamp as "dtg_utc!"
+                    ,timezone('US/Pacific', dtg) as "dtg_pacific!"
                     ,symbol as "symbol!"
                     ,side as "side!:TradeSide"
                     ,qty as "qty!"
@@ -197,12 +224,12 @@ impl Activity {
                     ,order_id as "client_order_id!"
                 from alpaca_activity
                 where symbol = upper($1)
-                order by transaction_time desc
+                order by dtg desc
             "#,
             symbol
         )
-        .fetch_all(pool)
-        .await
+            .fetch_all(pool)
+            .await
     }
 }
 

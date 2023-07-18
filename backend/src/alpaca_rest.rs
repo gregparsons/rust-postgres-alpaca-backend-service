@@ -50,24 +50,14 @@ impl AlpacaRest {
             loop {
                 let pool3 = pool.clone();
 
-                let time_current_ny = Utc::now()
-                    .with_timezone(&chrono_tz::America::New_York)
-                    .time();
+                let time_current_ny = Utc::now().with_timezone(&chrono_tz::America::New_York).time();
                 alpaca_poll_rate_ms = {
                     // if market is open, set the poll rate to the desired open rate
 
                     // TODO: use new is_open() function
                     if time_current_ny >= time_open_ny && time_current_ny <= time_close_ny {
-                        tracing::info!(
-                        "[rest_service:loop] NY time: {:?}, open: {:?}, close: {:?}",
-                        &time_current_ny,
-                        &time_open_ny,
-                        &time_close_ny
-                    );
-                        std::env::var("API_INTERVAL_MILLIS")
-                            .unwrap_or_else(|_| REST_POLL_RATE_OPEN_MILLIS_STR.to_string())
-                            .parse()
-                            .unwrap_or(REST_POLL_RATE_OPEN_MILLIS)
+                        tracing::info!("[rest_service:loop] NY time: {:?}, open: {:?}, close: {:?}",&time_current_ny,&time_open_ny,&time_close_ny);
+                        std::env::var("API_INTERVAL_MILLIS").unwrap_or_else(|_| REST_POLL_RATE_OPEN_MILLIS_STR.to_string()).parse().unwrap_or(REST_POLL_RATE_OPEN_MILLIS)
                     } else {
                         // back off to a slower poll rate.
                         tracing::debug!("[rest_service:start] market is closed. NY time: {:?}, open: {:?}, close: {:?}", &time_current_ny, &time_open_ny, &time_close_ny);
@@ -112,10 +102,24 @@ impl AlpacaRest {
 
 
 
-    /// load activities from the REST api and put them in the Postgres database
+    /// load activities from the REST api and put them in the Postgres database; filter by the most
+    /// recent activity timestamp
     async fn load_activities(pool:&PgPool, settings:&Settings){
-        // update alpaca activities
-        match Activity::get_remote(&settings).await {
+
+        // get latest activity timestamp from database (slow, not ideal, easier than extracting/manipulating in memory)
+        let last_entry = Activity::latest_dtg(pool, settings).await;
+
+        let since_filter = match last_entry{
+            Ok(last_dtg) => {
+
+                // let last_dtg = last_dtg.to_rfc3339();
+
+                Some(last_dtg)
+            },
+            Err(_)=> None,
+        };
+
+        match Activity::get_remote(since_filter, &settings).await {
             Ok(activities) => {
                 tracing::debug!("[alpaca_activities] got activities: {}", activities.len());
                 // save to postgres

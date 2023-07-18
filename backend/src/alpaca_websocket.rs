@@ -15,14 +15,16 @@
 */
 // use crossbeam_channel::{after, select, tick};
 use crate::db::DbMsg;
-use common_lib::alpaca_api_structs::{Ping, WebsocketMessage, RequestAuthenticate, RequestListen, RequestListenData, AuthStatus, DataMessage, WebsocketMessageFormat, DataMesgSuccess, AuthAction};
+use common_lib::alpaca_api_structs::{Ping, WebsocketMessage, RequestAuthenticate, RequestListen, RequestListenData, AuthStatus, DataMessage, WebsocketMessageFormat, DataMesgSuccess, AuthAction, MesgOrderUpdate};
 use common_lib::settings::Settings;
 use crossbeam::channel::Sender;
 use serde_json::{json};
 use std::time::Duration;
+use chrono::Utc;
 use tungstenite::client::IntoClientRequest;
 use tungstenite::Message;
 use common_lib::alpaca_api_structs::RequestAction;
+use common_lib::alpaca_order_log::AlpacaOrderLogEvent;
 
 
 pub struct AlpacaWebsocket;
@@ -140,13 +142,49 @@ impl AlpacaWebsocket {
                                             tracing::debug!("[ws_connect][binary] listening to: {:?}", listen_list.streams);
                                         },
 
-                                        Ok(WebsocketMessage::TradeUpdates(order_update))=>{
-                                            tracing::debug!("[ws_connect][binary][TradeUpdates] order_update: {:?}", &order_update);
-                                        },
+                                        // TODO: this is not clean at all
+                                        Ok(WebsocketMessage::TradeUpdates(MesgOrderUpdate::Fill{timestamp: t1, price: p1, qty: q1, order: o1}))=>{
+                                            tracing::debug!("[ws_connect][binary][TradeUpdates][Fill] order: {:?}", &o1);
+                                            let order_log_evt = AlpacaOrderLogEvent{ dtg: Utc::now(), event: "fill".to_string(), order: o1 };
+                                            let _ = tx_db.send(DbMsg::OrderLogEvent(order_log_evt));
 
-                                        Err(e)=>{
-                                            tracing::debug!("[ws_connect][binary] error: {:?}", &e);
-                                        }
+                                        },
+                                        Ok(WebsocketMessage::TradeUpdates(MesgOrderUpdate::PartialFill{timestamp: t1, price: p1, qty: q1, order: o1}))=>{
+                                            tracing::debug!("[ws_connect][binary][TradeUpdates][PartialFill] order: {:?}", &o1);
+                                            let order_log_evt = AlpacaOrderLogEvent{ dtg: Utc::now(), event: "partial_fill".to_string(), order: o1 };
+                                            let _ = tx_db.send(DbMsg::OrderLogEvent(order_log_evt));
+
+                                        },
+                                        Ok(WebsocketMessage::TradeUpdates(MesgOrderUpdate::New{order: o1}))=>{
+                                            tracing::debug!("[ws_connect][binary][TradeUpdates][New] order: {:?}", &o1);
+                                            let order_log_evt = AlpacaOrderLogEvent{ dtg: Utc::now(), event: "new".to_string(), order: o1 };
+                                            let _ = tx_db.send(DbMsg::OrderLogEvent(order_log_evt));
+                                        },
+                                        Ok(WebsocketMessage::TradeUpdates(MesgOrderUpdate::Accepted{order: o1}))=>{
+                                            tracing::debug!("[ws_connect][binary][TradeUpdates][Accepted] order: {:?}", &o1);
+                                            let order_log_evt = AlpacaOrderLogEvent{ dtg: Utc::now(), event: "accepted".to_string(), order: o1 };
+                                            let _ = tx_db.send(DbMsg::OrderLogEvent(order_log_evt));
+                                        },
+                                        Ok(WebsocketMessage::TradeUpdates(
+                                                // updates I don't care about, for example
+                                                MesgOrderUpdate::Canceled{..}
+                                                | MesgOrderUpdate::Calculated{..}
+                                                | MesgOrderUpdate::DoneForDay{..}
+                                                | MesgOrderUpdate::Expired{..}
+                                                | MesgOrderUpdate::OrderCancelRejected{..}
+                                                | MesgOrderUpdate::OrderReplaceRejected{..}
+                                                | MesgOrderUpdate::PendingCancel{..}
+                                                | MesgOrderUpdate::PendingNew{..}
+                                                | MesgOrderUpdate::PendingReplace{..}
+                                                | MesgOrderUpdate::Rejected{..}
+                                                | MesgOrderUpdate::Replaced{..}
+                                                | MesgOrderUpdate::Stopped{..}
+                                                | MesgOrderUpdate::Suspended{..}
+
+                                           ))=>{
+                                            tracing::debug!("[ws_connect][binary] some other miscellaneous trade update");
+                                        },
+                                        Err(e)=> tracing::debug!("[ws_connect][binary] error: {:?}", &e)
                                     }
                                 }
 
