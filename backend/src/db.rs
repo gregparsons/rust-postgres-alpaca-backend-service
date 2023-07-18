@@ -12,6 +12,8 @@ use sqlx::PgPool;
 use std::thread::JoinHandle;
 use tokio_postgres::{Client, SimpleQueryMessage};
 use common_lib::alpaca_order_log::AlpacaOrderLogEvent;
+use common_lib::alpaca_transaction_status::AlpacaTransaction;
+use common_lib::trade_struct::TradeSide;
 
 #[derive(Debug)]
 pub enum DbMsg {
@@ -110,14 +112,19 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
 
                             log_evt.save_to_db(&pool).await;
 
+
+                            // if this is a Fill event on the Sell side, decrement the shares filled from the alpaca_transaction_status entry
+                            if log_evt.event=="fill" && log_evt.order.side==TradeSide::Sell {
+                                if let Some(qty) = log_evt.order.filled_qty{
+                                    let _ = AlpacaTransaction::decrement(&log_evt.order.symbol, qty, &pool).await;
+                                }
+                            }
                         },
 
 
                         DbMsg::RefreshRating => {
-
                             tracing::debug!("[db] received DbMsg::RefreshRating");
                             refresh_rating(&pool).await;
-
                         }
 
                         // DbMsg::WsQuote(q) => {

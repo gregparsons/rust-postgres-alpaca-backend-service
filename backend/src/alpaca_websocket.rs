@@ -142,7 +142,7 @@ impl AlpacaWebsocket {
                                             tracing::debug!("[ws_connect][binary] listening to: {:?}", listen_list.streams);
                                         },
 
-                                        // TODO: this is not clean at all
+                                        // decrement the alpaca_transaction_status entry's posn_shares when a sell/fill is received
                                         Ok(WebsocketMessage::TradeUpdates(MesgOrderUpdate::Fill{timestamp: t1, price: p1, qty: q1, order: o1}))=>{
                                             tracing::debug!("[ws_connect][binary][TradeUpdates][Fill] order: {:?}", &o1);
                                             let order_log_evt = AlpacaOrderLogEvent{ dtg: Utc::now(), event: "fill".to_string(), order: o1 };

@@ -35,7 +35,6 @@ impl AlpacaOrderLogEvent{
                 ,side
                 ,order_type_v2
 
-
                 ,created_at
                 ,updated_at
                 ,submitted_at
