@@ -8,6 +8,7 @@ pub mod alpaca_websocket;
 pub mod finnhub_websocket;
 mod stock_rating;
 
+use tokio::runtime::Handle;
 use crate::data_collector::DataCollector;
 use common_lib::init::init;
 use common_lib::settings::Settings;
@@ -33,7 +34,8 @@ fn main() {
         let pool = create_sqlx_pg_pool().await;
         match Settings::load(&pool).await {
             Ok(settings) => {
-                DataCollector::run(pool, &settings).await;
+                let tokio_handle = Handle::current();
+                DataCollector::run(pool, &settings, tokio_handle).await;
             }
             Err(e) => {
                 tracing::error!("[main] could not load settings: {:?}", &e);

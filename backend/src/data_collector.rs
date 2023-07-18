@@ -20,6 +20,8 @@ use common_lib::settings::Settings;
 use common_lib::symbol_list::SymbolList;
 use sqlx::PgPool;
 use std::str::FromStr;
+use std::time::Duration;
+use tokio::runtime::Handle;
 use common_lib::alpaca_api_structs::WebsocketMessageFormat;
 use crate::alpaca_rest::AlpacaRest;
 use crate::stock_rating;
@@ -31,7 +33,7 @@ pub struct DataCollector {}
 // https://doc.rust-lang.org/book/ch05-03-method-syntax.html
 impl DataCollector {
 
-    pub async fn run(pool: PgPool, settings: &Settings) {
+    pub async fn run(pool: PgPool, settings: &Settings, tokio_handle: Handle) {
 
         let mut handles = vec![];
 
@@ -105,7 +107,14 @@ impl DataCollector {
         let alpaca_rest_on = bool::from_str(std::env::var("ALPACA_REST_ON").unwrap_or_else(|_| "false".to_owned()).as_str()).unwrap_or(false);
         tracing::info!("ALPACA_REST_ON is: {}", alpaca_rest_on);
         if alpaca_rest_on {
-            AlpacaRest::run().await;
+            // AlpacaRest::run().await;
+
+            let join_handle = std::thread::spawn(|| {
+                // let tokio_handle = Handle::current();
+                AlpacaRest::run(tokio_handle);
+            });
+            handles.push(join_handle);
+
         }
 
 
@@ -122,11 +131,16 @@ impl DataCollector {
             handles.push(join_handle);
         }
 
-
+        loop{
+            std::thread::sleep(Duration::from_secs(10));
+        }
 
         // collect all the threads (which will never happen unless they all crash)
         for h in handles {
             h.join().expect("thread stopped: {:?}");
         }
+
+        tracing::debug!("[data_collector::run] all handles joined, exiting");
+
     }
 }

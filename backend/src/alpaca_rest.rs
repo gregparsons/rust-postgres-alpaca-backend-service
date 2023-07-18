@@ -2,6 +2,7 @@
 //!
 //! Restful Alpaca Poller
 
+use std::thread::JoinHandle;
 use chrono::Utc;
 use sqlx::PgPool;
 use common_lib::alpaca_activity::Activity;
@@ -12,32 +13,47 @@ use common_lib::settings::Settings;
 use common_lib::sqlx_pool::create_sqlx_pg_pool;
 use tokio::runtime::Handle;
 
-const REST_POLL_RATE_OPEN_MILLIS_STR: &str = "5000";
-const REST_POLL_RATE_OPEN_MILLIS: u64 = 5000;
+// see .env first
+const REST_POLL_RATE_OPEN_MILLIS_STR: &str = "3000";
+const REST_POLL_RATE_OPEN_MILLIS: u64 = 3000;
 const REST_POLL_RATE_CLOSED_MILLIS: u64 = 30000;
 
 // quickly disable pieces of the Alpaca API
-const ENABLE_REST_POSITION: bool = true;
 const ENABLE_REST_ACTIVITY: bool = true;
+const ENABLE_REST_POSITION: bool = true;
 const ENABLE_REST_ORDER: bool = true;
 
 pub(crate) struct AlpacaRest{}
 
 impl AlpacaRest {
     /// Spawn a new thread to poll the Alpaca REST API
-    pub async fn run() {
+    pub fn run(tokio_handle: Handle) {
+
         tracing::debug!("[rest_client::run] starting alpaca rest client");
 
-        // run an async runtime inside the thread; it's a mess to try to run code copied from elsewhere
-        // that normally runs async but is now running in a thread; much easier to just start a new
-        // tokio runtime than to try to deal with FnOnce etc
-        // people asking why you'd want to do this: https://stackoverflow.com/questions/61292425/how-to-run-an-asynchronous-task-from-a-non-main-thread-in-tokio/63434522#63434522
+        // run an async runtime inside the thread
+        // why you'd want to do this: https://stackoverflow.com/questions/61292425/how-to-run-an-asynchronous-task-from-a-non-main-thread-in-tokio/63434522#63434522
+        // let tokio_handle = Handle::current();
 
-        let tokio_handle = Handle::current();
-        let pool = create_sqlx_pg_pool().await;
+        let pool = tokio_handle.block_on( async {
+            tracing::debug!("[rest_client::run] sqlx...");
+            let pool = create_sqlx_pg_pool().await;
+            pool
+        });
 
-        // spawn the entire rest client into a new OS thread
-        std::thread::spawn(move || {
+        tracing::debug!("[rest_client::run] got pool {:?}", &pool);
+
+        tokio_handle.spawn(async move {
+
+            tracing::debug!("[rest_client::run] inside tokio spawn_blocking");
+            // let pool = create_sqlx_pg_pool().await;
+
+
+            // let pool = create_sqlx_pg_pool().await;
+
+            // spawn the entire rest client into a new OS thread
+            // let handle = std::thread::spawn(move || {
+
             tracing::debug!("[run]");
 
             let mut alpaca_poll_rate_ms: u64;
@@ -48,6 +64,7 @@ impl AlpacaRest {
             // Call the API if the market is open in NYC
 
             loop {
+
                 let pool3 = pool.clone();
 
                 let time_current_ny = Utc::now().with_timezone(&chrono_tz::America::New_York).time();
@@ -58,6 +75,8 @@ impl AlpacaRest {
                     if time_current_ny >= time_open_ny && time_current_ny <= time_close_ny {
                         tracing::info!("[rest_service:loop] NY time: {:?}, open: {:?}, close: {:?}",&time_current_ny,&time_open_ny,&time_close_ny);
                         std::env::var("API_INTERVAL_MILLIS").unwrap_or_else(|_| REST_POLL_RATE_OPEN_MILLIS_STR.to_string()).parse().unwrap_or(REST_POLL_RATE_OPEN_MILLIS)
+                        // std::env::var("API_INTERVAL_MILLIS").unwrap_or_else(|_| REST_POLL_RATE_OPEN_MILLIS)
+
                     } else {
                         // back off to a slower poll rate.
                         tracing::debug!("[rest_service:start] market is closed. NY time: {:?}, open: {:?}, close: {:?}", &time_current_ny, &time_open_ny, &time_close_ny);
@@ -69,35 +88,35 @@ impl AlpacaRest {
                 // Poll the Alpaca APIs
                 // Spawn into a new Tokio-managed thread because it's three web API calls that could take a while.
                 // https://stackoverflow.com/questions/61292425/how-to-run-an-asynchronous-task-from-a-non-main-thread-in-tokio/63434522#63434522
-                tokio_handle.spawn(async move {
 
-                    // refresh settings from the database
-                    match Settings::load(&pool3).await {
-                        Ok(settings) => {
+                // refresh settings from the database
+                match Settings::load(&pool3).await {
+                    Ok(settings) => {
 
-                            if ENABLE_REST_ACTIVITY {
-                                AlpacaRest::load_activities(&pool3, &settings).await;
-                            }
-
-                            if ENABLE_REST_POSITION {
-                                AlpacaRest::load_positions(&pool3, &settings).await;
-                            }
-
-                            if ENABLE_REST_ORDER {
-                                AlpacaRest::load_orders(&pool3, &settings).await;
-                            }
-                        },
-                        Err(e) => {
-                            tracing::error!("[run] couldn't load settings in loop to update activities/positions: {:?}", &e);
+                        if ENABLE_REST_ACTIVITY {
+                            AlpacaRest::load_activities(&pool3, &settings).await;
                         }
+
+                        if ENABLE_REST_POSITION {
+                            AlpacaRest::load_positions(&pool3, &settings).await;
+                        }
+
+                        if ENABLE_REST_ORDER {
+                            AlpacaRest::load_orders(&pool3, &settings).await;
+                        }
+                    },
+                    Err(e) => {
+                        tracing::error!("[run] couldn't load settings in loop to update activities/positions: {:?}", &e);
                     }
-                });
+                }
 
                 std::thread::sleep(std::time::Duration::from_millis(alpaca_poll_rate_ms));
             }
+
+            tracing::debug!("[Market::start] alpaca rest client thread started");
         });
 
-        tracing::debug!("[Market::start] alpaca rest client thread started");
+
     }
 
 

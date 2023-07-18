@@ -174,11 +174,12 @@ impl Position {
             .await?;
 
         let now = Utc::now();
-        let remote_positions = remote_positions
+        let remote_positions:Vec<Position> = remote_positions
             .iter()
             .map(move |x| Position::from_temp(now, x.clone()))
             .collect();
 
+        tracing::debug!("[get_remote] got {} positions", &remote_positions.len());
         Ok(remote_positions)
     }
 
