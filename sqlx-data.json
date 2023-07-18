@@ -417,6 +417,18 @@
     },
     "query": "\n                SELECT\n                    dtg as \"dtg!\",\n                    alpaca_paper_id as \"alpaca_paper_id!:String\",\n                    alpaca_paper_secret as \"alpaca_paper_secret!:String\",\n                    alpaca_live_id as \"alpaca_live_id!:String\",\n                    alpaca_live_secret as \"alpaca_live_secret!:String\",\n                    trade_size as \"trade_size!\",\n                    trade_enable_buy as \"trade_enable_buy!\",\n                    trade_ema_small_size as \"trade_ema_small_size!\",\n                    trade_ema_large_size as \"trade_ema_large_size!\",\n                    trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\",\n                    trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                    ,finnhub_key as \"finnhub_key!:String\"\n                    ,coalesce(account_start_value,0.0) as \"account_start_value!\"\n                    ,coalesce(max_position_age_minute,0.0) as \"max_position_age_minute!\"\n                    ,coalesce(upgrade_min_profit,0.0) as \"upgrade_min_profit!\"\n                    ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as \"upgrade_sell_elapsed_minutes_min!\"\n                    ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as \"upgrade_posn_max_elapsed_minutes!\"\n                    ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as \"upgrade_posn_loss_allowed_dollars!\"\n\n                FROM t_settings_test\n                ORDER BY t_settings_test.dtg DESC\n                LIMIT 1\n            "
   },
+  "306c9bf4ab55d1ede54bd14c084b734a354deaa420c686d9420c99557d2d19c8": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar"
+        ]
+      }
+    },
+    "query": "insert into alpaca_transaction_status(dtg, symbol, posn_shares) values(now()::timestamptz, $1, 0.0)"
+  },
   "30f255854809dabc1008f3e29350fef9db68cbd1a7bf935d60c99c0b1e267339": {
     "describe": {
       "columns": [
@@ -480,6 +492,34 @@
     },
     "query": "\n                insert into alpaca_position(dtg, symbol, exchange, asset_class, avg_entry_price, qty, qty_available, side, market_value\n                    , cost_basis, unrealized_pl, unrealized_plpc, current_price, lastday_price, change_today, asset_id)\n                values\n                    (\n                        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, $12, $13, $14, $15, $16\n                    )"
   },
+  "4d1908563c58d287dd1ce4d77e42407ffcd17043c07b2cfdb4453e78d1909e0e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamptz",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Varchar",
+          "Varchar",
+          "Timestamptz",
+          "Timestamptz",
+          "Timestamptz",
+          "Timestamptz",
+          "Timestamptz",
+          "Timestamptz",
+          "Timestamptz"
+        ]
+      }
+    },
+    "query": "insert into alpaca_order_log(\n                dtg\n                ,event\n                ,id\n                ,client_order_id\n                ,symbol\n                ,qty\n                ,filled_qty\n                ,filled_avg_price\n                ,side\n                ,order_type_v2\n\n                ,created_at\n                ,updated_at\n                ,submitted_at\n                ,filled_at\n                ,expired_at\n                ,canceled_at\n                ,failed_at\n\n\n                -- replaced_at,\n                -- replaced_by,\n                -- replaces,\n                -- asset_id,\n                -- asset_class,\n                -- notional,\n                -- order_class,\n                -- order_type_v2,\n                -- time_in_force,\n                -- limit_price,\n                -- stop_price,\n                -- status\n                -- extended_hours,\n                -- trail_percent,\n                -- trail_price,\n                -- hwm\n                )\n                values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)\n\n            "
+  },
   "4e9d3bf266c0d115ec8c3e85cedc7a532ce0e9595f57ee9c373f562548262bc4": {
     "describe": {
       "columns": [],
@@ -506,6 +546,19 @@
       }
     },
     "query": "insert into trade_alp_latest(dtg,symbol,price,size)\n            values ($1, $2, $3, $4)\n            on conflict (symbol) do update set dtg=$1, price=$3, size=$4;\n        "
+  },
+  "5b8bc5ba4ff47c4625853cda3605524de9184ed2931efec6035f921ca0e81137": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Numeric"
+        ]
+      }
+    },
+    "query": "\n                insert into alpaca_transaction_status(dtg, symbol, posn_shares)\n                values(now()::timestamptz, $1, $2)\n                ON CONFLICT (symbol) DO UPDATE\n                    SET posn_shares = $2, dtg=now()::timestamptz;\n            "
   },
   "6890a7efe2764ef09fd174c44d2a9a0fa78fdfbb741528f1778e80d53acd9adc": {
     "describe": {
@@ -570,6 +623,19 @@
     },
     "query": "\n                update t_symbol set active = $2, trade_size = $3 where symbol = $1\n            "
   },
+  "7616f583588a56bf53f4867f979dd95e69284bf92d2846f878f33139eb01e22e": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Numeric",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                update alpaca_transaction_status set posn_shares = posn_shares - $1 where symbol=$2\n            "
+  },
   "85a249f6c84fe265732afafc3156e4166eb3a117ca447f04471d8bcacfdd3e1d": {
     "describe": {
       "columns": [
@@ -587,6 +653,38 @@
       }
     },
     "query": "select max(dtg)::timestamptz as \"dtg!\" from alpaca_activity"
+  },
+  "871329996f656930ce40b05409383f32d859800e7136411b31b6c7f3aa735a1b": {
+    "describe": {
+      "columns": [
+        {
+          "name": "dtg!",
+          "ordinal": 0,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "symbol!",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "posn_shares!",
+          "ordinal": 2,
+          "type_info": "Numeric"
+        }
+      ],
+      "nullable": [
+        true,
+        false,
+        false
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "select dtg as \"dtg!\", symbol as \"symbol!\", posn_shares as \"posn_shares!\" from alpaca_transaction_status where symbol=$1 and posn_shares > 0.0"
   },
   "884ca4bfd2aaadf5a8429b50cc543000263f123dbe4c96f678a3fc9203793484": {
     "describe": {
@@ -718,6 +816,18 @@
     },
     "query": "\n                SELECT\n                    dtg as \"dtg!\",\n                    alpaca_paper_id as \"alpaca_paper_id!:String\",\n                    '' as \"alpaca_paper_secret!:String\",\n                    alpaca_live_id as \"alpaca_live_id!:String\",\n                    '' as \"alpaca_live_secret!:String\",\n                    trade_size as \"trade_size!\",\n                    trade_enable_buy as \"trade_enable_buy!\",\n                    trade_ema_small_size as \"trade_ema_small_size!\",\n                    trade_ema_large_size as \"trade_ema_large_size!\",\n                    trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\",\n                    trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                    ,finnhub_key as \"finnhub_key!:String\"\n                    ,coalesce(account_start_value,0.0) as \"account_start_value!\"\n                    ,coalesce(max_position_age_minute,0.0) as \"max_position_age_minute!\"\n                    ,coalesce(upgrade_min_profit,0.0) as \"upgrade_min_profit!\"\n                    ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as \"upgrade_sell_elapsed_minutes_min!\"\n                    ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as \"upgrade_posn_max_elapsed_minutes!\"\n                    ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as \"upgrade_posn_loss_allowed_dollars!\"\n\n\n                FROM t_settings_test\n                ORDER BY t_settings_test.dtg DESC\n                LIMIT 1\n            "
   },
+  "97619bf5f57d753ca6ba7bc660611ead26547c67bccbacaaaf317abceab42a3b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "delete from alpaca_transaction_status where symbol=$1"
+  },
   "b2fa705f5ff94831630c8927f722c6cecece0d825e9256b70fd9c2b55f6148d5": {
     "describe": {
       "columns": [],
@@ -727,34 +837,6 @@
       }
     },
     "query": "delete from alpaca_position"
-  },
-  "b3089126537bf27014b7b4258bd8301dd17c05a718c8a2c6122bd309e1be8a7d": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Timestamptz",
-          "Varchar",
-          "Varchar",
-          "Varchar",
-          "Varchar",
-          "Numeric",
-          "Numeric",
-          "Numeric",
-          "Varchar",
-          "Varchar",
-          "Timestamptz",
-          "Timestamptz",
-          "Timestamptz",
-          "Timestamptz",
-          "Timestamptz",
-          "Timestamptz",
-          "Timestamptz"
-        ]
-      }
-    },
-    "query": "insert into alpaca_order_log(\n                dtg\n                ,event\n                ,id\n                ,client_order_id\n                ,symbol\n                ,qty\n                ,filled_qty\n                ,filled_avg_price\n                ,side\n                ,order_type_v2\n\n\n                ,created_at\n                ,updated_at\n                ,submitted_at\n                ,filled_at\n                ,expired_at\n                ,canceled_at\n                ,failed_at\n\n\n                -- replaced_at,\n                -- replaced_by,\n                -- replaces,\n                -- asset_id,\n                -- asset_class,\n                -- notional,\n                -- order_class,\n                -- order_type_v2,\n                -- time_in_force,\n                -- limit_price,\n                -- stop_price,\n                -- status\n                -- extended_hours,\n                -- trail_percent,\n                -- trail_price,\n                -- hwm\n                )\n                values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)\n\n            "
   },
   "bf579456afa58585ab2a25326f47f17561011a2dfc000cb80500e5a5c1f89cd8": {
     "describe": {
