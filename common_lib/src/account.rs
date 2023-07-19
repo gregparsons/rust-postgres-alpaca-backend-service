@@ -163,14 +163,12 @@ impl Account {
     /// GET https://paper-api.alpaca.markets/v2/account
     pub async fn get_remote(settings:&Settings)-> Result<Account,TradeWebError> {
 
-        let mut headers = HeaderMap::new();
-
         let api_key = settings.alpaca_paper_id.clone();
         let api_secret = settings.alpaca_paper_secret.clone();
+        let mut headers = HeaderMap::new();
         headers.insert("APCA-API-KEY-ID", api_key.parse().unwrap());
         headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
         let url = format!("https://paper-api.alpaca.markets/v2/account");
-        tracing::debug!("[get_account] calling API: {}", &url);
 
         let client = reqwest::Client::new();
         let http_result = client.get(url).headers(headers).send().await;
@@ -179,16 +177,10 @@ impl Account {
                 let json_text = &resp.text().await.unwrap();
                 tracing::debug!("json: {}", &json_text);
                 match serde_json::from_str::<Account>(&json_text) {
-                    Ok(account) => {
-                        tracing::debug!("[get_account] account\n: {:?}", &account);
-                        // 3. merge remote results to local database
-                        // account
-                        Ok(account)
-                    }
+                    Ok(account) => Ok(account),
                     Err(e) => {
                         tracing::debug!("[get_account] json: {}", &json_text);
                         tracing::debug!("[get_account] json error: {:?}", &e);
-                        // Account::blank()
                         Err(TradeWebError::JsonError)
                     }
                 }
@@ -196,7 +188,6 @@ impl Account {
             Err(e) => {
                 tracing::debug!("[get_account] reqwest error: {:?}", &e);
                 format!("reqwest error: {:?}", &e);
-                // Account::blank()
                 Err(TradeWebError::SqlxError)
             }
         }
