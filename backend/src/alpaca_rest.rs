@@ -11,6 +11,7 @@ use common_lib::market_hours::{MARKET_CLOSE_EXT, MARKET_OPEN_EXT};
 use common_lib::settings::Settings;
 use common_lib::sqlx_pool::create_sqlx_pg_pool;
 use tokio::runtime::Handle;
+use common_lib::account::Account;
 use common_lib::alpaca_transaction_status::AlpacaTransaction;
 
 // see .env first
@@ -23,6 +24,7 @@ const ENABLE_REST_ACTIVITY: bool = true;
 const ENABLE_REST_POSITION: bool = true;
 // don't need this
 const ENABLE_REST_ORDER: bool = false;
+const ENABLE_REST_ACCOUNT: bool = true;
 
 pub(crate) struct AlpacaRest{}
 
@@ -97,6 +99,11 @@ impl AlpacaRest {
                         if ENABLE_REST_ORDER {
                             AlpacaRest::load_orders(&pool3, &settings).await;
                         }
+
+                        if ENABLE_REST_ACCOUNT{
+                            Account::load_account(&pool3, &settings).await;
+
+                        }
                     },
                     Err(e) => {
                         tracing::error!("[run] couldn't load settings in loop to update activities/positions: {:?}", &e);
@@ -106,7 +113,7 @@ impl AlpacaRest {
                 std::thread::sleep(std::time::Duration::from_millis(alpaca_poll_rate_ms));
             }
 
-            tracing::debug!("[Market::start] alpaca rest client thread started");
+            // tracing::debug!("[Market::start] alpaca rest client thread started");
         });
 
 
@@ -119,7 +126,7 @@ impl AlpacaRest {
     async fn load_activities(pool:&PgPool, settings:&Settings){
 
         // get latest activity timestamp from database (slow, not ideal, easier than extracting/manipulating in memory)
-        let last_entry = Activity::latest_dtg(pool, settings).await;
+        let last_entry = Activity::latest_dtg(pool).await;
 
         let since_filter = match last_entry{
             Ok(last_dtg) => {

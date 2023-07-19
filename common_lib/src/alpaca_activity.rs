@@ -69,10 +69,10 @@ struct ActivityLatest{
 impl Activity {
 
     /// latest_dtg: get the date of the most recent activity; used to filter the activity API
-    pub async fn latest_dtg(pool:&PgPool, settings: &Settings)->Result<DateTime<Utc>, TradeWebError>{
+    pub async fn latest_dtg(pool:&PgPool)->Result<DateTime<Utc>, TradeWebError>{
         match sqlx::query_as!(ActivityLatest, r#"select max(dtg)::timestamptz as "dtg!" from alpaca_activity"#).fetch_one(pool).await{
             Ok(latest_dtg)=> Ok(latest_dtg.dtg),
-            Err(e)=>Err(TradeWebError::ReqwestError),
+            Err(_e)=>Err(TradeWebError::ReqwestError),
         }
     }
 

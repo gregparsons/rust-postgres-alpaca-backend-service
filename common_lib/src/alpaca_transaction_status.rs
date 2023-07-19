@@ -27,6 +27,7 @@ pub enum TransactionNextStep {
 }
 
 /// reflect an entry in the alpaca_transaction_status table
+#[allow(dead_code)]
 pub struct AlpacaTransaction{
     dtg:DateTime<Utc>,
     symbol:String,

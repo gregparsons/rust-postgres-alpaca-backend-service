@@ -92,9 +92,6 @@ impl AlpacaWebsocket {
                                 Message::Binary(b_msg) => {
                                     tracing::debug!("[ws_connect][binary] b_msg: {:?}", String::from_utf8(b_msg.clone()).unwrap());
 
-                                    // match serde_json::from_slice::<Value>(&b_msg) {
-
-                                    // match
                                     let stream_result = serde_json::from_slice::<WebsocketMessage>(&b_msg);
 
                                     tracing::debug!("[ws_connect][binary] AlpacaStream parse: {:?}", &stream_result);
@@ -112,18 +109,6 @@ impl AlpacaWebsocket {
                                                             let listen_msg = generate_ws_listen_message(vec![RequestAction::TradeUpdates, RequestAction::AccountUpdates]);
                                                             tracing::debug!("[ws_connect][binary] outgoing listen msg: {}", &listen_msg);
                                                             let _ = ws.write_message(Message::Text(listen_msg));
-
-
-                                                            // let json = json!({
-                                                            //         "action": ActionOutboundAlpaca::Subscribe, //"subscribe",
-                                                            //         "trades":  stock_list_to_uppercase(&symbols),
-                                                            //         // "quotes": STOCK_LIST_CAPS,
-                                                            //         "bars": stock_list_to_uppercase(&symbols),
-                                                            //     });
-                                                            // tracing::debug!("[ws_connect][binary] sending subscription request...\n{}", &json);
-                                                            // let result = ws.write_message(Message::Text(json.to_string()));
-                                                            // tracing::debug!("[ws_connect][binary] subscription request sent: {:?}", &result);
-
 
                                                         },
                                                         AuthStatus::Unauthorized=>{
@@ -143,13 +128,13 @@ impl AlpacaWebsocket {
                                         },
 
                                         // decrement the alpaca_transaction_status entry's posn_shares when a sell/fill is received
-                                        Ok(WebsocketMessage::TradeUpdates(MesgOrderUpdate::Fill{timestamp: t1, price: p1, qty: q1, order: o1}))=>{
+                                        Ok(WebsocketMessage::TradeUpdates(MesgOrderUpdate::Fill{timestamp: _t1, price: _p1, qty: _q1, order: o1}))=>{
                                             tracing::debug!("[ws_connect][binary][TradeUpdates][Fill] order: {:?}", &o1);
                                             let order_log_evt = AlpacaOrderLogEvent{ dtg: Utc::now(), event: "fill".to_string(), order: o1 };
                                             let _ = tx_db.send(DbMsg::OrderLogEvent(order_log_evt));
 
                                         },
-                                        Ok(WebsocketMessage::TradeUpdates(MesgOrderUpdate::PartialFill{timestamp: t1, price: p1, qty: q1, order: o1}))=>{
+                                        Ok(WebsocketMessage::TradeUpdates(MesgOrderUpdate::PartialFill{timestamp: _t1, price: _p1, qty: _q1, order: o1}))=>{
                                             tracing::debug!("[ws_connect][binary][TradeUpdates][PartialFill] order: {:?}", &o1);
                                             let order_log_evt = AlpacaOrderLogEvent{ dtg: Utc::now(), event: "partial_fill".to_string(), order: o1 };
                                             let _ = tx_db.send(DbMsg::OrderLogEvent(order_log_evt));

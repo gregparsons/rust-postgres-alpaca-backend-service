@@ -7,4 +7,5 @@
 pub enum TradeWebError {
     ReqwestError,
     JsonError,
+    SqlxError,
 }

@@ -136,11 +136,11 @@ impl DataCollector {
         }
 
         // collect all the threads (which will never happen unless they all crash)
-        for h in handles {
-            h.join().expect("thread stopped: {:?}");
-        }
+        // for h in handles {
+        //     h.join().expect("thread stopped: {:?}");
+        // }
 
-        tracing::debug!("[data_collector::run] all handles joined, exiting");
+        // tracing::debug!("[data_collector::run] all handles joined, exiting");
 
     }
 }
