@@ -417,18 +417,6 @@
     },
     "query": "\n                SELECT\n                    dtg as \"dtg!\",\n                    alpaca_paper_id as \"alpaca_paper_id!:String\",\n                    alpaca_paper_secret as \"alpaca_paper_secret!:String\",\n                    alpaca_live_id as \"alpaca_live_id!:String\",\n                    alpaca_live_secret as \"alpaca_live_secret!:String\",\n                    trade_size as \"trade_size!\",\n                    trade_enable_buy as \"trade_enable_buy!\",\n                    trade_ema_small_size as \"trade_ema_small_size!\",\n                    trade_ema_large_size as \"trade_ema_large_size!\",\n                    trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\",\n                    trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                    ,finnhub_key as \"finnhub_key!:String\"\n                    ,coalesce(account_start_value,0.0) as \"account_start_value!\"\n                    ,coalesce(max_position_age_minute,0.0) as \"max_position_age_minute!\"\n                    ,coalesce(upgrade_min_profit,0.0) as \"upgrade_min_profit!\"\n                    ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as \"upgrade_sell_elapsed_minutes_min!\"\n                    ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as \"upgrade_posn_max_elapsed_minutes!\"\n                    ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as \"upgrade_posn_loss_allowed_dollars!\"\n\n                FROM t_settings_test\n                ORDER BY t_settings_test.dtg DESC\n                LIMIT 1\n            "
   },
-  "306c9bf4ab55d1ede54bd14c084b734a354deaa420c686d9420c99557d2d19c8": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar"
-        ]
-      }
-    },
-    "query": "insert into alpaca_transaction_status(dtg, symbol, posn_shares) values(now()::timestamptz, $1, 0.0)"
-  },
   "30f255854809dabc1008f3e29350fef9db68cbd1a7bf935d60c99c0b1e267339": {
     "describe": {
       "columns": [
@@ -623,19 +611,6 @@
     },
     "query": "\n                update t_symbol set active = $2, trade_size = $3 where symbol = $1\n            "
   },
-  "7616f583588a56bf53f4867f979dd95e69284bf92d2846f878f33139eb01e22e": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Numeric",
-          "Text"
-        ]
-      }
-    },
-    "query": "\n                update alpaca_transaction_status set posn_shares = posn_shares - $1 where symbol=$2\n            "
-  },
   "85a249f6c84fe265732afafc3156e4166eb3a117ca447f04471d8bcacfdd3e1d": {
     "describe": {
       "columns": [
@@ -828,6 +803,31 @@
     },
     "query": "delete from alpaca_transaction_status where symbol=$1"
   },
+  "a77a469257f0965db9d3ab3f8f2a7230126ad44458d497151e4c7ca7b71f5160": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Numeric",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                update alpaca_transaction_status\n                set posn_shares = posn_shares - $1 where symbol=$2\n            "
+  },
+  "b06ee7778b547595f6f447e4bec99eb15fa6cd84acc3e073d20fa2071da34e40": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar"
+        ]
+      }
+    },
+    "query": "\n\n                insert into alpaca_transaction_status(dtg, symbol, posn_shares)\n                values(now()::timestamptz, $1, 0.0\n\n            )"
+  },
   "b2fa705f5ff94831630c8927f722c6cecece0d825e9256b70fd9c2b55f6148d5": {
     "describe": {
       "columns": [],
@@ -971,6 +971,16 @@
       }
     },
     "query": "\n            select\n                user_id, username, password\n            from users\n            where username = $1\n        "
+  },
+  "cbbf8ab72f26935d3fed0b0706bfe4ca8395ed2efe3bf48e5ef45135d11c896a": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                delete from alpaca_transaction_status\n                where posn_shares <= 0.0\n            "
   },
   "cc27b0861e395c6fc0bec92cd0d3cbc3f9389ee9f1c73bf858d813c38ccc985f": {
     "describe": {

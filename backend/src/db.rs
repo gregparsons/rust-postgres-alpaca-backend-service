@@ -114,9 +114,18 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
 
 
                             // if this is a Fill event on the Sell side, decrement the shares filled from the alpaca_transaction_status entry
+
+
+                            // tracing::info!("[DbMsg::OrderLogEvent][Fill] log_evt: {:?}", &log_evt);
+
                             if log_evt.event=="fill" && log_evt.order.side==TradeSide::Sell {
+
+                                tracing::info!("[DbMsg::OrderLogEvent][Fill][Sell] {}:{:?}", &log_evt.order.symbol, &log_evt.order.filled_qty);
                                 if let Some(qty) = log_evt.order.filled_qty{
+
                                     let _ = AlpacaTransaction::decrement(&log_evt.order.symbol, qty, &pool).await;
+                                    // if the remaining shares are zero or less delete the entry (TODO: make this one sql statement)
+                                    let _ = AlpacaTransaction::clean(&pool).await;
                                 }
                             }
                         },
