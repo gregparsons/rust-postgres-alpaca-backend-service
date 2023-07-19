@@ -80,6 +80,18 @@ impl AlpacaTransaction{
         }
     }
 
+    /// start the order slate blank
+    pub async fn delete_all(pool:&PgPool)->Result<(), TransactionError>{
+        match sqlx::query!(
+            r#"
+                delete from alpaca_transaction_status
+            "#
+        ).execute(pool).await{
+            Ok(_)=>Ok(()),
+            Err(_e)=>Err(TransactionError::DeleteFailed), // or db error
+        }
+    }
+
 
     /// insert a new transaction if one doesn't currently exist, otherwise error
     pub async fn decrement(symbol:&str, shares_to_decrement:BigDecimal, pool:&PgPool)->Result<(), TransactionError>{

@@ -838,6 +838,16 @@
     },
     "query": "delete from alpaca_position"
   },
+  "b719258d9bd3bb870db33a104cdc03fa10028f855bc41cec26485330816dd0a6": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n                delete from alpaca_transaction_status\n            "
+  },
   "bf579456afa58585ab2a25326f47f17561011a2dfc000cb80500e5a5c1f89cd8": {
     "describe": {
       "columns": [

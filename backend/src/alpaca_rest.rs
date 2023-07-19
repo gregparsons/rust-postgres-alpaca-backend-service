@@ -48,6 +48,11 @@ impl AlpacaRest {
 
             tracing::debug!("[rest_client::run] inside tokio spawn_blocking");
 
+            // on every startup clean out the order slate; it'll refill from positions and the order process
+            // minor possibility of an order already existing on Alpaca, but rare in the times we're restarting the app
+            let _ = AlpacaTransaction::delete_all(&pool).await;
+
+
             let mut alpaca_poll_rate_ms: u64;
 
             // this is set in all.sh via docker run
