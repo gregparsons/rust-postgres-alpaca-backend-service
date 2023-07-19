@@ -9,7 +9,7 @@ use common_lib::http::redirect_home;
 use handlebars::Handlebars;
 use serde_json::json;
 use sqlx::PgPool;
-use common_lib::account::Account;
+use common_lib::account::{Account, AccountWithDate};
 use common_lib::settings::Settings;
 
 /// GET /account
@@ -23,7 +23,10 @@ pub async fn get_account(hb: web::Data<Handlebars<'_>>, pool: web::Data<PgPool>,
 
             Ok(settings) => {
 
-                let account_result = Account::get_remote(&settings).await;
+                // let account_result = Account::get_remote(&settings).await;
+
+                let account_result= Account::get(&pool).await;
+
                 match account_result{
                     Ok(account)=>{
                         let equity = &account.equity; // BigDecimal::from_str(&account.equity).unwrap_or_else(|_| BigDecimal::from(0));
