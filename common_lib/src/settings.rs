@@ -28,6 +28,8 @@ pub struct Settings {
     pub upgrade_sell_elapsed_minutes_min:BigDecimal,
     pub upgrade_posn_max_elapsed_minutes:BigDecimal,
     pub upgrade_posn_loss_allowed_dollars:BigDecimal,
+    pub acct_max_position_market_value: BigDecimal,
+    pub acct_min_cash_dollars: BigDecimal,
 
 }
 
@@ -35,7 +37,7 @@ impl Settings {
     ///
     /// TODO: encrypt alpaca credentials in database and decrypt here using .env
     ///
-    pub async fn load(pool: &PgPool) -> Result<Settings, sqlx::Error> {
+    pub async fn load_with_secret(pool: &PgPool) -> Result<Settings, sqlx::Error> {
         let settings_result = sqlx::query_as!(
             Settings,
             r#"
@@ -58,9 +60,10 @@ impl Settings {
                     ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as "upgrade_sell_elapsed_minutes_min!"
                     ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as "upgrade_posn_max_elapsed_minutes!"
                     ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as "upgrade_posn_loss_allowed_dollars!"
-
-                FROM t_settings_test
-                ORDER BY t_settings_test.dtg DESC
+                    ,coalesce(acct_max_position_market_value,10.0) as "acct_max_position_market_value!"
+                    ,coalesce(acct_min_cash_dollars,10.0) as "acct_min_cash_dollars!"
+                FROM t_settings
+                ORDER BY t_settings.dtg DESC
                 LIMIT 1
             "#
         )
@@ -97,10 +100,10 @@ impl Settings {
                     ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as "upgrade_sell_elapsed_minutes_min!"
                     ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as "upgrade_posn_max_elapsed_minutes!"
                     ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as "upgrade_posn_loss_allowed_dollars!"
-
-
-                FROM t_settings_test
-                ORDER BY t_settings_test.dtg DESC
+                    ,coalesce(acct_max_position_market_value,10.0) as "acct_max_position_market_value!"
+                    ,coalesce(acct_min_cash_dollars,10.0) as "acct_min_cash_dollars!"
+                FROM t_settings
+                ORDER BY t_settings.dtg DESC
                 LIMIT 1
             "#
         )
@@ -110,14 +113,9 @@ impl Settings {
     }
 
     /// change the settings and return blank secret for front-end type uses
-    pub async fn change_trade_profile(
-        trade_settings_profile: &TradeSettingsProfile,
-        pool: &PgPool,
-    ) -> Result<Settings, sqlx::Error> {
+    pub async fn change_trade_profile(trade_settings_profile: &TradeSettingsProfile, pool: &PgPool, ) -> Result<Settings, sqlx::Error> {
         let ts = trade_settings_profile.clone();
         let ts = ts.to_string(); // .as_str();
-
-        // assert!()
 
         // SQL injection is avoided here by using an enum; failure upon parsing would've happened at the api level
         let settings_result = sqlx::query_as!(
@@ -142,7 +140,8 @@ impl Settings {
                     ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as "upgrade_sell_elapsed_minutes_min!"
                     ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as "upgrade_posn_max_elapsed_minutes!"
                     ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as "upgrade_posn_loss_allowed_dollars!"
-
+                    ,coalesce(acct_max_position_market_value,60.0) as "acct_max_position_market_value!"
+                    ,coalesce(acct_min_cash_dollars,60.0) as "acct_min_cash_dollars!"
                 from fn_set_trade_settings($1);
             "#,
             &ts

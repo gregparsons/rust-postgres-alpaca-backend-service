@@ -32,7 +32,7 @@ fn main() {
 
     tokio_runtime.block_on(async {
         let pool = create_sqlx_pg_pool().await;
-        match Settings::load(&pool).await {
+        match Settings::load_with_secret(&pool).await {
             Ok(settings) => {
                 let tokio_handle = Handle::current();
                 DataCollector::run(pool, &settings, tokio_handle).await;

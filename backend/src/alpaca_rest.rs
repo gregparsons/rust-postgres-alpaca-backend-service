@@ -85,7 +85,7 @@ impl AlpacaRest {
                 };
 
                 // refresh settings from the database
-                match Settings::load(&pool3).await {
+                match Settings::load_with_secret(&pool3).await {
                     Ok(settings) => {
 
                         if ENABLE_REST_ACTIVITY {

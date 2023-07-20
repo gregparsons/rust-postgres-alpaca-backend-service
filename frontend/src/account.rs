@@ -9,7 +9,7 @@ use common_lib::http::redirect_home;
 use handlebars::Handlebars;
 use serde_json::json;
 use sqlx::PgPool;
-use common_lib::account::{Account, AccountWithDate};
+use common_lib::account::{Account};
 use common_lib::settings::Settings;
 
 /// GET /account
@@ -19,7 +19,7 @@ pub async fn get_account(hb: web::Data<Handlebars<'_>>, pool: web::Data<PgPool>,
 
         // let mut headers = HeaderMap::new();
 
-        match Settings::load(&pool).await {
+        match Settings::load_with_secret(&pool).await {
 
             Ok(settings) => {
 
