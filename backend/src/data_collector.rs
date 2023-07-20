@@ -39,7 +39,8 @@ impl DataCollector {
 
         /****** database actor thread ******/
         // use this crossbeam channel to transmit messages to the database
-        let tx_db = DbActor::start().await;
+        let pool_db = pool.clone();
+        let tx_db = DbActor::run(pool_db).await;
 
         /****** alpaca websocket ******/
         tracing::debug!("[Market::start] db start() complete");
@@ -77,6 +78,9 @@ impl DataCollector {
                 },
                 Err(e) => tracing::debug!("[start] error getting symbols for websocket: {:?}", &e),
             }
+            tracing::debug!("[run] alpaca_ws_on: {}", alpaca_ws_on);
+        } else {
+            tracing::debug!("[run] alpaca_ws_on: {}", alpaca_ws_on);
         }
 
         /****** finnhub websocket ******/
@@ -100,24 +104,31 @@ impl DataCollector {
                 },
                 Err(e) => tracing::debug!("[start] error getting symbols for websocket: {:?}", &e),
             }
+            tracing::debug!("[run] finnhub_on: {}", finnhub_on);
+
+        } else {
+            tracing::debug!("[run] finnhub_on: {}", finnhub_on);
         }
 
         /****** alpaca rest polling ******/
         // Rest HTTP Service (in/out)
         let alpaca_rest_on = bool::from_str(std::env::var("ALPACA_REST_ON").unwrap_or_else(|_| "false".to_owned()).as_str()).unwrap_or(false);
         tracing::info!("ALPACA_REST_ON is: {}", alpaca_rest_on);
+
+        let pool3 = pool.clone();
         if alpaca_rest_on {
             // AlpacaRest::run().await;
 
-            let join_handle = std::thread::spawn(|| {
+            let join_handle = std::thread::spawn(move || {
                 // let tokio_handle = Handle::current();
-                AlpacaRest::run(tokio_handle);
+                AlpacaRest::run(pool3, tokio_handle);
             });
             handles.push(join_handle);
+            tracing::debug!("[run] alpaca_rest_on: {}", finnhub_on);
 
+        } else {
+            tracing::debug!("[run] alpaca_rest_on: {}", finnhub_on);
         }
-
-
 
         // start the stock rating system
         // default on
@@ -129,7 +140,11 @@ impl DataCollector {
                 stock_rating::run(tx_db2);
             });
             handles.push(join_handle);
+            tracing::debug!("[run] stock_rating_on: {}", finnhub_on);
+        } else {
+            tracing::debug!("[run] stock_rating_on: {}", finnhub_on);
         }
+
 
         loop{
             std::thread::sleep(Duration::from_secs(10));

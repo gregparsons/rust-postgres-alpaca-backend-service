@@ -163,6 +163,8 @@ impl Account {
     /// GET https://paper-api.alpaca.markets/v2/account
     pub async fn get_remote(settings:&Settings)-> Result<Account,TradeWebError> {
 
+        tracing::debug!("************** settings: {:?}", settings);
+
         let api_key = settings.alpaca_paper_id.clone();
         let api_secret = settings.alpaca_paper_secret.clone();
         let mut headers = HeaderMap::new();

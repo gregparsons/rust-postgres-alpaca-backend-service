@@ -5,7 +5,6 @@
 
 use common_lib::alpaca_api_structs::{Ping, /*AlpWsQuote, */AlpacaTradeWs, MinuteBar};
 use common_lib::finnhub::{FinnhubPing, FinnhubTrade};
-use common_lib::sqlx_pool::create_sqlx_pg_pool;
 use crossbeam::channel::Sender;
 use sqlx::postgres::PgQueryResult;
 use sqlx::PgPool;
@@ -36,7 +35,7 @@ impl DbActor {
     ///
     /// return a crossbeam_channel::channel::Sender in order to be able to send messages to the
     /// db listener thread (to be able to send cross-thread inserts)
-    pub async fn start() -> Sender<DbMsg> {
+    pub async fn run(pool:PgPool) -> Sender<DbMsg> {
         tracing::debug!("");
 
         // Channel for websocket thread to send to database thread
@@ -46,13 +45,11 @@ impl DbActor {
         let client: Client = tokio::spawn(async {
             let db_log_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not found");
             db_connect(&db_log_url).await
-        })
-        .await
-        .unwrap();
+        }).await.unwrap();
 
         // upon connection start a message-listening thread
         tokio::spawn(async move {
-            crate::db::db_thread(client, rx).await;
+            db_thread(&pool, client, rx).await;
         });
 
         // return a means of sending messages to the db listener thread
@@ -61,7 +58,7 @@ impl DbActor {
 }
 
 ///
-/// TODO: convert to sqlx::PgConnect
+/// TODO: convert to sqlx
 /// - convert to using migrations
 /// - PgConnectOptions would let us load DB credentials from env nicely without having to generate a
 /// connection string
@@ -72,9 +69,7 @@ pub async fn db_connect(db_url: &str) -> tokio_postgres::Client {
     // no need to log the db password
     // tracing::debug!("[db_connect] db_url: {}", &db_url);
 
-    let (client, connection) = tokio_postgres::connect(db_url, tokio_postgres::NoTls)
-        .await
-        .unwrap();
+    let (client, connection) = tokio_postgres::connect(db_url, tokio_postgres::NoTls).await.unwrap();
 
     // spin off the database connection to its own thread
     tokio::spawn(async move {
@@ -95,11 +90,11 @@ pub async fn db_connect(db_url: &str) -> tokio_postgres::Client {
 /// Other threads can send DbMsg messages via crossbeam to perform inserts into the database cross-thread.
 ///
 /// Each db network call takes 150-300ms on LAN/wifi
-async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> JoinHandle<()> {
+async fn db_thread(pool: &PgPool, old_pg_client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> JoinHandle<()> {
     tracing::debug!("[db_thread]");
 
     // TODO: starting here I'm using SQLX instead of tokio postgres
-    let pool = create_sqlx_pg_pool().await;
+    // let pool = create_sqlx_pg_pool().await;
 
     loop {
         crossbeam::channel::select! {
@@ -110,7 +105,7 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
                         DbMsg::OrderLogEvent(log_evt)=>{
                             tracing::debug!("[db] received DbMsg::OrderLogEvent: {:?}", &log_evt);
 
-                            log_evt.save_to_db(&pool).await;
+                            log_evt.save_to_db(pool).await;
 
 
                             // if this is a Fill event on the Sell side, decrement the shares filled from the alpaca_transaction_status entry
@@ -123,17 +118,16 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
                                 tracing::info!("[DbMsg::OrderLogEvent][Fill][Sell] {}:{:?}", &log_evt.order.symbol, &log_evt.order.filled_qty);
                                 if let Some(qty) = log_evt.order.filled_qty{
 
-                                    let _ = AlpacaTransaction::decrement(&log_evt.order.symbol, qty, &pool).await;
+                                    let _ = AlpacaTransaction::decrement(&log_evt.order.symbol, qty, pool).await;
                                     // if the remaining shares are zero or less delete the entry (TODO: make this one sql statement)
-                                    let _ = AlpacaTransaction::clean(&pool).await;
+                                    let _ = AlpacaTransaction::clean(pool).await;
                                 }
                             }
                         },
 
-
                         DbMsg::RefreshRating => {
                             tracing::debug!("[db] received DbMsg::RefreshRating");
-                            refresh_rating(&pool).await;
+                            refresh_rating(pool).await;
                         }
 
                         // DbMsg::WsQuote(q) => {
@@ -147,13 +141,13 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
                             // old; uses tokio::postgres w/o a connection pool
                             // crate::db::insert_alpaca_websocket_trade(&client, &t).await;
 
-                            match insert_alpaca_trade(&t, &pool).await{
+                            match insert_alpaca_trade(&t, pool).await{
                                 Ok(_)=> tracing::debug!("[db_thread, DbMsg::WsTrade] alpaca trade inserted"),
                                 Err(e) => tracing::debug!("[db_thread, DbMsg::WsTrade] alpaca trade not inserted: {:?}", &e),
                             }
 
                             // also save a copy to the latest table; saves .5-3 seconds on lookup
-                            match insert_alpaca_trade_latest(&t, &pool).await {
+                            match insert_alpaca_trade_latest(&t, pool).await {
                                 Ok(_)=> tracing::debug!("[db_thread, DbMsg::WsTrade] latest alpaca trade inserted"),
                                 Err(e) => tracing::debug!("[db_thread, DbMsg::WsTrade] latest alpaca trade not inserted: {:?}", &e),
                             }
@@ -161,20 +155,20 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
 
                         DbMsg::MinuteBar(minute_bar) => {
                             // tracing::debug!("[db_thread, DbMsg::MinuteBar] minute_bar received by db thread: {:?}", &minute_bar);
-                            crate::db::insert_minute_bar(&client, &minute_bar).await;
+                            crate::db::insert_minute_bar(&old_pg_client, &minute_bar).await;
                         }
 
                         DbMsg::TradeFinnhub(finnhub_trade) => {
 
                             // tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub_trade received by db thread: {:?}", &finnhub_trade);
-                            match insert_finnhub_trade(&finnhub_trade, &pool).await {
+                            match insert_finnhub_trade(&finnhub_trade, pool).await {
                                 Ok(_)=> tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade inserted"),
                                 Err(e) => tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade not inserted: {:?}", &e),
                             }
 
                             // also save a copy to the latest table; saves .5-3 seconds on lookup (could also just save it in memory
                             // client-side later when I convert to using RabbitMq
-                            match insert_finnhub_trade_latest(&finnhub_trade, &pool).await {
+                            match insert_finnhub_trade_latest(&finnhub_trade, pool).await {
                                 Ok(_)=> tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade inserted"),
                                 Err(e) => tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade not inserted: {:?}", &e),
                             }
@@ -182,11 +176,11 @@ async fn db_thread(client: Client, rx: crossbeam::channel::Receiver<DbMsg>) -> J
                         },
 
                         DbMsg::PingFinnhub(ping) => {
-                            let _ = insert_finnhub_ping(&ping, &pool).await;
+                            let _ = insert_finnhub_ping(&ping, pool).await;
 
                         },
                         DbMsg::PingAlpaca(ping) => {
-                            let _ = insert_alpaca_ping(&ping, &pool).await;
+                            let _ = insert_alpaca_ping(&ping, pool).await;
 
                         }
                     }
@@ -204,140 +198,6 @@ async fn refresh_rating(pool:&PgPool){
 
 }
 
-
-
-
-/// deprecated
-// async fn insert_alpaca_websocket_trade(client: &Client, t: &AlpWsTrade) {
-//     tracing::debug!("");
-//
-//     let sql = format!(
-//         r"
-// 		insert into t_ws_trade(
-// 			dtg,
-// 			event,
-// 			symbol,
-// 			-- exchange,
-// 			price,
-// 			size,
-// 			id_trade
-// 			--,
-// 			-- c:Vec<usize>,
-// 			-- id_tape
-// 		)
-// 		values ('{}','{}','{}',{},{}, {});",
-//         t.dtg, t.event, t.symbol, /*t.exchange,*/ t.price, t.size, t.id_trade/*, t.id_tape*/
-//     );
-//
-//     // tracing::debug!("[insert_ws_trade] sql: {}", &sql);
-//
-//     // run query
-//     if let Ok(result_vec) = client.simple_query(&sql).await {
-//         for i in result_vec {
-//             match i {
-//                 SimpleQueryMessage::CommandComplete(row_count) => {
-//                     tracing::debug!("[insert_ws_trade] {} row(s) inserted", row_count);
-//                 }
-//
-//                 SimpleQueryMessage::Row(_row) => {}
-//                 _ => tracing::debug!("[insert_ws_trade] Something weird happened on log query."),
-//             }
-//         }
-//     } else {
-//         // TODO: why is this happening? (1/20/2021)
-//         tracing::debug!("[insert_ws_trade] insert failed");
-//     }
-// }
-
-// /// TODO: convert this to SQLX; it currently does not use a connection pool
-// async fn insert_ws_quote(client: &Client, t: AlpWsQuote) {
-//     let sql = format!(
-//         r"
-// 		insert into t_ws_quote(
-// 			dtg,
-// 			dtg_updated,
-// 			event,
-// 			symbol,
-//
-// 			exchange_bid,
-// 			price_bid,
-// 			size_bid,
-//
-// 			exchange_ask,
-// 			price_ask,
-// 			size_ask
-// 		)
-// 		values ('{}','{}','{}','{}',
-// 			{},{},{},
-// 			{},{},{});",
-//         t.dtg,
-//         t.dtg_updated,
-//         t.event,
-//         t.symbol,
-//         t.exchange_bid,
-//         t.price_bid,
-//         t.size_bid,
-//         t.exchange_ask,
-//         t.price_ask,
-//         t.size_ask
-//     );
-//
-//     // tracing::debug!("[insert_ws_quote] sql: {}", &sql);
-//
-//     // run query
-//     if let Ok(result_vec) = client.simple_query(&sql).await {
-//         for i in result_vec {
-//             match i {
-//                 SimpleQueryMessage::CommandComplete(row_count) => {
-//                     tracing::debug!("[insert_ws_quote] {} row(s) inserted", row_count);
-//                 }
-//                 SimpleQueryMessage::Row(_row) => {}
-//                 _ => tracing::debug!("[insert_ws_quote] Something weird happened on log query."),
-//             }
-//         }
-//     } else {
-//         tracing::debug!("[insert_ws_quote] log insert failed");
-//     }
-// }
-
-// /// insert a result from polling the rest API
-// /// TODO: convert this to SQLX; it currently does not use a connection pool
-// async fn insert_trade_rest(client: &Client, trade_rest: AlpacaTradeRest) {
-//     /*
-//         insert into t_last_trade(dtg, price, size, exchange, cond1, cond2, cond3, cond4)
-//         values (now(), 0.0, 0.0, 0, 0, 0, 0, 0)
-//     */
-//
-//     let sql = format!(
-//         r#"
-// 		insert into t_last_trade(dtg_updated, symbol, dtg, price, size)
-// 		values ('{}', '{}', '{}'::timestamp, {}, {})"#,
-//         trade_rest.dtg_updated,
-//         trade_rest.symbol,
-//         trade_rest.trade.dtg,
-//         trade_rest.trade.price,
-//         trade_rest.trade.size // , trade_rest.trade.exchange
-//     );
-//
-//     tracing::debug!("[insert_trade_rest] sql: {}", &sql);
-//
-//     // run query; results come as messages from the tokio_postgres crate
-//     if let Ok(result_vec) = client.simple_query(&sql).await {
-//         for i in result_vec {
-//             match i {
-//                 SimpleQueryMessage::CommandComplete(row_count) => {
-//                     tracing::debug!("[insert_trade_rest] {} row(s) inserted", row_count);
-//                 }
-//
-//                 SimpleQueryMessage::Row(_row) => {}
-//
-//                 _ => tracing::debug!("[insert_trade_rest] Something weird happened on log query."),
-//             }
-//         }
-//     } else {
-//         tracing::debug!("[insert_trade_rest] insert failed");
-//     }
-// }
 
 /// TODO: convert this to SQLX; it currently does not use a connection pool
 async fn insert_minute_bar(client: &Client, mb: &MinuteBar) {

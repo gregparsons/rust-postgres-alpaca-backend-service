@@ -104,11 +104,7 @@ impl Activity {
             }
         };
 
-
         tracing::debug!("[get_remote] getting activities since: {:?}", &since_filter);
-
-
-
 
         tracing::debug!("[get_remote] calling API: {}", &url);
         let client = reqwest::Client::new();

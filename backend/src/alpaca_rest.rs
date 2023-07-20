@@ -9,7 +9,6 @@ use common_lib::alpaca_order::Order;
 use common_lib::alpaca_position::Position;
 use common_lib::market_hours::{MARKET_CLOSE_EXT, MARKET_OPEN_EXT};
 use common_lib::settings::Settings;
-use common_lib::sqlx_pool::create_sqlx_pg_pool;
 use tokio::runtime::Handle;
 use common_lib::account::Account;
 use common_lib::alpaca_transaction_status::AlpacaTransaction;
@@ -30,7 +29,7 @@ pub(crate) struct AlpacaRest{}
 
 impl AlpacaRest {
     /// Spawn a new thread to poll the Alpaca REST API
-    pub fn run(tokio_handle: Handle) {
+    pub fn run(pool: PgPool, tokio_handle: Handle) {
 
         tracing::debug!("[rest_client::run] starting alpaca rest client");
 
@@ -38,11 +37,11 @@ impl AlpacaRest {
         // why you'd want to do this: https://stackoverflow.com/questions/61292425/how-to-run-an-asynchronous-task-from-a-non-main-thread-in-tokio/63434522#63434522
         // let tokio_handle = Handle::current();
 
-        let pool = tokio_handle.block_on( async {
-            tracing::debug!("[rest_client::run] sqlx...");
-            let pool = create_sqlx_pg_pool().await;
-            pool
-        });
+        // let pool = tokio_handle.block_on( async {
+        //     tracing::debug!("[rest_client::run] sqlx...");
+        //     let pool = create_sqlx_pg_pool().await;
+        //     pool
+        // });
 
         // tracing::debug!("[rest_client::run] got pool {:?}", &pool);
 
