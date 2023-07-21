@@ -3,16 +3,21 @@
 //! start() spawns a long-running thread to maintain an open connection to a database pool
 //!
 
-use common_lib::alpaca_api_structs::{Ping, /*AlpWsQuote, */AlpacaTradeWs, MinuteBar};
+use std::sync::mpsc::Sender;
 use common_lib::finnhub::{FinnhubPing, FinnhubTrade};
 use crossbeam::channel::Sender;
 use sqlx::postgres::PgQueryResult;
 use sqlx::PgPool;
 use std::thread::JoinHandle;
+use reqwest::Client;
 use tokio_postgres::{Client, SimpleQueryMessage};
 use common_lib::alpaca_order_log::AlpacaOrderLogEvent;
 use common_lib::alpaca_transaction_status::AlpacaTransaction;
 use common_lib::trade_struct::TradeSide;
+use crate::alpaca_api_structs::{AlpacaTradeWs, MinuteBar, Ping};
+use crate::alpaca_order_log::AlpacaOrderLogEvent;
+use crate::finnhub::{FinnhubPing, FinnhubTrade};
+use crate::sqlx_pool::create_sqlx_pg_pool;
 
 #[derive(Debug)]
 pub enum DbMsg {
@@ -25,17 +30,31 @@ pub enum DbMsg {
     PingAlpaca(Ping),
     RefreshRating,
     OrderLogEvent(AlpacaOrderLogEvent),
+    GetSettingsWithSecret,
 
 }
 
-pub struct DbActor {}
+pub struct DbActor {
+    pool: PgPool,
+}
 
 impl DbActor {
+
+
+    pub async fn new() ->DbActor{
+        let pool = create_sqlx_pg_pool().await;
+        DbActor{
+            pool,
+        }
+    }
+
+
     /// start()
     ///
     /// return a crossbeam_channel::channel::Sender in order to be able to send messages to the
     /// db listener thread (to be able to send cross-thread inserts)
-    pub async fn run(pool:PgPool) -> Sender<DbMsg> {
+    pub async fn run(&self) -> Sender<DbMsg> {
+
         tracing::debug!("");
 
         // Channel for websocket thread to send to database thread
@@ -101,6 +120,18 @@ async fn db_thread(pool: &PgPool, old_pg_client: Client, rx: crossbeam::channel:
             recv(rx) -> result => {
                 if let Ok(msg) = result {
                     match msg {
+
+                        DbMsg::GetSettingsWithSecret=>{
+
+                            tracing::debug!("[db] received DbMsg::GetSettingsWithSecret");
+                            
+                            let settings = settings_load_with_secret().await;
+
+                            // TODO: send settings back
+
+
+                        }
+
 
                         DbMsg::OrderLogEvent(log_evt)=>{
                             tracing::debug!("[db] received DbMsg::OrderLogEvent: {:?}", &log_evt);
@@ -334,4 +365,41 @@ async fn insert_alpaca_ping(
     )
     .execute(pool)
     .await
+}
+
+
+async fn settings_load_with_secret(){
+
+    let settings_result = sqlx::query_as!(
+            Settings,
+            r#"
+                SELECT
+                    dtg as "dtg!",
+                    alpaca_paper_id as "alpaca_paper_id!:String",
+                    alpaca_paper_secret as "alpaca_paper_secret!:String",
+                    alpaca_live_id as "alpaca_live_id!:String",
+                    alpaca_live_secret as "alpaca_live_secret!:String",
+                    trade_size as "trade_size!",
+                    trade_enable_buy as "trade_enable_buy!",
+                    trade_ema_small_size as "trade_ema_small_size!",
+                    trade_ema_large_size as "trade_ema_large_size!",
+                    trade_sell_high_per_cent_multiplier as "trade_sell_high_per_cent_multiplier!",
+                    trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
+                    ,finnhub_key as "finnhub_key!:String"
+                    ,coalesce(account_start_value,0.0) as "account_start_value!"
+                    ,coalesce(max_position_age_minute,0.0) as "max_position_age_minute!"
+                    ,coalesce(upgrade_min_profit,0.0) as "upgrade_min_profit!"
+                    ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as "upgrade_sell_elapsed_minutes_min!"
+                    ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as "upgrade_posn_max_elapsed_minutes!"
+                    ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as "upgrade_posn_loss_allowed_dollars!"
+                    ,coalesce(acct_max_position_market_value,10.0) as "acct_max_position_market_value!"
+                    ,coalesce(acct_min_cash_dollars,10.0) as "acct_min_cash_dollars!"
+                FROM t_settings
+                ORDER BY t_settings.dtg DESC
+                LIMIT 1
+            "#
+        )
+        .fetch_one(pool)
+        .await;
+
 }

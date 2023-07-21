@@ -1,15 +1,14 @@
 //! main.rs
 #![forbid(unsafe_code)]
 
-pub mod data_collector;
-pub mod db;
+pub mod backend;
 pub mod alpaca_rest;
 pub mod alpaca_websocket;
 pub mod finnhub_websocket;
 mod stock_rating;
 
 use tokio::runtime::Handle;
-use crate::data_collector::DataCollector;
+use crate::backend::Backend;
 use common_lib::init::init;
 use common_lib::settings::Settings;
 use common_lib::sqlx_pool::create_sqlx_pg_pool;
@@ -31,11 +30,11 @@ fn main() {
         .expect("Tokio runtime didn't start");
 
     tokio_runtime.block_on(async {
-        let pool = create_sqlx_pg_pool().await;
+        // let pool = create_sqlx_pg_pool().await;
         match Settings::load_with_secret(&pool).await {
             Ok(settings) => {
                 let tokio_handle = Handle::current();
-                DataCollector::run(pool, &settings, tokio_handle).await;
+                Backend::run( &settings, tokio_handle).await;
             }
             Err(e) => {
                 tracing::error!("[main] could not load settings: {:?}", &e);

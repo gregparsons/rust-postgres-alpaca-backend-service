@@ -18,3 +18,4 @@ pub mod trade_setting_profile;
 pub mod trade_struct;
 pub mod alpaca_order_log;
 pub mod alpaca_transaction_status;
+pub mod db;

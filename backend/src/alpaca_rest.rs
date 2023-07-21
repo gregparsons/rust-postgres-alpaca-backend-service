@@ -3,6 +3,7 @@
 //! Restful Alpaca Poller
 
 use chrono::Utc;
+use crossbeam_channel::Sender;
 use sqlx::PgPool;
 use common_lib::alpaca_activity::Activity;
 use common_lib::alpaca_order::Order;
@@ -12,6 +13,7 @@ use common_lib::settings::Settings;
 use tokio::runtime::Handle;
 use common_lib::account::Account;
 use common_lib::alpaca_transaction_status::AlpacaTransaction;
+use crate::db::DbMsg;
 
 // see .env first
 const REST_POLL_RATE_OPEN_MILLIS_STR: &str = "3000";
@@ -29,21 +31,9 @@ pub(crate) struct AlpacaRest{}
 
 impl AlpacaRest {
     /// Spawn a new thread to poll the Alpaca REST API
-    pub fn run(pool: PgPool, tokio_handle: Handle) {
+    pub fn run(tx_db_rest: Sender<DbMsg>, tokio_handle: Handle, ) {
 
         tracing::debug!("[rest_client::run] starting alpaca rest client");
-
-        // run an async runtime inside the thread
-        // why you'd want to do this: https://stackoverflow.com/questions/61292425/how-to-run-an-asynchronous-task-from-a-non-main-thread-in-tokio/63434522#63434522
-        // let tokio_handle = Handle::current();
-
-        // let pool = tokio_handle.block_on( async {
-        //     tracing::debug!("[rest_client::run] sqlx...");
-        //     let pool = create_sqlx_pg_pool().await;
-        //     pool
-        // });
-
-        // tracing::debug!("[rest_client::run] got pool {:?}", &pool);
 
         tokio_handle.spawn(async move {
 
@@ -63,7 +53,7 @@ impl AlpacaRest {
 
             loop {
 
-                let pool3 = pool.clone();
+                // let pool3 = pool.clone();
 
                 let time_current_ny = Utc::now().with_timezone(&chrono_tz::America::New_York).time();
                 alpaca_poll_rate_ms = {
@@ -84,7 +74,8 @@ impl AlpacaRest {
                 };
 
                 // refresh settings from the database
-                match Settings::load_with_secret(&pool3).await {
+                let tx_db_1 = tx_db_rest.clone();
+                match Settings::load_with_secret(tx_db_1).await {
                     Ok(settings) => {
 
                         if ENABLE_REST_ACTIVITY {
