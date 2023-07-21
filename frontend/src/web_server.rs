@@ -53,8 +53,7 @@ impl WebServer {
 
         // println!("[init] config_location: {}", env!("CARGO_MANIFEST_DIR"));
 
-        let config_location =
-            std::env::var("CONFIG_LOCATION").unwrap_or_else(|_| "not_docker".to_owned());
+        let config_location = std::env::var("CONFIG_LOCATION").unwrap_or_else(|_| "not_docker".to_owned());
 
         // or CARGO_PKG_NAME
         let package_name = env!("CARGO_MANIFEST_DIR");

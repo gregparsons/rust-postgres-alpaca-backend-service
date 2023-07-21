@@ -24,7 +24,7 @@ pub async fn get_account(hb: web::Data<Handlebars<'_>>, tx_db: web::Data<crossbe
         let t:crossbeam_channel::Sender<DbMsg> = Arc::try_unwrap(tx_db).unwrap();
 
 
-        match Settings::load_with_secret(t.clone()).await {
+        match Settings::load_with_secret(t.clone()) {
 
             Ok(settings) => {
 

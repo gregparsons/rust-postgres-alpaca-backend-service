@@ -1159,6 +1159,21 @@
     },
     "query": "delete from alpaca_order"
   },
+  "8b8ea83a8ddb8fb72d80ff90957c1083e15472e2d583a687099c52dad2bf3844": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamp",
+          "Varchar",
+          "Numeric",
+          "Numeric"
+        ]
+      }
+    },
+    "query": "\n            insert into trade_alp (dtg, symbol, price, size)\n            values ($1, $2, $3, $4)\n        "
+  },
   "97619bf5f57d753ca6ba7bc660611ead26547c67bccbacaaaf317abceab42a3b": {
     "describe": {
       "columns": [],
@@ -1660,21 +1675,6 @@
       }
     },
     "query": "\n            insert into trade_fh (dtg,symbol, price, volume) values ($1, $2, $3, $4)\n        "
-  },
-  "f668e12c38343f491668511fca165870bb160244ac44ff1e246177aa441b1ce0": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Timestamp",
-          "Varchar",
-          "Numeric",
-          "Numeric"
-        ]
-      }
-    },
-    "query": "\n        insert into trade_alp (dtg, symbol, price, size)\n        values ($1, $2, $3, $4)\n    "
   },
   "fbfc0b526921304ce8178d592d2005c1c8d12cec1a148b8b5ad2cfe5d4bd5cbb": {
     "describe": {
