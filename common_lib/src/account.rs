@@ -2,11 +2,16 @@
 //!
 //! https://alpaca.markets/docs/api-references/trading-api/account/
 
+use std::sync::Arc;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
+use crossbeam_channel::Sender;
 use reqwest::header::HeaderMap;
 use serde::{Deserialize, Serialize};
 use sqlx::{PgPool};
+use tokio::sync::oneshot;
+use tokio::sync::oneshot::error::RecvError;
+use crate::db::DbMsg;
 use crate::error::TradeWebError;
 use crate::settings::Settings;
 
@@ -91,59 +96,15 @@ impl Account {
     }
 
     /// latest from database
-    pub async fn get(pool:&PgPool) -> Result<AccountWithDate, TradeWebError> {
-        match sqlx::query_as!(AccountWithDate, r#"
-            select
-                dtg as "dtg!"
-                ,cash as "cash!"
-                ,position_market_value as "position_market_value!"
-                ,equity as "equity!"
-                ,last_equity as "last_equity!"
-                ,daytrade_count as "daytrade_count!"
-                ,balance_asof as "balance_asof!"
-                ,pattern_day_trader as "pattern_day_trader!"
-                ,id as "id!"
-                ,account_number as "account_number!"
-                ,status as "status!"
-                -- crypto_status as "!"
-                ,currency as "currency!"
-                            ,buying_power as "buying_power!"
-                ,regt_buying_power as "regt_buying_power!"
-                ,daytrading_buying_power as "daytrading_buying_power!"
-                ,effective_buying_power as "effective_buying_power!"
-                ,non_marginable_buying_power as "non_marginable_buying_power!"
+    pub async fn get(tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<AccountWithDate, RecvError> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        let msg = DbMsg::AccountGet{ resp_tx };
+        tx_db.send(msg).unwrap();
+        let result = resp_rx.await;
+        result
 
-                   ,bod_dtbp as "bod_dtbp!"
-                ,accrued_fees as "accrued_fees!"
-                ,pending_transfer_in as "pending_transfer_in!"
-                --,portfolio_value as "portfolio_value!"    --deprecated (same as equity field)
-                ,trading_blocked as "trading_blocked!"
-                ,transfers_blocked as "transfers_blocked!"
-                ,account_blocked as "account_blocked!"
-                ,created_at as "created_at!"
-                ,trade_suspended_by_user as "trade_suspended_by_user!"
-                ,multiplier as "multiplier!"
-                ,shorting_enabled as "shorting_enabled!"
-                ,long_market_value as "long_market_value!"
-                ,short_market_value as "short_market_value!"
-                ,initial_margin as "initial_margin!"
-                ,maintenance_margin as "maintenance_margin!"
-                ,last_maintenance_margin as "last_maintenance_margin!"
-                ,sma as "sma!"
-            from alpaca_account
-            order by dtg desc
-            limit 1
-        "#).fetch_one(pool).await{
-            Ok(acct) => Ok(acct),
-            Err(_e) => Err(TradeWebError::SqlxError)
-        }
     }
 
-    /*
-
-
-
-     */
 
 
     pub async fn load_account(pool:&PgPool, settings:&Settings){

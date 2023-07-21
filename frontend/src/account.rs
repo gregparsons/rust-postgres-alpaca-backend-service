@@ -2,30 +2,35 @@
 //!
 //! Present account data in the frontend, retrieved from the alpaca API
 
+use std::sync::Arc;
 use actix_session::Session;
 use actix_web::{web, HttpResponse, Responder};
 use common_lib::common_structs::SESSION_USERNAME;
 use common_lib::http::redirect_home;
 use handlebars::Handlebars;
 use serde_json::json;
-use sqlx::PgPool;
 use common_lib::account::{Account};
+use common_lib::db::DbMsg;
 use common_lib::settings::Settings;
 
 /// GET /account
-pub async fn get_account(hb: web::Data<Handlebars<'_>>, pool: web::Data<PgPool>, session: Session, ) -> impl Responder {
+pub async fn get_account(hb: web::Data<Handlebars<'_>>, tx_db: web::Data<crossbeam_channel::Sender<DbMsg>>, session: Session, ) -> impl Responder {
 
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
 
         // let mut headers = HeaderMap::new();
+        let tx_db:Arc<crossbeam_channel::Sender<DbMsg>> = tx_db.into_inner();
 
-        match Settings::load_with_secret(&pool).await {
+        let t:crossbeam_channel::Sender<DbMsg> = Arc::try_unwrap(tx_db).unwrap();
+
+
+        match Settings::load_with_secret(t.clone()).await {
 
             Ok(settings) => {
 
                 // let account_result = Account::get_remote(&settings).await;
 
-                let account_result= Account::get(&pool).await;
+                let account_result= Account::get(t.clone()).await;
 
                 match account_result{
                     Ok(account)=>{

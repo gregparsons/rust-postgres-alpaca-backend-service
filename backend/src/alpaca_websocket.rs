@@ -14,7 +14,6 @@
     aapl, tsla, plug, aal, nio, bac
 */
 // use crossbeam_channel::{after, select, tick};
-use crate::db::DbMsg;
 use common_lib::alpaca_api_structs::{Ping, WebsocketMessage, RequestAuthenticate, RequestListen, RequestListenData, AuthStatus, DataMessage, WebsocketMessageFormat, DataMesgSuccess, AuthAction, MesgOrderUpdate};
 use common_lib::settings::Settings;
 use crossbeam::channel::Sender;
@@ -25,6 +24,7 @@ use tungstenite::client::IntoClientRequest;
 use tungstenite::Message;
 use common_lib::alpaca_api_structs::RequestAction;
 use common_lib::alpaca_order_log::AlpacaOrderLogEvent;
+use common_lib::db::DbMsg;
 
 
 pub struct AlpacaWebsocket;

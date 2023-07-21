@@ -12,8 +12,8 @@
 
 use std::time::Duration;
 use crossbeam_channel::{Sender, tick};
+use common_lib::db::DbMsg;
 use common_lib::market_hours::MarketHours;
-use crate::db::DbMsg;
 
 const RATING_REFRESH_SECS:u64=30;
 

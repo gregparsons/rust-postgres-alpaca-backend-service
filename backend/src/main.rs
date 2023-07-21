@@ -30,15 +30,8 @@ fn main() {
         .expect("Tokio runtime didn't start");
 
     tokio_runtime.block_on(async {
-        // let pool = create_sqlx_pg_pool().await;
-        match Settings::load_with_secret(&pool).await {
-            Ok(settings) => {
-                let tokio_handle = Handle::current();
-                Backend::run( &settings, tokio_handle).await;
-            }
-            Err(e) => {
-                tracing::error!("[main] could not load settings: {:?}", &e);
-            }
-        }
+        let tokio_handle = Handle::current();
+        let _ = Backend::run(tokio_handle).await;
+
     });
 }

@@ -3,8 +3,10 @@
 
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
+use crossbeam_channel::Sender;
 use sqlx::PgPool;
 use crate::alpaca_position::Position;
+use crate::db::DbMsg;
 
 pub enum TransactionStatus{
     Found{shares:BigDecimal},
@@ -68,6 +70,7 @@ impl AlpacaTransaction{
         }
     }
 
+    /// TODO: move to database; for now only called from within database crossbeam message anyway
     /// delete all "orders" without positions; start_buy() relies on the non-existence of a symbol to start an order
     pub async fn clean(pool:&PgPool)->Result<(), TransactionError>{
         match sqlx::query!(
@@ -82,18 +85,14 @@ impl AlpacaTransaction{
     }
 
     /// start the order slate blank
-    pub async fn delete_all(pool:&PgPool)->Result<(), TransactionError>{
-        match sqlx::query!(
-            r#"
-                delete from alpaca_transaction_status
-            "#
-        ).execute(pool).await{
-            Ok(_)=>Ok(()),
-            Err(_e)=>Err(TransactionError::DeleteFailed), // or db error
-        }
+    pub fn delete_all(tx_db: Sender<DbMsg>){
+
+        tx_db.send(DbMsg::TransactionDeleteAll).unwrap();
+
     }
 
 
+    /// TODO: move to database; for now only called from within database crossbeam message anyway
     /// insert a new transaction if one doesn't currently exist, otherwise error
     pub async fn decrement(symbol:&str, shares_to_decrement:BigDecimal, pool:&PgPool)->Result<(), TransactionError>{
         match sqlx::query!(

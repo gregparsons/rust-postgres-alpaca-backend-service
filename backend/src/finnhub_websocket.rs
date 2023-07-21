@@ -7,7 +7,7 @@
     aapl, tsla, plug, aal, nio, bac
 */
 // use crossbeam_channel::{after, select, tick};
-use crate::db::DbMsg;
+
 use common_lib::finnhub::{FinnhubPacket, FinnhubPing, FinnhubSubscribe};
 use common_lib::settings::Settings;
 use crossbeam::channel::Sender;
@@ -15,6 +15,7 @@ use serde_json::json;
 use std::time::Duration;
 use tungstenite::client::IntoClientRequest;
 use tungstenite::Message;
+use common_lib::db::DbMsg;
 
 fn stock_list_to_uppercase(lower_stock: &Vec<String>) -> Vec<String> {
     lower_stock.iter().map(|x| x.to_uppercase()).collect()

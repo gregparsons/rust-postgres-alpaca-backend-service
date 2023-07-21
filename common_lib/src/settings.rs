@@ -2,12 +2,14 @@
 //!
 //! model for settings store in postgres db
 
-use std::sync::mpsc::Sender;
 use crate::trade_setting_profile::TradeSettingsProfile;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use tokio::sync::oneshot;
+use tokio::sync::oneshot::error::RecvError;
+use crate::db::DbMsg;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Settings {
@@ -38,11 +40,15 @@ impl Settings {
     ///
     /// TODO: encrypt alpaca credentials in database and decrypt here using .env
     ///
-    pub async fn load_with_secret(tx_db: Sender<DbMsg>) -> Result<Settings, sqlx::Error> {
+    pub fn load_with_secret(tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<Settings, crossbeam_channel::RecvError> {
+        let (resp_tx, resp_rx) = crossbeam_channel::unbounded();
+        let msg = DbMsg::GetSettingsWithSecret{ resp_tx };
+        tx_db.send(msg).unwrap();
 
-        tx_db.send(DbMsg::GetSettingsWithSecret).unwrap();
+        let settings_result = resp_rx.recv();
 
-
+        // TODO: remove secrets from log!!!!!!
+        // tracing::debug!("[load_with_secret] settings_result: {:?}", &settings_result);
         settings_result
     }
 

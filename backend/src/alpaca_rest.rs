@@ -2,6 +2,7 @@
 //!
 //! Restful Alpaca Poller
 
+use std::time::Duration;
 use chrono::Utc;
 use crossbeam_channel::Sender;
 use sqlx::PgPool;
@@ -13,12 +14,12 @@ use common_lib::settings::Settings;
 use tokio::runtime::Handle;
 use common_lib::account::Account;
 use common_lib::alpaca_transaction_status::AlpacaTransaction;
-use crate::db::DbMsg;
+use common_lib::db::DbMsg;
 
 // see .env first
 const REST_POLL_RATE_OPEN_MILLIS_STR: &str = "3000";
 const REST_POLL_RATE_OPEN_MILLIS: u64 = 3000;
-const REST_POLL_RATE_CLOSED_MILLIS: u64 = 30000;
+const REST_POLL_RATE_CLOSED_MILLIS: u64 = 10000;
 
 // quickly disable pieces of the Alpaca API
 const ENABLE_REST_ACTIVITY: bool = true;
@@ -27,85 +28,93 @@ const ENABLE_REST_POSITION: bool = true;
 const ENABLE_REST_ORDER: bool = false;
 const ENABLE_REST_ACCOUNT: bool = true;
 
+
+
+// ****** TODO: crossbeam tick insted of thread sleep
+
+
+
 pub(crate) struct AlpacaRest{}
 
 impl AlpacaRest {
+
     /// Spawn a new thread to poll the Alpaca REST API
-    pub fn run(tx_db_rest: Sender<DbMsg>, tokio_handle: Handle, ) {
+    pub fn run(tx_db_rest: Sender<DbMsg>, tokio_handle: Handle) {
 
         tracing::debug!("[rest_client::run] starting alpaca rest client");
 
-        tokio_handle.spawn(async move {
+        tracing::debug!("[run] inside tokio spawn");
 
-            tracing::debug!("[rest_client::run] inside tokio spawn_blocking");
+        // on every startup clean out the order slate; it'll refill from positions and the order process
+        // minor possibility of an order already existing on Alpaca, but rare in the times we're restarting the app
 
-            // on every startup clean out the order slate; it'll refill from positions and the order process
-            // minor possibility of an order already existing on Alpaca, but rare in the times we're restarting the app
-            let _ = AlpacaTransaction::delete_all(&pool).await;
+        let tx_db_1 = tx_db_rest.clone();
+        let _ = AlpacaTransaction::delete_all(tx_db_1);
 
+        let mut alpaca_poll_rate_ms: u64;
 
-            let mut alpaca_poll_rate_ms: u64;
+        // this is set in all.sh via docker run
+        let time_open_ny = MARKET_OPEN_EXT.clone();
+        let time_close_ny = MARKET_CLOSE_EXT.clone();
+        // Call the API if the market is open in NYC
 
-            // this is set in all.sh via docker run
-            let time_open_ny = MARKET_OPEN_EXT.clone();
-            let time_close_ny = MARKET_CLOSE_EXT.clone();
-            // Call the API if the market is open in NYC
+        loop {
 
-            loop {
+            // let pool3 = pool.clone();
 
-                // let pool3 = pool.clone();
+            let time_current_ny = Utc::now().with_timezone(&chrono_tz::America::New_York).time();
+            alpaca_poll_rate_ms = {
+                // if market is open, set the poll rate to the desired open rate
 
-                let time_current_ny = Utc::now().with_timezone(&chrono_tz::America::New_York).time();
-                alpaca_poll_rate_ms = {
-                    // if market is open, set the poll rate to the desired open rate
+                // TODO: use new is_open() function
+                if time_current_ny >= time_open_ny && time_current_ny <= time_close_ny {
+                    tracing::info!("[rest_service:loop] NY time: {:?}, open: {:?}, close: {:?}",&time_current_ny,&time_open_ny,&time_close_ny);
+                    std::env::var("API_INTERVAL_MILLIS").unwrap_or_else(|_| REST_POLL_RATE_OPEN_MILLIS_STR.to_string()).parse().unwrap_or(REST_POLL_RATE_OPEN_MILLIS)
+                    // std::env::var("API_INTERVAL_MILLIS").unwrap_or_else(|_| REST_POLL_RATE_OPEN_MILLIS)
 
-                    // TODO: use new is_open() function
-                    if time_current_ny >= time_open_ny && time_current_ny <= time_close_ny {
-                        tracing::info!("[rest_service:loop] NY time: {:?}, open: {:?}, close: {:?}",&time_current_ny,&time_open_ny,&time_close_ny);
-                        std::env::var("API_INTERVAL_MILLIS").unwrap_or_else(|_| REST_POLL_RATE_OPEN_MILLIS_STR.to_string()).parse().unwrap_or(REST_POLL_RATE_OPEN_MILLIS)
-                        // std::env::var("API_INTERVAL_MILLIS").unwrap_or_else(|_| REST_POLL_RATE_OPEN_MILLIS)
-
-                    } else {
-                        // back off to a slower poll rate.
-                        tracing::debug!("[rest_service:start] market is closed. NY time: {:?}, open: {:?}, close: {:?}", &time_current_ny, &time_open_ny, &time_close_ny);
-                        // 30 seconds
-                        REST_POLL_RATE_CLOSED_MILLIS
-                    }
-                };
-
-                // refresh settings from the database
-                let tx_db_1 = tx_db_rest.clone();
-                match Settings::load_with_secret(tx_db_1).await {
-                    Ok(settings) => {
-
-                        if ENABLE_REST_ACTIVITY {
-                            AlpacaRest::load_activities(&pool3, &settings).await;
-                        }
-
-                        if ENABLE_REST_POSITION {
-                            AlpacaRest::load_positions(&pool3, &settings).await;
-                        }
-
-                        if ENABLE_REST_ORDER {
-                            AlpacaRest::load_orders(&pool3, &settings).await;
-                        }
-
-                        if ENABLE_REST_ACCOUNT{
-                            Account::load_account(&pool3, &settings).await;
-
-                        }
-                    },
-                    Err(e) => {
-                        tracing::error!("[run] couldn't load settings in loop to update activities/positions: {:?}", &e);
-                    }
+                } else {
+                    // back off to a slower poll rate.
+                    tracing::debug!("[run] market is closed. NY time: {:?}, open: {:?}, close: {:?}", &time_current_ny, &time_open_ny, &time_close_ny);
+                    // 30 seconds
+                    REST_POLL_RATE_CLOSED_MILLIS
                 }
+            };
 
-                std::thread::sleep(std::time::Duration::from_millis(alpaca_poll_rate_ms));
+            // refresh settings from the database
+            let tx_db_1 = tx_db_rest.clone();
+            match Settings::load_with_secret(tx_db_1) {
+                Ok(settings) => {
+
+                    tracing::debug!("[run] got settings, running rest API calls");
+
+                    //
+                    // if ENABLE_REST_ACTIVITY {
+                    //     AlpacaRest::load_activities(&pool3, &settings).await;
+                    // }
+                    //
+                    // if ENABLE_REST_POSITION {
+                    //     AlpacaRest::load_positions(&pool3, &settings).await;
+                    // }
+                    //
+                    // if ENABLE_REST_ORDER {
+                    //     AlpacaRest::load_orders(&pool3, &settings).await;
+                    // }
+                    //
+                    // if ENABLE_REST_ACCOUNT{
+                    //     Account::load_account(&pool3, &settings).await;
+                    // }
+                },
+                Err(e) => {
+                    tracing::error!("[run] couldn't load settings in loop to update activities/positions: {:?}", &e);
+                }
             }
 
-            // tracing::debug!("[Market::start] alpaca rest client thread started");
-        });
+            tracing::debug!("[run] done");
 
+            std::thread::sleep(std::time::Duration::from_millis(alpaca_poll_rate_ms));
+            // tokio::time::sleep(Duration::from_secs(3)).await;
+
+        }
 
     }
 
