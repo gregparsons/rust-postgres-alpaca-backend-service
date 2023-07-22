@@ -639,6 +639,32 @@
     },
     "query": "\n            with rows as (\n                insert into users (\n                    user_id, username, password\n                )\n                values (gen_random_uuid(), $1, $2)\n                returning user_id\n            ) select user_id from rows\n        "
   },
+  "2f8936d3543db55cc50dcb2c09d29bb2e43bb6fbaaced1b57d3df6553960f68b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Varchar",
+          "Varchar",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Varchar",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "\n                insert into alpaca_position(dtg, symbol, exchange, asset_class, avg_entry_price, qty, qty_available, side, market_value\n                    , cost_basis, unrealized_pl, unrealized_plpc, current_price, lastday_price, change_today, asset_id)\n                values\n                    (\n                        now(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, $12, $13, $14, $15\n                    )"
+  },
   "30f255854809dabc1008f3e29350fef9db68cbd1a7bf935d60c99c0b1e267339": {
     "describe": {
       "columns": [
@@ -656,6 +682,19 @@
       }
     },
     "query": "select symbol as \"symbol!\" from t_symbol order by symbol"
+  },
+  "33d366b1a50612823f96303da32e21e4a81f1efb966ab9ca602b55cebf682cde": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Numeric"
+        ]
+      }
+    },
+    "query": "\n            insert into alpaca_transaction_status(dtg, symbol, posn_shares)\n            values(now()::timestamptz, $1, $2)\n            ON CONFLICT (symbol) DO UPDATE\n                SET posn_shares = $2, dtg=now()::timestamptz;\n        "
   },
   "41e310b7a132e9b1fe68c9c9549392df44f6206231105591f371d00e75d6342b": {
     "describe": {
@@ -809,33 +848,6 @@
     },
     "query": "\n                select\n                    dtg as \"dtg!\"\n                    , alpaca_paper_id as \"alpaca_paper_id!\"\n                    , '' as \"alpaca_paper_secret!\"\n                    , alpaca_live_id as \"alpaca_live_id!\"\n                    , '' as \"alpaca_live_secret!\"\n                    , trade_size as \"trade_size!\"\n                    , trade_enable_buy as \"trade_enable_buy!\"\n                    , trade_ema_small_size as \"trade_ema_small_size!\"\n                    , trade_ema_large_size as \"trade_ema_large_size!\"\n                    , trade_sell_high_per_cent_multiplier as \"trade_sell_high_per_cent_multiplier!\"\n                    , trade_sell_high_upper_limit_cents as \"trade_sell_high_upper_limit_cents!\"\n                    , finnhub_key as \"finnhub_key!\"\n                    ,coalesce(account_start_value,0.0) as \"account_start_value!\"\n                    ,coalesce(max_position_age_minute,0.0) as \"max_position_age_minute!\"\n                    ,coalesce(upgrade_min_profit,0.0) as \"upgrade_min_profit!\"\n                    ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as \"upgrade_sell_elapsed_minutes_min!\"\n                    ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as \"upgrade_posn_max_elapsed_minutes!\"\n                    ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as \"upgrade_posn_loss_allowed_dollars!\"\n                    ,coalesce(acct_max_position_market_value,60.0) as \"acct_max_position_market_value!\"\n                    ,coalesce(acct_min_cash_dollars,60.0) as \"acct_min_cash_dollars!\"\n                from fn_set_trade_settings($1);\n            "
   },
-  "4b83115f8f0ec54061af8a6c01c0b250474fe44691032338d2ea115e567c1616": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Timestamptz",
-          "Varchar",
-          "Varchar",
-          "Varchar",
-          "Numeric",
-          "Numeric",
-          "Numeric",
-          "Varchar",
-          "Numeric",
-          "Numeric",
-          "Numeric",
-          "Numeric",
-          "Numeric",
-          "Numeric",
-          "Numeric",
-          "Varchar"
-        ]
-      }
-    },
-    "query": "\n                insert into alpaca_position(dtg, symbol, exchange, asset_class, avg_entry_price, qty, qty_available, side, market_value\n                    , cost_basis, unrealized_pl, unrealized_plpc, current_price, lastday_price, change_today, asset_id)\n                values\n                    (\n                        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, $12, $13, $14, $15, $16\n                    )"
-  },
   "4d1908563c58d287dd1ce4d77e42407ffcd17043c07b2cfdb4453e78d1909e0e": {
     "describe": {
       "columns": [],
@@ -890,19 +902,6 @@
       }
     },
     "query": "insert into trade_alp_latest(dtg,symbol,price,size)\n            values ($1, $2, $3, $4)\n            on conflict (symbol) do update set dtg=$1, price=$3, size=$4;\n        "
-  },
-  "5b8bc5ba4ff47c4625853cda3605524de9184ed2931efec6035f921ca0e81137": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Numeric"
-        ]
-      }
-    },
-    "query": "\n                insert into alpaca_transaction_status(dtg, symbol, posn_shares)\n                values(now()::timestamptz, $1, $2)\n                ON CONFLICT (symbol) DO UPDATE\n                    SET posn_shares = $2, dtg=now()::timestamptz;\n            "
   },
   "66ffb5cdaf2dc5a14a08bcbee7ac02b6a4bb6d471213e0abfa4aa50a4301c114": {
     "describe": {
