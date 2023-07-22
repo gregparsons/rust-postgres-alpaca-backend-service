@@ -28,7 +28,7 @@ pub fn run(tx: Sender<DbMsg>){
             tracing::debug!("[run] sending DbMsg::RefreshRating");
             let _send_result = tx.send(DbMsg::RefreshRating);
         }else{
-            tracing::debug!("[run] not sending DbMsg::RefreshRating, market closed");
+            tracing::error!("[run] not sending DbMsg::RefreshRating, market closed");
         }
 
         ticker.recv().unwrap();

@@ -15,11 +15,11 @@
 use std::fmt;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, NaiveDateTime, Utc};
-use reqwest::header::HeaderMap;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use sqlx::postgres::PgQueryResult;
-use crate::error::TradeWebError;
+use tokio::sync::oneshot;
+use tokio::sync::oneshot::error::RecvError;
+use crate::db::DbMsg;
 use crate::settings::Settings;
 use crate::trade_struct::TradeSide;
 
@@ -43,7 +43,7 @@ use crate::trade_struct::TradeSide;
 ///   "type": "fill"
 /// }
 ///
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Activity {
     pub id: String,
     pub activity_type: ActivityType,
@@ -62,18 +62,19 @@ pub struct Activity {
 }
 
 #[derive(Deserialize)]
-struct ActivityLatest{
+pub struct ActivityLatest{
     pub dtg:DateTime<Utc>
 }
 
 impl Activity {
 
     /// latest_dtg: get the date of the most recent activity; used to filter the activity API
-    pub async fn latest_dtg(pool:&PgPool)->Result<DateTime<Utc>, TradeWebError>{
-        match sqlx::query_as!(ActivityLatest, r#"select max(dtg)::timestamptz as "dtg!" from alpaca_activity"#).fetch_one(pool).await{
-            Ok(latest_dtg)=> Ok(latest_dtg.dtg),
-            Err(_e)=>Err(TradeWebError::ReqwestError),
-        }
+    pub fn latest_dtg(tx_db:crossbeam_channel::Sender<DbMsg>) -> Result<DateTime<Utc>, RecvError> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        let _ = tx_db.send(DbMsg::ActivityLatestDtg { resp_tx });
+        let result = resp_rx.blocking_recv();
+        result
+
     }
 
     /// Get FILL activities
@@ -86,96 +87,18 @@ impl Activity {
     ///      --header 'APCA-API-SECRET-KEY: ' \
     ///      --header 'accept: application/json'
     ///
-    pub async fn get_remote(since_filter:Option<DateTime<Utc>>, settings: &Settings) -> Result<Vec<Activity>, TradeWebError> {
-        let mut headers = HeaderMap::new();
-        let api_key = settings.alpaca_paper_id.clone();
-        let api_secret = settings.alpaca_paper_secret.clone();
-        headers.insert("APCA-API-KEY-ID", api_key.parse().unwrap());
-        headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
+    pub fn get_remote(since_filter:Option<DateTime<Utc>>, settings: &Settings, tx_db:crossbeam_channel::Sender<DbMsg>)
+        -> Result<Vec<Activity>, RecvError> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        let _ = tx_db.send(DbMsg::ActivityGetRemote { since_option:since_filter, settings:settings.clone(), resp_tx});
+        let result = resp_rx.blocking_recv();
+        tracing::info!("[get_remote] activities success: {:?}", &result);
+        result
 
-
-        let url = match since_filter{
-            Some(since) =>{
-                format!("https://paper-api.alpaca.markets/v2/account/activities/FILL?after={}", urlencoding::encode(since.to_rfc3339().as_str()))
-            },
-            None => {
-                // TODO: put in today's date at least
-                format!("https://paper-api.alpaca.markets/v2/account/activities/FILL")
-            }
-        };
-
-        tracing::debug!("[get_remote] getting activities since: {:?}", &since_filter);
-
-        tracing::debug!("[get_remote] calling API: {}", &url);
-        let client = reqwest::Client::new();
-        let http_result = client.get(url).headers(headers).send().await;
-        let return_val = match http_result {
-            Ok(response) => match &response.text().await {
-                Ok(response_text) => match serde_json::from_str::<Vec<Activity>>(&response_text) {
-                    Ok(results) => Ok(results),
-                    Err(e) => {
-                        tracing::debug!("[get_remote] deserialization to json vec failed: {:?}",&e);
-                        Err(TradeWebError::JsonError)
-                    }
-                },
-                Err(e) => {
-                    tracing::debug!("[get_remote] deserialization to json text failed: {:?}", &e);
-                    Err(TradeWebError::JsonError)
-                }
-            },
-            Err(e) => {
-                tracing::debug!("[get_remote] reqwest error: {:?}", &e);
-                Err(TradeWebError::ReqwestError)
-            }
-        };
-        return_val
     }
 
-    pub async fn save_to_db(&self, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
-        let result = sqlx::query!(
-            r#"
-            insert into alpaca_activity
-                (
-                id
-                , activity_type
-                , activity_subtype
-                , dtg
-                , symbol
-                , side
-                , qty
-                , price
-                , cum_qty
-                , leaves_qty
-                , order_id
-                )
-                values (
-                    $1
-                    ,$2
-                    ,$3
-                    ,$4
-                    ,$5
-                    ,lower($6)
-                    ,$7
-                    ,$8
-                    ,$9
-                    ,$10
-                    ,$11
-                    )"#,
-            self.id,
-            self.activity_type.to_string(),
-            self.activity_subtype.to_string(),
-            self.dtg,
-            self.symbol,
-            self.side.to_string(),
-            self.qty,
-            self.price,
-            self.cum_qty,
-            self.leaves_qty,
-            self.order_id
-        ).execute(pool).await;
-
-        tracing::debug!("[save_to_db] insert result: {:?}", &result);
-        result
+    pub fn save_to_db(&self, tx_db:crossbeam_channel::Sender<DbMsg>) {
+        let _ = tx_db.send(DbMsg::ActivitySaveToDb { activity: (*self).clone() });
     }
 
     /// get a vec of alpaca trading activities from the postgres database (as a reflection of what's been
@@ -230,7 +153,7 @@ impl Activity {
 }
 
 /// https://alpaca.markets/docs/api-references/trading-api/account-activities/#properties
-#[derive(sqlx::Type, Deserialize, Serialize, Debug)]
+#[derive(sqlx::Type, Deserialize, Serialize, Debug, Clone)]
 pub enum ActivityType {
     #[serde(rename = "FILL")]
     Fill,
@@ -243,7 +166,7 @@ impl fmt::Display for ActivityType {
 }
 
 /// https://alpaca.markets/docs/api-references/trading-api/account-activities/#properties
-#[derive(sqlx::Type, Deserialize, Serialize, Debug)]
+#[derive(sqlx::Type, Deserialize, Serialize, Debug, Clone)]
 pub enum ActivitySubtype {
     #[serde(rename = "fill")]
     Fill,

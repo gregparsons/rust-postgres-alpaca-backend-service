@@ -19,8 +19,16 @@ pub struct MarketHours {
 
 
 impl MarketHours{
-    pub fn is_open() ->bool{
+    pub fn is_open() -> bool{
+
         let time_current_ny = Utc::now().with_timezone(&chrono_tz::America::New_York).time();
+
+
+        let open_for_testing = std::env::var("PRETEND_TO_BE_OPEN").unwrap_or_else(|_| "false".to_string()).parse().unwrap_or_else(|_| false);
+        if open_for_testing{
+            return true;
+        }
+
         let are_we_open = match OPERATE_API_AFTER_HOURS {
             false => {
                 if time_current_ny > *MARKET_OPEN_TIME /* *MARKET_NORMAL_OPEN_TIME */ &&

@@ -109,20 +109,8 @@ impl AlpacaTransaction{
     }
 
     /// create a new entry or update the position's shares with the current timestamp
-    pub async fn insert_existing_position(position:&Position, pool:&PgPool)->Result<(), TransactionError>{
-        match sqlx::query!(
-            r#"
-                insert into alpaca_transaction_status(dtg, symbol, posn_shares)
-                values(now()::timestamptz, $1, $2)
-                ON CONFLICT (symbol) DO UPDATE
-                    SET posn_shares = $2, dtg=now()::timestamptz;
-            "#,
-            position.symbol.to_lowercase(),
-            position.qty
-        ).execute(pool).await{
-            Ok(_)=>Ok(()),
-            Err(_e)=>Err(TransactionError::DeleteFailed), // or db error
-        }
+    pub fn insert_existing_position(position:&Position, tx_db:crossbeam_channel::Sender<DbMsg>){
+        let _ = tx_db.send(DbMsg::TransactionInsertPosition { position: position.clone() });
     }
 
 }

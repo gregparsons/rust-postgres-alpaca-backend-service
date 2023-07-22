@@ -39,7 +39,7 @@ pub(crate) struct AlpacaRest{}
 impl AlpacaRest {
 
     /// Spawn a new thread to poll the Alpaca REST API
-    pub fn run(tx_db_rest: Sender<DbMsg>, tokio_handle: Handle) {
+    pub fn run(tx_db_rest: Sender<DbMsg>, _tokio_handle: Handle) {
 
         tracing::debug!("[rest_client::run] starting alpaca rest client");
 
@@ -70,7 +70,6 @@ impl AlpacaRest {
                 if time_current_ny >= time_open_ny && time_current_ny <= time_close_ny {
                     tracing::info!("[rest_service:loop] NY time: {:?}, open: {:?}, close: {:?}",&time_current_ny,&time_open_ny,&time_close_ny);
                     std::env::var("API_INTERVAL_MILLIS").unwrap_or_else(|_| REST_POLL_RATE_OPEN_MILLIS_STR.to_string()).parse().unwrap_or(REST_POLL_RATE_OPEN_MILLIS)
-                    // std::env::var("API_INTERVAL_MILLIS").unwrap_or_else(|_| REST_POLL_RATE_OPEN_MILLIS)
 
                 } else {
                     // back off to a slower poll rate.
@@ -88,13 +87,13 @@ impl AlpacaRest {
 
                     tracing::debug!("[run] got settings, running rest API calls");
 
-                    // if ENABLE_REST_ACTIVITY {
-                    //     AlpacaRest::load_activities(&pool3, &settings).await;
-                    // }
+                    if ENABLE_REST_ACTIVITY {
+                        AlpacaRest::load_activities(&settings, tx_db_2.clone());
+                    }
 
-                    // if ENABLE_REST_POSITION {
-                    //     AlpacaRest::load_positions(&pool3, &settings).await;
-                    // }
+                    if ENABLE_REST_POSITION {
+                        AlpacaRest::load_positions(&settings, tx_db_2.clone());
+                    }
 
                     // if ENABLE_REST_ORDER {
                     //     AlpacaRest::load_orders(&pool3, &settings).await;
@@ -122,27 +121,21 @@ impl AlpacaRest {
 
     /// load activities from the REST api and put them in the Postgres database; filter by the most
     /// recent activity timestamp
-    async fn load_activities(pool:&PgPool, settings:&Settings){
+    fn load_activities(settings:&Settings, tx_db:crossbeam_channel::Sender<DbMsg>){
 
         // get latest activity timestamp from database (slow, not ideal, easier than extracting/manipulating in memory)
-        let last_entry = Activity::latest_dtg(pool).await;
 
-        let since_filter = match last_entry{
-            Ok(last_dtg) => {
-
-                // let last_dtg = last_dtg.to_rfc3339();
-
-                Some(last_dtg)
-            },
+        let since_filter = match Activity::latest_dtg(tx_db.clone()){
+            Ok(last_dtg) => Some(last_dtg),
             Err(_)=> None,
         };
 
-        match Activity::get_remote(since_filter, &settings).await {
+        match Activity::get_remote(since_filter, &settings, tx_db.clone()) {
             Ok(activities) => {
                 tracing::debug!("[alpaca_activities] got activities: {}", activities.len());
                 // save to postgres
                 for a in activities {
-                    let _ = a.save_to_db(pool).await;
+                    let _ = a.save_to_db(tx_db.clone());
                 }
             },
             Err(e) => tracing::error!("[alpaca_activity] error: {:?}", &e),
@@ -151,40 +144,34 @@ impl AlpacaRest {
 
 
     /// load positions from the REST api and put them in the Postgres database
-    async fn load_positions(pool:&PgPool, settings:&Settings){
+    fn load_positions(settings:&Settings, tx_db: crossbeam_channel::Sender<DbMsg>){
+
         // Positions: sync from Alpaca
-        match Position::get_remote(&settings).await {
+
+        match Position::get_remote(&settings, tx_db.clone()) {
+
             Ok(positions) => {
 
                 // clear the database table
-                match Position::delete_all_db(pool).await {
-                    Ok(_) => tracing::debug!("[alpaca_position] positions cleared"),
-                    Err(e) => tracing::error!("[alpaca_position] positions not cleared: {:?}", &e),
-                }
+                Position::delete_all_db(tx_db.clone());
 
                 // save to database
-                let now = Utc::now();
+
                 for position in positions.iter() {
 
-                    let _ = position.save_to_db(now, pool).await;
-
-                    match AlpacaTransaction::insert_existing_position(&position, &pool).await{
-                        Ok(_)=>{
-                            // tracing::debug!("[load_positions] updated {} in alpaca_transaction_status", &position.symbol);
-                        },
-                        Err(e)=>{
-                            tracing::debug!("[load_positions] update for {} in alpaca_transaction_status failed: {:?}", &position.symbol, &e);
-                        }
-                    }
+                    let _ = position.save_to_db(tx_db.clone());
+                    AlpacaTransaction::insert_existing_position(&position, tx_db.clone());
 
                 }
-                tracing::debug!("[alpaca_position] updated positions at {:?}", &now);
+                tracing::debug!("[alpaca_position] updated positions");
             },
             Err(e) => tracing::error!("[alpaca_position] could not load positions from Alpaca web API: {:?}", &e),
         }
     }
 
     /// load orders from the REST api and put them in the Postgres database
+    ///
+    /// TODO: convert to crossbeam, non-async
     async fn load_orders(pool:&PgPool, settings:&Settings){
         // get alpaca orders
         match Order::get_remote(&settings).await {

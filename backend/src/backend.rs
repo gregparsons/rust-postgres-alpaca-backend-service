@@ -58,7 +58,7 @@ impl Backend {
                 if alpaca_rest_on {
                     tracing::debug!("[run] alpaca_rest_on: {}", alpaca_rest_on);
                     std::thread::spawn(||{
-                        println!("[run] inside spawn");
+                        tracing::debug!("[run] inside spawned rest thread");
                         AlpacaRest::run(tx_db_rest, tokio_handle);
 
                     });
@@ -137,45 +137,26 @@ impl Backend {
                     tracing::debug!("[run] finnhub_on: {}", finnhub_on);
                 }
 
-
-
-
+                // start the stock rating system
+                // default on
+                let stock_rating_on = bool::from_str(std::env::var("STOCK_RATING_ON").unwrap_or_else(|_| "true".to_owned()).as_str()).unwrap_or(true);
+                tracing::info!("STOCK_RATING_ON is: {}", stock_rating_on);
+                let tx_db2 = tx_db.clone();
+                if stock_rating_on {
+                    let _join_handle = std::thread::spawn(|| {
+                        stock_rating::run(tx_db2);
+                    });
+                    // handles.push(join_handle);
+                    tracing::info!("[run] stock_rating_on: {}", stock_rating_on);
+                } else {
+                    tracing::error!("[run] stock_rating_on: {}", stock_rating_on);
+                }
 
             },
-            Err(_e)=>{
-                tracing::debug!("[run] error: {:?}", &_e);
-            }
+            Err(e)=> tracing::debug!("[run] error: {:?}", &e),
 
         }
 
-
-        // if let Ok(tx_db) = tx_db_result {
-        //
-
-
-
-
-            // // start the stock rating system
-            // // default on
-            // let stock_rating_on = bool::from_str(std::env::var("STOCK_RATING_ON").unwrap_or_else(|_| "true".to_owned()).as_str()).unwrap_or(true);
-            // tracing::info!("STOCK_RATING_ON is: {}", stock_rating_on);
-            // let tx_db2 = tx_db.clone();
-            // if stock_rating_on {
-            //     let join_handle = std::thread::spawn(|| {
-            //         stock_rating::run(tx_db2);
-            //     });
-            //     handles.push(join_handle);
-            //     tracing::debug!("[run] stock_rating_on: {}", finnhub_on);
-            // } else {
-            //     tracing::debug!("[run] stock_rating_on: {}", finnhub_on);
-            // }
-
-
-
-            // collect all the threads (which will never happen unless they all crash)
-        // for h in handles {
-        //     h.join().expect("thread stopped: {:?}");
-        // }
 
         loop {
             std::thread::sleep(Duration::from_secs(3));

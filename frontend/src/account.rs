@@ -25,7 +25,6 @@ pub async fn get_account(hb: web::Data<Handlebars<'_>>, tx_db: web::Data<crossbe
         // Actix turns the channel into web::Data and wraps it in an Arc
         let tx_db = tx_db.into_inner().as_ref().clone();
 
-
         match Settings::load_with_secret(tx_db.clone()) {
 
             Ok(settings) => {
@@ -65,13 +64,6 @@ pub async fn get_account(hb: web::Data<Handlebars<'_>>, tx_db: web::Data<crossbe
                 redirect_home().await
             }
         }
-
-
-        //
-        //
-        // // ******* temp ****
-        // redirect_home().await
-
 
     } else {
         redirect_home().await

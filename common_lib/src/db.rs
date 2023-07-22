@@ -6,11 +6,14 @@
 use sqlx::postgres::PgQueryResult;
 use sqlx::{Error, PgPool, Pool, Postgres};
 use std::thread::JoinHandle;
+use chrono::{DateTime, Utc};
 use reqwest::header::HeaderMap;
 use tokio::sync::oneshot;
 use crate::account::{Account, AccountWithDate};
+use crate::alpaca_activity::{Activity, ActivityLatest};
 use crate::alpaca_api_structs::{AlpacaTradeWs, MinuteBar, Ping};
 use crate::alpaca_order_log::AlpacaOrderLogEvent;
+use crate::alpaca_position::{Position, TempPosition};
 use crate::alpaca_transaction_status::TransactionError;
 use crate::error::TradeWebError;
 use crate::finnhub::{FinnhubPing, FinnhubTrade};
@@ -38,6 +41,16 @@ pub enum DbMsg {
     // TODO: pass settings to others that'd need updated settings while running
     AccountGetRemote{ settings:Settings, resp_tx: oneshot::Sender<Account> },
     AccountSaveToDb{ account:Account},
+
+    PositionGetRemote{ settings:Settings, resp_tx: oneshot::Sender<Vec<Position>> },
+    PositionDeleteAll,
+    PositionSaveToDb { position:Position },
+
+    TransactionInsertPosition { position:Position },
+
+    ActivityLatestDtg{ resp_tx: oneshot::Sender<DateTime<Utc>> },
+    ActivityGetRemote{ since_option:Option<DateTime<Utc>>, settings:Settings, resp_tx: oneshot::Sender<Vec<Activity>>},
+    ActivitySaveToDb { activity:Activity },
 
     GetSymbolList{resp_tx: crossbeam_channel::Sender<Vec<String>> },
 
@@ -93,11 +106,26 @@ impl DbActor {
                     match msg {
                         DbMsg::PingDb=>{
                             tracing::debug!("[db_thread][DbMsg::PingDb] pong: db thread here!");
-                        }
+                        },
+
+                        DbMsg::ActivitySaveToDb{activity} => {
+                            let _ = activity_save_to_db(&activity, &pool).await;
+                        },
+                        DbMsg::ActivityLatestDtg{ resp_tx }=>{
+                            if let Ok(activity) = activity_latest_dtg(&pool).await {
+                                let _ = resp_tx.send(activity);
+                            }
+                        },
+
+                        DbMsg::ActivityGetRemote{ since_option, settings, resp_tx}=>{
+                            if let Ok(activities) = activity_get_remote(since_option, &settings).await{
+                                let _ = resp_tx.send(activities);
+                            }
+                        },
 
                         DbMsg::AccountGet{resp_tx} =>{
-                            let account_result = account_get(&pool).await;
-                            if let Ok(account) = account_result {
+                            let result = account_get(&pool).await;
+                            if let Ok(account) = result {
                                 let _ = resp_tx.send(account);
                             }
                         },
@@ -108,11 +136,29 @@ impl DbActor {
                                 let _ = resp_tx.send(account);
                             }
                         },
+                        DbMsg::PositionGetRemote{settings, resp_tx} =>{
+                            let result = position_get_remote(&settings).await;
+                            if let Ok(positions) = result {
+                                let _ = resp_tx.send(positions);
+                            }
+                        },
+
+                        DbMsg::PositionDeleteAll =>{
+                            let _ = position_delete_all(&pool).await;
+                        },
+
+                        DbMsg::PositionSaveToDb{ position }=>{
+                            let _ = position_save_to_db(&position, &pool).await;
+                        },
+
+                        DbMsg::TransactionInsertPosition{ position }=>{
+                            let _ = transaction_insert_position(&position, &pool).await;
+                        },
 
 
                         DbMsg::AccountSaveToDb{ account }=>{
                             let _ = account_save_to_db(&account, &pool).await;
-                        }
+                        },
 
 
                         DbMsg::GetSymbolList{resp_tx}=>{
@@ -269,8 +315,15 @@ pub async fn db_connect(db_url: &str) -> tokio_postgres::Client {
 /// call an SQL function to poll the recent
 async fn refresh_rating(pool:&PgPool){
     tracing::debug!("[refresh_rating] starting...");
-    let _result = sqlx::query!(r#"select * from fn_grade_stocks()"#).execute(pool).await;
-    tracing::debug!("[refresh_rating] refresh done");
+    match sqlx::query!(r#"select * from fn_grade_stocks()"#).execute(pool).await{
+        Ok(_)=>{
+            tracing::info!("[refresh_rating] refresh done");
+        },
+        Err(e)=>{
+            tracing::error!("[refresh_rating] refresh failed: {:?}", &e);
+
+        }
+    }
 
 }
 
@@ -428,7 +481,7 @@ async fn settings_load_with_secret(pool:&PgPool) -> Result<Settings, Error> {
 
 }
 
-pub async fn transaction_delete_all(pool:&PgPool) -> Result<(), TransactionError> {
+async fn transaction_delete_all(pool:&PgPool) -> Result<(), TransactionError> {
     match sqlx::query!(
             r#"
                 delete from alpaca_transaction_status
@@ -439,7 +492,7 @@ pub async fn transaction_delete_all(pool:&PgPool) -> Result<(), TransactionError
     }
 }
 
-pub async fn account_get(pool:&PgPool) -> Result<AccountWithDate, TradeWebError> {
+async fn account_get(pool:&PgPool) -> Result<AccountWithDate, TradeWebError> {
     match sqlx::query_as!(AccountWithDate, r#"
             select
                 dtg as "dtg!"
@@ -487,7 +540,7 @@ pub async fn account_get(pool:&PgPool) -> Result<AccountWithDate, TradeWebError>
     }
 }
 
-pub async fn symbols_get_active(pool:&PgPool) -> Result<Vec<String>, TradeWebError> {
+async fn symbols_get_active(pool:&PgPool) -> Result<Vec<String>, TradeWebError> {
 
     let result: Result<Vec<QrySymbol>, sqlx::Error> = sqlx::query_as!(
             QrySymbol,
@@ -507,7 +560,7 @@ pub async fn symbols_get_active(pool:&PgPool) -> Result<Vec<String>, TradeWebErr
     }
 }
 
-pub async fn insert_order_log_entry(event: &AlpacaOrderLogEvent, pool:&PgPool) -> Result<PgQueryResult, Error> {
+async fn insert_order_log_entry(event: &AlpacaOrderLogEvent, pool:&PgPool) -> Result<PgQueryResult, Error> {
     /*
 
     [{"id":"2412874c-45a4-4e47-b0eb-98c00c1f05eb","client_order_id":"b6f91215-4e78-400d-b2ac-1bb546f86237","created_at":"2023-03-17T06:02:42.552044Z","updated_at":"2023-03-17T06:02:42.552044Z","submitted_at":"2023-03-17T06:02:42.551444Z","filled_at":null,"expired_at":null,"canceled_at":null,"failed_at":null,"replaced_at":null,"replaced_by":null,"replaces":null,"asset_id":"8ccae427-5dd0-45b3-b5fe-7ba5e422c766","symbol":"TSLA","asset_class":"us_equity","notional":null,"qty":"1","filled_qty":"0","filled_avg_price":null,"order_class":"","order_type":"market","type":"market","side":"buy","time_in_force":"day","limit_price":null,"stop_price":null,"status":"accepted","extended_hours":false,"legs":null,"trail_percent":null,"trail_price":null,"hwm":null,"subtag":null,"source":null}]
@@ -588,7 +641,7 @@ pub async fn insert_order_log_entry(event: &AlpacaOrderLogEvent, pool:&PgPool) -
 
 }
 
-pub async fn account_get_remote(settings:&Settings) -> Result<Account, TradeWebError> {
+async fn account_get_remote(settings:&Settings) -> Result<Account, TradeWebError> {
     // tracing::debug!("[account_get_remote] ************** settings: {:?}", settings);
 
     let api_key = settings.alpaca_paper_id.clone();
@@ -606,7 +659,7 @@ pub async fn account_get_remote(settings:&Settings) -> Result<Account, TradeWebE
             tracing::debug!("json: {}", &json_text);
             match serde_json::from_str::<Account>(&json_text) {
                 Ok(account) => {
-                    tracing::info!("[account_get_remote] got remote account: {:?}", &account);
+                    tracing::debug!("[account_get_remote] got remote account: {:?}", &account);
                     Ok(account)
                 },
                 Err(e) => {
@@ -624,7 +677,7 @@ pub async fn account_get_remote(settings:&Settings) -> Result<Account, TradeWebE
     }
 }
 
-pub async fn account_save_to_db(account:&Account, pool:&PgPool) -> Result<(), TradeWebError> {
+async fn account_save_to_db(account:&Account, pool:&PgPool) -> Result<(), TradeWebError> {
 
     match sqlx::query!(
             r#"
@@ -689,3 +742,182 @@ pub async fn account_save_to_db(account:&Account, pool:&PgPool) -> Result<(), Tr
     }
 
 }
+
+async fn position_get_remote(settings: &Settings) -> Result<Vec<Position>, reqwest::Error> {
+
+    let mut headers = reqwest::header::HeaderMap::new();
+    let api_key_id = settings.alpaca_paper_id.clone();
+    let api_secret = settings.alpaca_paper_secret.clone();
+    headers.insert("APCA-API-KEY-ID", api_key_id.parse().unwrap());
+    headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
+
+    let client = reqwest::Client::new();
+    let remote_positions: Vec<TempPosition> = client
+        .get("https://paper-api.alpaca.markets/v2/positions")
+        .headers(headers)
+        .send()
+        .await?
+        .json()
+        .await?;
+
+    let now = Utc::now();
+    let remote_positions:Vec<Position> = remote_positions
+        .iter()
+        .map(move |x| Position::from_temp(now, x.clone()))
+        .collect();
+
+    tracing::debug!("[get_remote] got {} positions", &remote_positions.len());
+    Ok(remote_positions)
+}
+
+async fn position_delete_all(pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
+    sqlx::query!(r#"delete from alpaca_position"#)
+        .execute(pool)
+        .await
+}
+
+async fn position_save_to_db(position:&Position, pool:&PgPool) -> Result<PgQueryResult, sqlx::Error> {
+
+    let result = sqlx::query!(
+            r#"
+                insert into alpaca_position(dtg, symbol, exchange, asset_class, avg_entry_price, qty, qty_available, side, market_value
+                    , cost_basis, unrealized_pl, unrealized_plpc, current_price, lastday_price, change_today, asset_id)
+                values
+                    (
+                        now(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, $12, $13, $14, $15
+                    )"#,
+            position.symbol, position.exchange, position.asset_class, position.avg_entry_price, position.qty, position.qty_available,
+            position.side.to_string(), position.market_value, position.cost_basis, position.unrealized_pl, position.unrealized_plpc, position.current_price,
+            position.lastday_price, position.change_today, position.asset_id
+        ).execute(pool).await;
+
+    // tracing::info!("[activity::save_to_db] position insert result: {:?}", &result);
+    result
+}
+
+/// create a new entry or update the position's shares with the current timestamp
+async fn transaction_insert_position(position:&Position, pool:&PgPool) ->Result<(), TransactionError>{
+
+    match sqlx::query!(
+        r#"
+            insert into alpaca_transaction_status(dtg, symbol, posn_shares)
+            values(now()::timestamptz, $1, $2)
+            ON CONFLICT (symbol) DO UPDATE
+                SET posn_shares = $2, dtg=now()::timestamptz;
+        "#,
+        position.symbol.to_lowercase(),
+        position.qty
+    ).execute(pool).await{
+        Ok(_)=>{
+            tracing::debug!("[transaction_insert_position] successful insert");
+            Ok(())
+        },
+        Err(e)=>{
+            tracing::error!("[transaction_insert_position] unsuccessful insert: {:?}", &e);
+            Err(TransactionError::DeleteFailed)
+        } // or db error
+    }
+}
+
+
+/// latest_dtg: get the date of the most recent activity; used to filter the activity API
+async fn activity_latest_dtg(pool:&PgPool)->Result<DateTime<Utc>, TradeWebError>{
+
+    match sqlx::query_as!(ActivityLatest, r#"select max(dtg)::timestamptz as "dtg!" from alpaca_activity"#).fetch_one(pool).await{
+        Ok(latest_dtg)=> Ok(latest_dtg.dtg),
+        Err(_e)=>Err(TradeWebError::ReqwestError),
+    }
+}
+
+async fn activity_get_remote(since_filter:Option<DateTime<Utc>>, settings: &Settings) -> Result<Vec<Activity>, TradeWebError> {
+    let mut headers = HeaderMap::new();
+    let api_key = settings.alpaca_paper_id.clone();
+    let api_secret = settings.alpaca_paper_secret.clone();
+    headers.insert("APCA-API-KEY-ID", api_key.parse().unwrap());
+    headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
+
+
+    let url = match since_filter{
+        Some(since) =>{
+            format!("https://paper-api.alpaca.markets/v2/account/activities/FILL?after={}", urlencoding::encode(since.to_rfc3339().as_str()))
+        },
+        None => {
+            // TODO: put in today's date at least
+            format!("https://paper-api.alpaca.markets/v2/account/activities/FILL")
+        }
+    };
+
+    tracing::debug!("[get_remote] getting activities since: {:?}", &since_filter);
+
+    tracing::debug!("[get_remote] calling API: {}", &url);
+    let client = reqwest::Client::new();
+    let http_result = client.get(url).headers(headers).send().await;
+    let return_val = match http_result {
+        Ok(response) => match &response.text().await {
+            Ok(response_text) => match serde_json::from_str::<Vec<Activity>>(&response_text) {
+                Ok(results) => Ok(results),
+                Err(e) => {
+                    tracing::debug!("[get_remote] deserialization to json vec failed: {:?}",&e);
+                    Err(TradeWebError::JsonError)
+                }
+            },
+            Err(e) => {
+                tracing::debug!("[get_remote] deserialization to json text failed: {:?}", &e);
+                Err(TradeWebError::JsonError)
+            }
+        },
+        Err(e) => {
+            tracing::debug!("[get_remote] reqwest error: {:?}", &e);
+            Err(TradeWebError::ReqwestError)
+        }
+    };
+    return_val
+}
+
+async fn activity_save_to_db(activity: &Activity, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
+    let result = sqlx::query!(
+            r#"
+            insert into alpaca_activity
+                (
+                id
+                , activity_type
+                , activity_subtype
+                , dtg
+                , symbol
+                , side
+                , qty
+                , price
+                , cum_qty
+                , leaves_qty
+                , order_id
+                )
+                values (
+                    $1
+                    ,$2
+                    ,$3
+                    ,$4
+                    ,$5
+                    ,lower($6)
+                    ,$7
+                    ,$8
+                    ,$9
+                    ,$10
+                    ,$11
+                    )"#,
+            activity.id,
+            activity.activity_type.to_string(),
+            activity.activity_subtype.to_string(),
+            activity.dtg,
+            activity.symbol,
+            activity.side.to_string(),
+            activity.qty,
+            activity.price,
+            activity.cum_qty,
+            activity.leaves_qty,
+            activity.order_id
+        ).execute(pool).await;
+
+    tracing::info!("[save_to_db] activity insert result: {:?}", &result);
+    result
+}
+

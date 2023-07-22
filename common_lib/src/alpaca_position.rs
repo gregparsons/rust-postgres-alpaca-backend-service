@@ -6,9 +6,13 @@
 use crate::settings::Settings;
 use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
-use sqlx::postgres::PgQueryResult;
 use sqlx::PgPool;
 use std::fmt;
+use chrono::{DateTime, Utc};
+use std::fmt::{Debug, Display};
+use tokio::sync::oneshot;
+use tokio::sync::oneshot::error::RecvError;
+use crate::db::DbMsg;
 
 ///
 /// curl -X GET \
@@ -66,8 +70,7 @@ pub struct Position {
     pub dtg_updated: DateTime<Utc>,
 }
 
-use chrono::{DateTime, Utc};
-use std::fmt::{Debug, Display};
+
 
 /// From the web API deserialize to this then convert to Position
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -92,7 +95,7 @@ pub struct TempPosition {
 }
 
 impl Position {
-    fn from_temp(dt_updated_now: DateTime<Utc>, t: TempPosition) -> Position {
+    pub(crate) fn from_temp(dt_updated_now: DateTime<Utc>, t: TempPosition) -> Position {
         Position {
             // TODO: alpaca doesn't provide a timestamp of when the position started; it needs to be gleaned
             // from the Activity API; but it'd be useful to be able to know how old a position is
@@ -157,64 +160,33 @@ impl Position {
     }
 
     // Call the Alpaca API to get the remote position snapshot
-    pub async fn get_remote(settings: &Settings) -> Result<Vec<Position>, reqwest::Error> {
-        let mut headers = reqwest::header::HeaderMap::new();
-        let api_key_id = settings.alpaca_paper_id.clone();
-        let api_secret = settings.alpaca_paper_secret.clone();
-        headers.insert("APCA-API-KEY-ID", api_key_id.parse().unwrap());
-        headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
+    pub fn get_remote(settings:&Settings, tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<Vec<Position>, RecvError> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        let msg = DbMsg::PositionGetRemote{
+            settings:settings.clone(),
+            resp_tx
+        };
+        tx_db.send(msg).unwrap();
+        let result = resp_rx.blocking_recv();
+        result
 
-        let client = reqwest::Client::new();
-        let remote_positions: Vec<TempPosition> = client
-            .get("https://paper-api.alpaca.markets/v2/positions")
-            .headers(headers)
-            .send()
-            .await?
-            .json()
-            .await?;
-
-        let now = Utc::now();
-        let remote_positions:Vec<Position> = remote_positions
-            .iter()
-            .map(move |x| Position::from_temp(now, x.clone()))
-            .collect();
-
-        tracing::debug!("[get_remote] got {} positions", &remote_positions.len());
-        Ok(remote_positions)
     }
 
     /// delete_all_db
-    pub async fn delete_all_db(pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
-        sqlx::query!(r#"delete from alpaca_position"#)
-            .execute(pool)
-            .await
+    pub fn delete_all_db(tx_db: crossbeam_channel::Sender<DbMsg>) {
+        let _ = tx_db.send(DbMsg::PositionDeleteAll);
     }
 
     /// save a single position to the database; not ideal to not insert the result of the alpaca api call as a bulk insert but not rocket science at the moment
-    pub async fn save_to_db(
-        &self,
-        timestamp: DateTime<Utc>,
-        pool: &PgPool,
-    ) -> Result<PgQueryResult, sqlx::Error> {
-        // tracing::debug!("[save_to_db]");
-        let result = sqlx::query!(
-            r#"
-                insert into alpaca_position(dtg, symbol, exchange, asset_class, avg_entry_price, qty, qty_available, side, market_value
-                    , cost_basis, unrealized_pl, unrealized_plpc, current_price, lastday_price, change_today, asset_id)
-                values
-                    (
-                        $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, $12, $13, $14, $15, $16
-                    )"#,
-            timestamp,
-            self.symbol, self.exchange, self.asset_class, self.avg_entry_price, self.qty, self.qty_available,
-            self.side.to_string(), self.market_value, self.cost_basis, self.unrealized_pl, self.unrealized_plpc, self.current_price,
-            self.lastday_price, self.change_today, self.asset_id
-        ).execute(pool).await;
+    pub fn save_to_db(&self, tx_db: crossbeam_channel::Sender<DbMsg>) {
 
-        // tracing::debug!("[activity::save_to_db] insert result: {:?}", &result);
-        result
+        let _ = tx_db.send(DbMsg::PositionSaveToDb{ position:self.clone() });
+
     }
 }
+
+
+
 
 #[derive(sqlx::Type, Debug, Serialize, Deserialize, PartialEq, Clone)]
 pub enum PositionSide {
