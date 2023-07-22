@@ -16,11 +16,13 @@ mod symbols;
 mod utils;
 mod web_server;
 
+use std::time::Duration;
 use common_lib::init::init;
 
 use crate::web_server::WebServer;
 use chrono::NaiveTime;
 use once_cell::sync::Lazy;
+use common_lib::db::{DbActor, DbMsg};
 
 // https://alpaca.markets/learn/investing-basics/what-is-extended-hours-trading/
 pub static MARKET_OPEN: Lazy<NaiveTime> = Lazy::new(|| NaiveTime::from_hms_opt(9, 30, 0).unwrap()); // 4am Eastern
@@ -43,6 +45,20 @@ fn main() {
         .expect("Tokio runtime didn't start");
 
     tokio_runtime.block_on(async {
-        WebServer::run().await;
+
+        let db_actor = DbActor::new().await;
+        let tx_db = db_actor.run().await;
+
+        tracing::debug!("[main] tx_db: {:?}", &tx_db);
+
+        // let tick = crossbeam::channel::tick(Duration::from_secs(2));
+        // for _ in 0..5 {
+        //     tracing::debug!("[main] ping db result: {:?}", tx_db.send(DbMsg::PingDb));
+        //     tick.recv().unwrap();
+        // }
+
+        WebServer::run(tx_db.clone()).await;
+
+
     });
 }

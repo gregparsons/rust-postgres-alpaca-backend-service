@@ -3,7 +3,6 @@
 
 use chrono::{DateTime, Utc};
 use crate::alpaca_order::Order;
-use crate::db::DbMsg;
 
 #[derive(Debug)]
 pub struct AlpacaOrderLogEvent{

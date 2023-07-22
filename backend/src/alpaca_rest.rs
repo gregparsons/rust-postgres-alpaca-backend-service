@@ -82,27 +82,27 @@ impl AlpacaRest {
 
             // refresh settings from the database
             let tx_db_1 = tx_db_rest.clone();
+            let tx_db_2 = tx_db_rest.clone();
             match Settings::load_with_secret(tx_db_1) {
                 Ok(settings) => {
 
                     tracing::debug!("[run] got settings, running rest API calls");
 
-                    //
                     // if ENABLE_REST_ACTIVITY {
                     //     AlpacaRest::load_activities(&pool3, &settings).await;
                     // }
-                    //
+
                     // if ENABLE_REST_POSITION {
                     //     AlpacaRest::load_positions(&pool3, &settings).await;
                     // }
-                    //
+
                     // if ENABLE_REST_ORDER {
                     //     AlpacaRest::load_orders(&pool3, &settings).await;
                     // }
                     //
-                    // if ENABLE_REST_ACCOUNT{
-                    //     Account::load_account(&pool3, &settings).await;
-                    // }
+                    if ENABLE_REST_ACCOUNT{
+                        Account::load_account(&settings, tx_db_2.clone());
+                    }
                 },
                 Err(e) => {
                     tracing::error!("[run] couldn't load settings in loop to update activities/positions: {:?}", &e);

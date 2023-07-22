@@ -6,10 +6,10 @@
 use sqlx::postgres::PgQueryResult;
 use sqlx::{Error, PgPool, Pool, Postgres};
 use std::thread::JoinHandle;
+use reqwest::header::HeaderMap;
 use tokio::sync::oneshot;
-use crate::account::AccountWithDate;
+use crate::account::{Account, AccountWithDate};
 use crate::alpaca_api_structs::{AlpacaTradeWs, MinuteBar, Ping};
-use crate::alpaca_order::Order;
 use crate::alpaca_order_log::AlpacaOrderLogEvent;
 use crate::alpaca_transaction_status::TransactionError;
 use crate::error::TradeWebError;
@@ -22,6 +22,7 @@ use crate::alpaca_transaction_status::*;
 
 #[derive(Debug)]
 pub enum DbMsg {
+    PingDb,
     // LastTrade(AlpacaTradeRest),
     TradeAlpaca(AlpacaTradeWs),
     // WsQuote(AlpWsQuote),
@@ -34,6 +35,10 @@ pub enum DbMsg {
     GetSettingsWithSecret{ resp_tx: crossbeam_channel::Sender<Settings> },
     TransactionDeleteAll,
     AccountGet{ resp_tx: oneshot::Sender<AccountWithDate> },
+    // TODO: pass settings to others that'd need updated settings while running
+    AccountGetRemote{ settings:Settings, resp_tx: oneshot::Sender<Account> },
+    AccountSaveToDb{ account:Account},
+
     GetSymbolList{resp_tx: crossbeam_channel::Sender<Vec<String>> },
 
 }
@@ -60,14 +65,8 @@ impl DbActor {
 
         tracing::debug!("");
 
-        // Channel for websocket thread to send to database thread
+        // Channel for other threads to send to the database thread
         let (tx, rx) = crossbeam::channel::unbounded();
-
-        // // connect to Postgres
-        // let client: Client = tokio::spawn(async {
-        //     let db_log_url = std::env::var("DATABASE_URL").expect("DATABASE_URL not found");
-        //     db_connect(&db_log_url).await
-        // }).await.unwrap();
 
         // upon connection start a message-listening thread
         let pool2 = self.pool.clone();
@@ -87,14 +86,34 @@ impl DbActor {
     async fn db_thread(rx: crossbeam::channel::Receiver<DbMsg>, pool: Pool<Postgres>) -> JoinHandle<()> {
         tracing::debug!("[db_thread]");
 
-        // TODO: starting here I'm using SQLX instead of tokio postgres
-        // let pool = create_sqlx_pg_pool().await;
-
         loop {
             crossbeam::channel::select! {
             recv(rx) -> result => {
                 if let Ok(msg) = result {
                     match msg {
+                        DbMsg::PingDb=>{
+                            tracing::debug!("[db_thread][DbMsg::PingDb] pong: db thread here!");
+                        }
+
+                        DbMsg::AccountGet{resp_tx} =>{
+                            let account_result = account_get(&pool).await;
+                            if let Ok(account) = account_result {
+                                let _ = resp_tx.send(account);
+                            }
+                        },
+
+                        DbMsg::AccountGetRemote{settings, resp_tx} =>{
+                            let account_result = account_get_remote(&settings).await;
+                            if let Ok(account) = account_result {
+                                let _ = resp_tx.send(account);
+                            }
+                        },
+
+
+                        DbMsg::AccountSaveToDb{ account }=>{
+                            let _ = account_save_to_db(&account, &pool).await;
+                        }
+
 
                         DbMsg::GetSymbolList{resp_tx}=>{
                             let result = symbols_get_active(&pool).await;
@@ -103,12 +122,6 @@ impl DbActor {
                             }
                         },
 
-                        DbMsg::AccountGet{resp_tx} =>{
-                            let account_result = account_get(&pool).await;
-                            if let Ok(account) = account_result {
-                                let _ = resp_tx.send(account);
-                            }
-                        },
 
                         DbMsg::TransactionDeleteAll=>{
                             let _ = transaction_delete_all(&pool).await;
@@ -572,5 +585,107 @@ pub async fn insert_order_log_entry(event: &AlpacaOrderLogEvent, pool:&PgPool) -
     tracing::debug!("[insert_order_log_entry] result: {:?}", result);
 
     result
+
+}
+
+pub async fn account_get_remote(settings:&Settings) -> Result<Account, TradeWebError> {
+    // tracing::debug!("[account_get_remote] ************** settings: {:?}", settings);
+
+    let api_key = settings.alpaca_paper_id.clone();
+    let api_secret = settings.alpaca_paper_secret.clone();
+    let mut headers = HeaderMap::new();
+    headers.insert("APCA-API-KEY-ID", api_key.parse().unwrap());
+    headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
+    let url = format!("https://paper-api.alpaca.markets/v2/account");
+
+    let client = reqwest::Client::new();
+    let http_result = client.get(url).headers(headers).send().await;
+    match http_result {
+        Ok(resp) => {
+            let json_text = &resp.text().await.unwrap();
+            tracing::debug!("json: {}", &json_text);
+            match serde_json::from_str::<Account>(&json_text) {
+                Ok(account) => {
+                    tracing::info!("[account_get_remote] got remote account: {:?}", &account);
+                    Ok(account)
+                },
+                Err(e) => {
+                    tracing::error!("[get_account] json: {}", &json_text);
+                    tracing::error!("[get_account] json error: {:?}", &e);
+                    Err(TradeWebError::JsonError)
+                }
+            }
+        }
+        Err(e) => {
+            tracing::error!("[get_account] reqwest error: {:?}", &e);
+            format!("reqwest error: {:?}", &e);
+            Err(TradeWebError::SqlxError)
+        }
+    }
+}
+
+pub async fn account_save_to_db(account:&Account, pool:&PgPool) -> Result<(), TradeWebError> {
+
+    match sqlx::query!(
+            r#"
+                insert into alpaca_account(
+                    dtg,
+                    cash,
+                    position_market_value,
+                    equity,
+                    last_equity,
+                    daytrade_count,
+                    balance_asof,
+                    pattern_day_trader,
+                    id,
+                    account_number,
+                    status,
+                    -- crypto_status,
+                    currency,
+                    buying_power,
+                    regt_buying_power,
+                    daytrading_buying_power,
+                    effective_buying_power,
+                    non_marginable_buying_power,
+                    bod_dtbp,
+                    accrued_fees,
+                    pending_transfer_in,
+                    -- portfolio_value,    -- deprecated (same as equity)
+                    trading_blocked,
+                    transfers_blocked,
+                    account_blocked,
+                    created_at,
+                    trade_suspended_by_user,
+                    multiplier,
+                    shorting_enabled,
+                    long_market_value,
+                    short_market_value,
+                    initial_margin,
+                    maintenance_margin,
+                    last_maintenance_margin,
+                    sma
+                    -- crypto_tier: usize,
+
+                ) values(now()::timestamptz, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)
+
+            "#,
+            account.cash,account.position_market_value,account.equity,account.last_equity, account.daytrade_count,
+            account.balance_asof, account.pattern_day_trader, account.id, account.account_number, account.status,
+            account.currency, account.buying_power, account.regt_buying_power,account.daytrading_buying_power, account.effective_buying_power,
+            account.non_marginable_buying_power, account.bod_dtbp, account.accrued_fees, account.pending_transfer_in, account.trading_blocked,
+            account.transfers_blocked, account.account_blocked, account.created_at, account.trade_suspended_by_user, account.multiplier, account.shorting_enabled,
+            account.long_market_value, account.short_market_value, account.initial_margin, account.maintenance_margin, account.last_maintenance_margin,
+            account.sma
+
+        ).execute(pool).await {
+        Ok(_) => {
+            tracing::info!("[account_save_to_db] save successful");
+            Ok(())
+        },
+        Err(e) => {
+            tracing::error!("[account_save_to_db] save unsuccessful: {:?}", &e);
+            Err(TradeWebError::SqlxError)
+        }
+    }
 
 }

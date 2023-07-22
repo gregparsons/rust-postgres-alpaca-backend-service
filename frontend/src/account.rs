@@ -18,19 +18,21 @@ pub async fn get_account(hb: web::Data<Handlebars<'_>>, tx_db: web::Data<crossbe
 
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
 
-        // let mut headers = HeaderMap::new();
-        let tx_db:Arc<crossbeam_channel::Sender<DbMsg>> = tx_db.into_inner();
-
-        let t:crossbeam_channel::Sender<DbMsg> = Arc::try_unwrap(tx_db).unwrap();
+        tracing::debug!("[main] ping db result: {:?}", tx_db.send(DbMsg::PingDb));
 
 
-        match Settings::load_with_secret(t.clone()) {
+        // Turn the Arc<crossbeam_channel::Sender<DbMsg>> back into the channel we need after
+        // Actix turns the channel into web::Data and wraps it in an Arc
+        let tx_db = tx_db.into_inner().as_ref().clone();
+
+
+        match Settings::load_with_secret(tx_db.clone()) {
 
             Ok(settings) => {
 
                 // let account_result = Account::get_remote(&settings).await;
 
-                let account_result= Account::get(t.clone()).await;
+                let account_result= Account::get(tx_db.clone()).await;
 
                 match account_result{
                     Ok(account)=>{
@@ -63,6 +65,14 @@ pub async fn get_account(hb: web::Data<Handlebars<'_>>, tx_db: web::Data<crossbe
                 redirect_home().await
             }
         }
+
+
+        //
+        //
+        // // ******* temp ****
+        // redirect_home().await
+
+
     } else {
         redirect_home().await
     }

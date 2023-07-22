@@ -6,6 +6,7 @@ use actix_session::SessionMiddleware;
 use actix_web::{web, App, HttpServer};
 use handlebars::Handlebars;
 use sqlx::PgPool;
+use common_lib::db::DbMsg;
 // use crate::signup::{_get_signup, _post_signup};
 use crate::account::get_account;
 use crate::activities::{get_activities, get_activity_for_symbol};
@@ -23,38 +24,34 @@ use crate::utils::*;
 
 pub struct WebServer {}
 impl WebServer {
-    pub async fn run() {
+    pub async fn run(tx_db: crossbeam_channel::Sender<DbMsg>) {
+
         let settings = get_yaml_configuration().expect("no configuration.yaml");
         let address = format!("{}:{}", settings.database.host, settings.database.port);
         tracing::debug!("[run] address from config: {}", &address);
-
         let web_port = settings.application_port;
         tracing::info!("[run] web server starting on port: {}", &web_port);
-        let _ = WebServer::web_server(web_port).await;
+
+        let _ = WebServer::web_server(web_port, tx_db).await;
     }
 
     fn get_secret_key() -> actix_web::cookie::Key {
         actix_web::cookie::Key::generate()
     }
 
-    async fn web_server(web_port: u16) -> std::io::Result<()> {
+    async fn web_server(web_port: u16, tx_db: crossbeam_channel::Sender<DbMsg>) -> std::io::Result<()> {
         tracing::info!("starting HTTP server at http://localhost:8080");
 
         let configuration = get_yaml_configuration().expect("[web_server] no configuration.yaml?");
-        let conn_pool = PgPool::connect(&configuration.database.connection_string())
-            .await
-            .expect("[frontend][web server] failed to connect to postgres");
-        let db_pool = web::Data::new(conn_pool);
+        let pool = PgPool::connect(&configuration.database.connection_string()).await.expect("[frontend][web server] failed to connect to postgres");
 
+
+        // handlebars
         // refs:
         // https://github.com/actix/examples/blob/master/templating/handlebars/src/main.rs
         // https://github.com/sunng87/handlebars-rust/tree/master/examples
         let mut handlebars = Handlebars::new();
-
-        // println!("[init] config_location: {}", env!("CARGO_MANIFEST_DIR"));
-
         let config_location = std::env::var("CONFIG_LOCATION").unwrap_or_else(|_| "not_docker".to_owned());
-
         // or CARGO_PKG_NAME
         let package_name = env!("CARGO_MANIFEST_DIR");
         let handlebar_static_path = match config_location.as_str() {
@@ -65,30 +62,25 @@ impl WebServer {
                 format!("{}/static/templates", &package_name)
             }
         };
-
-        tracing::debug!(
-            "[web_server] registering handlebars static files to: {}",
-            &handlebar_static_path
-        );
-
-        handlebars
-            .register_templates_directory(".html", handlebar_static_path)
-            .unwrap();
+        tracing::debug!("[web_server] registering handlebars static files to: {}",&handlebar_static_path);
+        handlebars.register_templates_directory(".html", handlebar_static_path).unwrap();
         let handlebars_ref = web::Data::new(handlebars);
 
         // srv is server controller type, `dev::Server`
         let secret_key = WebServer::get_secret_key();
 
+        // state
+        let db_pool_data = web::Data::new(pool);
+        let tx_db_data = web::Data::new(tx_db.clone());
+
+
         let server = HttpServer::new(move || {
             App::new()
                 // https://actix.rs/docs/middleware
                 // setting secure = false for local testing; otherwise TLS required
-                .wrap(
-                    SessionMiddleware::builder(CookieSessionStore::default(), secret_key.clone())
-                        .cookie_secure(false)
-                        .build(),
-                )
-                .app_data(db_pool.clone())
+                .wrap(SessionMiddleware::builder(CookieSessionStore::default(), secret_key.clone()).cookie_secure(false).build())
+                .app_data(db_pool_data.clone())
+                .app_data(tx_db_data.clone())
                 .app_data(handlebars_ref.clone())
                 .route("/", web::get().to(get_home))
                 .route("/login", web::get().to(get_login))

@@ -2,20 +2,16 @@
 //!
 //! https://alpaca.markets/docs/api-references/trading-api/account/
 
-use std::sync::Arc;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
-use crossbeam_channel::Sender;
-use reqwest::header::HeaderMap;
+use crossbeam_channel::SendError;
 use serde::{Deserialize, Serialize};
-use sqlx::{PgPool};
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::error::RecvError;
 use crate::db::DbMsg;
-use crate::error::TradeWebError;
 use crate::settings::Settings;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Account {
     pub cash: BigDecimal,
     pub position_market_value: BigDecimal,
@@ -106,126 +102,44 @@ impl Account {
     }
 
 
+    /// get account from the web API and save to the local database
+    pub fn load_account(settings:&Settings, tx_db: crossbeam_channel::Sender<DbMsg>){
 
-    pub async fn load_account(pool:&PgPool, settings:&Settings){
-
-        match Account::get_remote(settings).await{
+        match Account::get_remote(settings, tx_db.clone()) {
             Ok(account)=>{
-                let _ = account.save_to_db(pool).await;
+                tracing::info!("[load_account] got remote account, saving to db...");
+                match account.save_to_db(tx_db.clone()){
+                    Ok(_)=>{
+                        tracing::info!("[load_account] save to db ok");
+                    },
+                    Err(e) =>{
+                        tracing::error!("[load_account] save to db failed: {:?}", &e);
+                    }
+                }
             },
             Err(e)=>{
-                tracing::debug!("[load_account] error: {:?}", &e);
+                tracing::error!("[load_account] error: {:?}", &e);
             }
         }
-
 
     }
 
     /// GET https://paper-api.alpaca.markets/v2/account
-    pub async fn get_remote(settings:&Settings)-> Result<Account,TradeWebError> {
-
-        tracing::debug!("************** settings: {:?}", settings);
-
-        let api_key = settings.alpaca_paper_id.clone();
-        let api_secret = settings.alpaca_paper_secret.clone();
-        let mut headers = HeaderMap::new();
-        headers.insert("APCA-API-KEY-ID", api_key.parse().unwrap());
-        headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
-        let url = format!("https://paper-api.alpaca.markets/v2/account");
-
-        let client = reqwest::Client::new();
-        let http_result = client.get(url).headers(headers).send().await;
-        match http_result {
-            Ok(resp) => {
-                let json_text = &resp.text().await.unwrap();
-                tracing::debug!("json: {}", &json_text);
-                match serde_json::from_str::<Account>(&json_text) {
-                    Ok(account) => Ok(account),
-                    Err(e) => {
-                        tracing::debug!("[get_account] json: {}", &json_text);
-                        tracing::debug!("[get_account] json error: {:?}", &e);
-                        Err(TradeWebError::JsonError)
-                    }
-                }
-            }
-            Err(e) => {
-                tracing::debug!("[get_account] reqwest error: {:?}", &e);
-                format!("reqwest error: {:?}", &e);
-                Err(TradeWebError::SqlxError)
-            }
-        }
-
-
+    /// TODO: move the web api calls out of db.rs so they're not competing with that thread
+    pub fn get_remote(settings:&Settings, tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<Account, RecvError> {
+        let (resp_tx, resp_rx) = oneshot::channel();
+        let msg = DbMsg::AccountGetRemote{
+            settings:settings.clone(),
+            resp_tx
+        };
+        tx_db.send(msg).unwrap();
+        let result = resp_rx.blocking_recv();
+        result
 
     }
 
-
-    /// TODO: change all these long-running async db calls (except that it's okay these rest results are serial for now)
-    pub async fn save_to_db(&self, pool:&PgPool) -> Result<(), TradeWebError> {
-
-        /*
-
-
-         */
-
-        match sqlx::query!(
-            r#"
-                insert into alpaca_account(
-                    dtg,
-                    cash,
-                    position_market_value,
-                    equity,
-                    last_equity,
-                    daytrade_count,
-                    balance_asof,
-                    pattern_day_trader,
-                    id,
-                    account_number,
-                    status,
-                    -- crypto_status,
-                    currency,
-                    buying_power,
-                    regt_buying_power,
-                    daytrading_buying_power,
-                    effective_buying_power,
-                    non_marginable_buying_power,
-                    bod_dtbp,
-                    accrued_fees,
-                    pending_transfer_in,
-                    -- portfolio_value,    -- deprecated (same as equity)
-                    trading_blocked,
-                    transfers_blocked,
-                    account_blocked,
-                    created_at,
-                    trade_suspended_by_user,
-                    multiplier,
-                    shorting_enabled,
-                    long_market_value,
-                    short_market_value,
-                    initial_margin,
-                    maintenance_margin,
-                    last_maintenance_margin,
-                    sma
-                    -- crypto_tier: usize,
-
-                ) values(now()::timestamptz, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)
-
-            "#,
-            self.cash,self.position_market_value,self.equity,self.last_equity, self.daytrade_count,
-            self.balance_asof, self.pattern_day_trader, self.id, self.account_number, self.status,
-            self.currency, self.buying_power, self.regt_buying_power,self.daytrading_buying_power, self.effective_buying_power,
-            self.non_marginable_buying_power, self.bod_dtbp, self.accrued_fees, self.pending_transfer_in, self.trading_blocked,
-            self.transfers_blocked, self.account_blocked, self.created_at, self.trade_suspended_by_user, self.multiplier, self.shorting_enabled,
-            self.long_market_value, self.short_market_value, self.initial_margin, self.maintenance_margin, self.last_maintenance_margin,
-            self.sma
-
-        ).execute(pool).await {
-            Ok(_) => Ok(()),
-            Err(_e) => Err(TradeWebError::SqlxError)
-        }
-
-
-
+    pub fn save_to_db(&self, tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<(), SendError<DbMsg>> {
+        tx_db.send(DbMsg::AccountSaveToDb { account: (*self).clone() })
     }
 
 

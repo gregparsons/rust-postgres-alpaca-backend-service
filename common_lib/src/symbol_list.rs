@@ -6,7 +6,6 @@ use crossbeam_channel::RecvError;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use crate::db::DbMsg;
-use crate::settings::Settings;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct QrySymbol {
