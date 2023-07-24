@@ -4,9 +4,7 @@
 
 use chrono::Utc;
 use crossbeam_channel::Sender;
-use sqlx::PgPool;
 use common_lib::alpaca_activity::Activity;
-use common_lib::alpaca_order::Order;
 use common_lib::alpaca_position::Position;
 use common_lib::market_hours::{MARKET_CLOSE_EXT, MARKET_OPEN_EXT};
 use common_lib::settings::Settings;
@@ -24,7 +22,7 @@ const REST_POLL_RATE_CLOSED_MILLIS: u64 = 10000;
 const ENABLE_REST_ACTIVITY: bool = true;
 const ENABLE_REST_POSITION: bool = true;
 // don't need this
-const ENABLE_REST_ORDER: bool = false;
+// const ENABLE_REST_ORDER: bool = false;
 const ENABLE_REST_ACCOUNT: bool = true;
 
 
@@ -168,29 +166,29 @@ impl AlpacaRest {
         }
     }
 
-    /// load orders from the REST api and put them in the Postgres database
-    ///
-    /// TODO: convert to crossbeam, non-async
-    async fn load_orders(pool:&PgPool, settings:&Settings){
-        // get alpaca orders
-        match Order::get_remote(&settings).await {
-            Ok(orders) => {
-                tracing::debug!("[alpaca_order] orders: {}", &orders.len());
-
-                // clear out the database assuming the table will only hold what alpaca's showing as open orders
-                match Order::delete_all_db(pool).await {
-                    Ok(_) => tracing::debug!("[alpaca_order] orders cleared"),
-                    Err(e) => tracing::error!("[alpaca_order] orders not cleared: {:?}", &e)
-                }
-
-                // save to postgres
-                for order in orders.iter() {
-                    let _ = order.save_to_db(pool).await;
-                }
-            },
-            Err(e) => tracing::error!("[alpaca_order] could not load orders from Alpaca web API: {:?}", &e),
-        }
-    }
+    // /// load orders from the REST api and put them in the Postgres database
+    // ///
+    // /// TODO: convert to crossbeam, non-async
+    // async fn load_orders(pool:&PgPool, settings:&Settings){
+    //     // get alpaca orders
+    //     match Order::get_remote(&settings).await {
+    //         Ok(orders) => {
+    //             tracing::debug!("[alpaca_order] orders: {}", &orders.len());
+    //
+    //             // clear out the database assuming the table will only hold what alpaca's showing as open orders
+    //             match Order::delete_all_db(pool).await {
+    //                 Ok(_) => tracing::debug!("[alpaca_order] orders cleared"),
+    //                 Err(e) => tracing::error!("[alpaca_order] orders not cleared: {:?}", &e)
+    //             }
+    //
+    //             // save to postgres
+    //             for order in orders.iter() {
+    //                 let _ = order.save_to_db(pool).await;
+    //             }
+    //         },
+    //         Err(e) => tracing::error!("[alpaca_order] could not load orders from Alpaca web API: {:?}", &e),
+    //     }
+    // }
 
 }
 

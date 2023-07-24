@@ -4,8 +4,7 @@
 //!
 
 use sqlx::postgres::PgQueryResult;
-use sqlx::{Error, PgPool, Pool, Postgres};
-use std::thread::JoinHandle;
+use sqlx::{Error, PgPool};
 use chrono::{DateTime, Utc};
 use reqwest::header::HeaderMap;
 use tokio::runtime::Handle;
@@ -99,7 +98,7 @@ impl DbActor {
                             // tracing::debug!("[run] msg: {:?}", &msg);
 
                             // blocking not required for sqlx and reqwest async libraries
-                            let x = tr.spawn(async {
+                            let _x = tr.spawn(async {
                                 tracing::debug!("[run] tokio spawn process_message()");
                                 process_message(msg, pool).await;
                             });
@@ -286,33 +285,33 @@ async fn process_message(msg:DbMsg, pool: PgPool){
 }
 
 
-///
-/// TODO: convert to sqlx
-/// - convert to using migrations
-/// - PgConnectOptions would let us load DB credentials from env nicely without having to generate a
-/// connection string
-/// - there's currently no pool; sqlx makes that pretty easy
-///
-///
-async fn db_connect(db_url: &str) -> tokio_postgres::Client {
-    // no need to log the db password
-    // tracing::debug!("[db_connect] db_url: {}", &db_url);
-
-    let (client, connection) = tokio_postgres::connect(db_url, tokio_postgres::NoTls).await.unwrap();
-
-    // spin off the database connection to its own thread
-    tokio::spawn(async move {
-        // https://docs.rs/tokio-postgres/0.6.0/tokio_postgres/struct.Connection.html
-        // "Connection implements Future, and only resolves when the connection is closed, either
-        // because a fatal error has occurred, or because its associated Client has dropped and all
-        // outstanding work has completed."
-        if let Err(e) = connection.await {
-            tracing::debug!("postgres connection closed: {}", e);
-        }
-    });
-    tracing::debug!("[db_connect] connected");
-    client
-}
+// ///
+// /// TODO: convert to sqlx
+// /// - convert to using migrations
+// /// - PgConnectOptions would let us load DB credentials from env nicely without having to generate a
+// /// connection string
+// /// - there's currently no pool; sqlx makes that pretty easy
+// ///
+// ///
+// async fn db_connect(db_url: &str) -> tokio_postgres::Client {
+//     // no need to log the db password
+//     // tracing::debug!("[db_connect] db_url: {}", &db_url);
+//
+//     let (client, connection) = tokio_postgres::connect(db_url, tokio_postgres::NoTls).await.unwrap();
+//
+//     // spin off the database connection to its own thread
+//     tokio::spawn(async move {
+//         // https://docs.rs/tokio-postgres/0.6.0/tokio_postgres/struct.Connection.html
+//         // "Connection implements Future, and only resolves when the connection is closed, either
+//         // because a fatal error has occurred, or because its associated Client has dropped and all
+//         // outstanding work has completed."
+//         if let Err(e) = connection.await {
+//             tracing::debug!("postgres connection closed: {}", e);
+//         }
+//     });
+//     tracing::debug!("[db_connect] connected");
+//     client
+// }
 
 /// call an SQL function to poll the recent
 async fn refresh_rating(pool:&PgPool){

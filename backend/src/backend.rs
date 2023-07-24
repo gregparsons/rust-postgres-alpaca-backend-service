@@ -105,7 +105,7 @@ pub async fn run(tokio_handle: Handle) {
                         let tx_db_3 = tx_db.clone();
 
                         // stock data websocket thread
-                        let join_handle = std::thread::spawn(|| {
+                        let _join_handle = std::thread::spawn(|| {
                             tracing::debug!("[run] starting text data websocket");
                             AlpacaWebsocket::run(tx_db_3, &WebsocketMessageFormat::TextData, symbols, settings3);
                             // AlpacaWebsocket::run(tx_db_ws.clone(), &AlpacaData::BinaryUpdates, symbols.clone(), settings2.clone());
@@ -114,7 +114,7 @@ pub async fn run(tokio_handle: Handle) {
 
                         // account and order update websocket thread
                         let tx_db_4 = tx_db.clone();
-                        let join_handle = std::thread::spawn(|| {
+                        let _join_handle = std::thread::spawn(|| {
                             tracing::debug!("[run] starting binary data for 'trade_updates'");
                             // AlpacaWebsocket::run(tx_db_ws, &AlpacaData::TextData, symbols, settings2);
                             AlpacaWebsocket::run(tx_db_4, &WebsocketMessageFormat::BinaryUpdates, symbols2, settings2);
