@@ -16,13 +16,12 @@ mod symbols;
 mod utils;
 mod web_server;
 
-use std::time::Duration;
 use common_lib::init::init;
 
 use crate::web_server::WebServer;
 use chrono::NaiveTime;
 use once_cell::sync::Lazy;
-use common_lib::db::{DbActor, DbMsg};
+use common_lib::db::{DbActor};
 
 // https://alpaca.markets/learn/investing-basics/what-is-extended-hours-trading/
 pub static MARKET_OPEN: Lazy<NaiveTime> = Lazy::new(|| NaiveTime::from_hms_opt(9, 30, 0).unwrap()); // 4am Eastern
@@ -48,7 +47,7 @@ fn main() {
 
         let db_actor = DbActor::new().await;
         let tr = tokio::runtime::Handle::current();
-        let _ = db_actor.run(tr).await;
+        let _ = db_actor.run(tr);
         let tx_db = db_actor.tx.clone();
         // tracing::debug!("[main] tx_db: {:?}", &tx_db);
         WebServer::run(tx_db).await;

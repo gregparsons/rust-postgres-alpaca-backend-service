@@ -2,7 +2,6 @@
 //!
 //! Present account data in the frontend, retrieved from the alpaca API
 
-use std::sync::Arc;
 use actix_session::Session;
 use actix_web::{web, HttpResponse, Responder};
 use common_lib::common_structs::SESSION_USERNAME;
