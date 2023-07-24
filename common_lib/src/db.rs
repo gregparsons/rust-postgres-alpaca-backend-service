@@ -8,6 +8,7 @@ use sqlx::{Error, PgPool, Pool, Postgres};
 use std::thread::JoinHandle;
 use chrono::{DateTime, Utc};
 use reqwest::header::HeaderMap;
+use tokio::runtime::Handle;
 use tokio::sync::oneshot;
 use crate::account::{Account, AccountWithDate};
 use crate::alpaca_activity::{Activity, ActivityLatest};
@@ -58,37 +59,20 @@ pub enum DbMsg {
 
 pub struct DbActor {
     pub pool: PgPool,
+    pub tx:crossbeam_channel::Sender<DbMsg>,
+    pub rx:crossbeam_channel::Receiver<DbMsg>,
 }
 
 impl DbActor {
 
-    pub async fn new() ->DbActor{
+    pub async fn new() -> DbActor{
         let pool = create_sqlx_pg_pool().await;
+        let (tx, rx) = crossbeam::channel::unbounded();
         DbActor{
             pool,
+            tx,
+            rx,
         }
-    }
-
-
-    /// start()
-    ///
-    /// return a crossbeam_channel::channel::Sender in order to be able to send messages to the
-    /// db listener thread (to be able to send cross-thread inserts)
-    pub async fn run(&self) -> crossbeam::channel::Sender<DbMsg> {
-
-        tracing::debug!("");
-
-        // Channel for other threads to send to the database thread
-        let (tx, rx) = crossbeam::channel::unbounded();
-
-        // upon connection start a message-listening thread
-        let pool2 = self.pool.clone();
-        tokio::spawn(async move {
-            DbActor::db_thread(rx, pool2).await;
-        });
-
-        // return a means of sending messages to the db listener thread
-        tx
     }
 
     /// DB Listener
@@ -96,192 +80,210 @@ impl DbActor {
     /// Other threads can send DbMsg messages via crossbeam to perform inserts into the database cross-thread.
     ///
     /// Each db network call takes 150-300ms on LAN/wifi
-    async fn db_thread(rx: crossbeam::channel::Receiver<DbMsg>, pool: Pool<Postgres>) -> JoinHandle<()> {
-        tracing::debug!("[db_thread]");
+    pub fn run(&self, tr: Handle) /*-> JoinHandle<()> */{
+
+        let rx = self.rx.clone();
+        let pool = self.pool.clone();
+
+        tracing::debug!("[run]");
 
         loop {
+
+            // tracing::debug!("[run] loop");
+
+            let pool = pool.clone();
             crossbeam::channel::select! {
-            recv(rx) -> result => {
-                if let Ok(msg) = result {
-                    match msg {
-                        DbMsg::PingDb=>{
-                            tracing::debug!("[db_thread][DbMsg::PingDb] pong: db thread here!");
+                recv(rx) -> result => {
+                    match result {
+                        Ok(msg)=>{
+                            // tracing::debug!("[run] msg: {:?}", &msg);
+
+                            // blocking not required for sqlx and reqwest async libraries
+                            let x = tr.spawn(async {
+                                tracing::debug!("[run] tokio spawn process_message()");
+                                process_message(msg, pool).await;
+                            });
+
                         },
-
-                        DbMsg::ActivitySaveToDb{activity} => {
-                            let _ = activity_save_to_db(&activity, &pool).await;
-                        },
-                        DbMsg::ActivityLatestDtg{ resp_tx }=>{
-                            if let Ok(activity) = activity_latest_dtg(&pool).await {
-                                let _ = resp_tx.send(activity);
-                            }
-                        },
-
-                        DbMsg::ActivityGetRemote{ since_option, settings, resp_tx}=>{
-                            if let Ok(activities) = activity_get_remote(since_option, &settings).await{
-                                let _ = resp_tx.send(activities);
-                            }
-                        },
-
-                        DbMsg::AccountGet{resp_tx} =>{
-                            let result = account_get(&pool).await;
-                            if let Ok(account) = result {
-                                let _ = resp_tx.send(account);
-                            }
-                        },
-
-                        DbMsg::AccountGetRemote{settings, resp_tx} =>{
-                            let account_result = account_get_remote(&settings).await;
-                            if let Ok(account) = account_result {
-                                let _ = resp_tx.send(account);
-                            }
-                        },
-                        DbMsg::PositionGetRemote{settings, resp_tx} =>{
-                            let result = position_get_remote(&settings).await;
-                            if let Ok(positions) = result {
-                                let _ = resp_tx.send(positions);
-                            }
-                        },
-
-                        DbMsg::PositionDeleteAll =>{
-                            let _ = position_delete_all(&pool).await;
-                        },
-
-                        DbMsg::PositionSaveToDb{ position }=>{
-                            let _ = position_save_to_db(&position, &pool).await;
-                        },
-
-                        DbMsg::TransactionInsertPosition{ position }=>{
-                            let _ = transaction_insert_position(&position, &pool).await;
-                        },
-
-
-                        DbMsg::AccountSaveToDb{ account }=>{
-                            let _ = account_save_to_db(&account, &pool).await;
-                        },
-
-
-                        DbMsg::GetSymbolList{resp_tx}=>{
-                            let result = symbols_get_active(&pool).await;
-                            if let Ok(symbols) = result {
-                                let _ = resp_tx.send(symbols);
-                            }
-                        },
-
-
-                        DbMsg::TransactionDeleteAll=>{
-                            let _ = transaction_delete_all(&pool).await;
+                        Err(e)=>{
+                            tracing::error!("[run] select error: {:?}", &e);
                         }
-
-                        DbMsg::GetSettingsWithSecret{resp_tx}=>{
-                            tracing::debug!("[db] received DbMsg::GetSettingsWithSecret");
-                            match settings_load_with_secret(&pool).await {
-                                Ok(settings)=>{
-                                    tracing::debug!("[db] got settings; sending them back...");
-                                    let send_result = resp_tx.send(settings);
-                                    tracing::debug!("[db] send_result: {:?}", &send_result);
-
-                                },
-                                Err(_e)=>{
-                                    tracing::debug!("[db] received DbMsg::GetSettingsWithSecret error: {:?}", &_e);
-
-                                }
-                            }
-                        },
-
-                        DbMsg::TradeAlpaca(t) => {
-                            tracing::debug!("[db_thread, DbMsg::WsTrade] trade: {:?}", &t);
-
-                            // old; uses tokio::postgres w/o a connection pool
-                            // crate::db::insert_alpaca_websocket_trade(&client, &t).await;
-
-                            match insert_alpaca_trade(&t, &pool).await{
-                                Ok(_)=> tracing::debug!("[db_thread, DbMsg::WsTrade] alpaca trade inserted"),
-                                Err(e) => tracing::debug!("[db_thread, DbMsg::WsTrade] alpaca trade not inserted: {:?}", &e),
-                            }
-
-                            // also save a copy to the latest table; saves .5-3 seconds on lookup
-                            match insert_alpaca_trade_latest(&t, &pool).await {
-                                Ok(_)=> tracing::debug!("[db_thread, DbMsg::WsTrade] latest alpaca trade inserted"),
-                                Err(e) => tracing::debug!("[db_thread, DbMsg::WsTrade] latest alpaca trade not inserted: {:?}", &e),
-                            }
-                        }
-
-                        DbMsg::OrderLogEvent(event)=>{
-                            tracing::debug!("[db] received DbMsg::OrderLogEvent: {:?}", &event);
-
-                            let _ = insert_order_log_entry(&event, &pool).await;
-
-                            // if this is a Fill event on the Sell side, decrement the shares filled from the alpaca_transaction_status entry
-
-                            // tracing::info!("[DbMsg::OrderLogEvent][Fill] log_evt: {:?}", &log_evt);
-
-                            if event.event=="fill" && event.order.side== TradeSide::Sell {
-
-                                tracing::info!("[DbMsg::OrderLogEvent][Fill][Sell] {}:{:?}", &event.order.symbol, &event.order.filled_qty);
-                                if let Some(qty) = event.order.filled_qty{
-
-                                    let _ = AlpacaTransaction::decrement(&event.order.symbol.clone(), qty, &pool).await;
-                                    // if the remaining shares are zero or less delete the entry (TODO: make this one sql statement)
-                                    let _ = AlpacaTransaction::clean(&pool).await;
-                                }
-                            }
-                        },
-
-                        DbMsg::RefreshRating => {
-                            tracing::debug!("[db] received DbMsg::RefreshRating");
-                            refresh_rating(&pool).await;
-                        }
-/*
-                        // DbMsg::WsQuote(q) => {
-                        //     tracing::debug!("[db_thread, DbMsg::WsQuote] quote: {:?}", &q);
-                        //     crate::db::insert_ws_quote(&client, q).await;
-                        // },
-
-
-
-                        DbMsg::MinuteBar(minute_bar) => {
-                            // tracing::debug!("[db_thread, DbMsg::MinuteBar] minute_bar received by db thread: {:?}", &minute_bar);
-                            crate::db::insert_minute_bar(&old_pg_client, &minute_bar).await;
-                        }
-*/
-                        DbMsg::TradeFinnhub(finnhub_trade) => {
-
-                            // tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub_trade received by db thread: {:?}", &finnhub_trade);
-                            match insert_finnhub_trade(&finnhub_trade, &pool).await {
-                                Ok(_)=> tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade inserted"),
-                                Err(e) => tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade not inserted: {:?}", &e),
-                            }
-
-                            // also save a copy to the latest table; saves .5-3 seconds on lookup (could also just save it in memory
-                            // client-side later when I convert to using RabbitMq
-                            match insert_finnhub_trade_latest(&finnhub_trade, &pool).await {
-                                Ok(_)=> tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade inserted"),
-                                Err(e) => tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade not inserted: {:?}", &e),
-                            }
-
-                        },
-
-                        DbMsg::PingFinnhub(ping) => {
-                            let _ = insert_finnhub_ping(&ping, &pool).await;
-
-                        },
-
-                        DbMsg::PingAlpaca(ping) => {
-                            let _ = insert_alpaca_ping(&ping, &pool).await;
-                        }
-
-                        _ => { }
                     }
+                },
+                default=>{
+                    // infinite loop if nothing to read
+                    // tracing::debug!("[run] nothing to receive");
                 }
             }
-        }
         }
     }
 }
 
+async fn process_message(msg:DbMsg, pool: PgPool){
+
+    // this will dump settings (and API keys) to the log
+    // tracing::debug!("[process_message] DbMsg: {:?}", &msg);
+
+    match msg {
+        DbMsg::PingDb=>{
+            tracing::debug!("[db_thread][DbMsg::PingDb] pong: db thread here!");
+        },
+
+        DbMsg::GetSettingsWithSecret{resp_tx}=>{
+            tracing::debug!("[db] received DbMsg::GetSettingsWithSecret");
+            match settings_load_with_secret(pool).await {
+                Ok(settings)=>{
+                    tracing::debug!("[db] got settings; sending them back...");
+                    let send_result = resp_tx.send(settings);
+                    tracing::debug!("[db] send_result: {:?}", &send_result);
+
+                },
+                Err(_e)=>{
+                    tracing::debug!("[db] received DbMsg::GetSettingsWithSecret error: {:?}", &_e);
+
+                }
+            }
+        },
+
+        DbMsg::ActivitySaveToDb{activity} => {
+            let _ = activity_save_to_db(&activity, pool).await;
+        },
+
+        DbMsg::ActivityLatestDtg{resp_tx}=>{
+            if let Ok(activity) = activity_latest_dtg(pool).await {
+                let _ = resp_tx.send(activity);
+            }
+        },
+
+        DbMsg::ActivityGetRemote{ since_option, settings, resp_tx}=>{
+            if let Ok(activities) = activity_get_remote(since_option, settings).await{
+                let _ = resp_tx.send(activities);
+            }
+        },
+
+        DbMsg::AccountGet{resp_tx} =>{
+            let result = account_get(&pool).await;
+            if let Ok(account) = result {
+                let _ = resp_tx.send(account);
+            }
+        },
+
+        DbMsg::AccountGetRemote{settings, resp_tx} =>{
+            let account_result = account_get_remote(&settings).await;
+            if let Ok(account) = account_result {
+                let _ = resp_tx.send(account);
+            }
+        },
+        DbMsg::PositionGetRemote{settings, resp_tx} =>{
+            let result = position_get_remote(&settings).await;
+            if let Ok(positions) = result {
+                let _ = resp_tx.send(positions);
+            }
+        },
+
+        DbMsg::PositionDeleteAll =>{
+            let _ = position_delete_all(&pool).await;
+        },
+
+        DbMsg::PositionSaveToDb{ position }=>{
+            let _ = position_save_to_db(&position, &pool).await;
+        },
+
+        DbMsg::TransactionInsertPosition{ position }=>{
+            let _ = transaction_insert_position(&position, &pool).await;
+        },
 
 
+        DbMsg::AccountSaveToDb{ account }=>{
+            let _ = account_save_to_db(&account, &pool).await;
+        },
+
+
+        DbMsg::GetSymbolList{resp_tx}=>{
+            let result = symbols_get_active(&pool).await;
+            if let Ok(symbols) = result {
+                let _ = resp_tx.send(symbols);
+            }
+        },
+
+
+        DbMsg::TransactionDeleteAll=>{
+            let _ = transaction_delete_all(&pool).await;
+        }
+
+
+        DbMsg::TradeAlpaca(t) => {
+            tracing::debug!("[db_thread, DbMsg::WsTrade] trade: {:?}", &t);
+
+            // old; uses tokio::postgres w/o a connection pool
+            // crate::db::insert_alpaca_websocket_trade(&client, &t).await;
+
+            match insert_alpaca_trade(&t, &pool).await{
+                Ok(_)=> tracing::debug!("[db_thread, DbMsg::WsTrade] alpaca trade inserted"),
+                Err(e) => tracing::debug!("[db_thread, DbMsg::WsTrade] alpaca trade not inserted: {:?}", &e),
+            }
+
+            // also save a copy to the latest table; saves .5-3 seconds on lookup
+            match insert_alpaca_trade_latest(&t, &pool).await {
+                Ok(_)=> tracing::debug!("[db_thread, DbMsg::WsTrade] latest alpaca trade inserted"),
+                Err(e) => tracing::debug!("[db_thread, DbMsg::WsTrade] latest alpaca trade not inserted: {:?}", &e),
+            }
+        }
+
+        DbMsg::OrderLogEvent(event)=>{
+            tracing::debug!("[db] received DbMsg::OrderLogEvent: {:?}", &event);
+
+            let _ = insert_order_log_entry(&event, &pool).await;
+
+            // if this is a Fill event on the Sell side, decrement the shares filled from the alpaca_transaction_status entry
+
+            // tracing::info!("[DbMsg::OrderLogEvent][Fill] log_evt: {:?}", &log_evt);
+
+            if event.event=="fill" && event.order.side== TradeSide::Sell {
+
+                tracing::info!("[DbMsg::OrderLogEvent][Fill][Sell] {}:{:?}", &event.order.symbol, &event.order.filled_qty);
+                if let Some(qty) = event.order.filled_qty{
+
+                    let _ = AlpacaTransaction::decrement(&event.order.symbol.clone(), qty, &pool).await;
+                    // if the remaining shares are zero or less delete the entry (TODO: make this one sql statement)
+                    let _ = AlpacaTransaction::clean(&pool).await;
+                }
+            }
+        },
+
+        DbMsg::RefreshRating => {
+            tracing::debug!("[db] received DbMsg::RefreshRating");
+            refresh_rating(&pool).await;
+        }
+
+        DbMsg::TradeFinnhub(finnhub_trade) => {
+
+            // tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub_trade received by db thread: {:?}", &finnhub_trade);
+            match insert_finnhub_trade(&finnhub_trade, &pool).await {
+                Ok(_)=> tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade inserted"),
+                Err(e) => tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade not inserted: {:?}", &e),
+            }
+
+            // also save a copy to the latest table; saves .5-3 seconds on lookup (could also just save it in memory
+            // client-side later when I convert to using RabbitMq
+            match insert_finnhub_trade_latest(&finnhub_trade, &pool).await {
+                Ok(_)=> tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade inserted"),
+                Err(e) => tracing::debug!("[db_thread, DbMsg::FhTrade] finnhub trade not inserted: {:?}", &e),
+            }
+        },
+
+        DbMsg::PingFinnhub(ping) => {
+            let _ = insert_finnhub_ping(&ping, &pool).await;
+
+        },
+
+        DbMsg::PingAlpaca(ping) => {
+            let _ = insert_alpaca_ping(&ping, &pool).await;
+        }
+
+        _ => { }
+    }
+}
 
 
 ///
@@ -292,7 +294,7 @@ impl DbActor {
 /// - there's currently no pool; sqlx makes that pretty easy
 ///
 ///
-pub async fn db_connect(db_url: &str) -> tokio_postgres::Client {
+async fn db_connect(db_url: &str) -> tokio_postgres::Client {
     // no need to log the db password
     // tracing::debug!("[db_connect] db_url: {}", &db_url);
 
@@ -442,8 +444,7 @@ async fn insert_alpaca_ping(ping: &Ping, pool: &PgPool, ) -> Result<PgQueryResul
     ).execute(pool).await
 }
 
-
-async fn settings_load_with_secret(pool:&PgPool) -> Result<Settings, Error> {
+async fn settings_load_with_secret(pool:PgPool) -> Result<Settings, Error> {
 
     let settings_result = sqlx::query_as!(
             Settings,
@@ -474,7 +475,7 @@ async fn settings_load_with_secret(pool:&PgPool) -> Result<Settings, Error> {
                 LIMIT 1
             "#
         )
-        .fetch_one(pool)
+        .fetch_one(&pool)
         .await;
 
     settings_result
@@ -732,7 +733,7 @@ async fn account_save_to_db(account:&Account, pool:&PgPool) -> Result<(), TradeW
 
         ).execute(pool).await {
         Ok(_) => {
-            tracing::info!("[account_save_to_db] save successful");
+            tracing::debug!("[account_save_to_db] save successful");
             Ok(())
         },
         Err(e) => {
@@ -819,17 +820,16 @@ async fn transaction_insert_position(position:&Position, pool:&PgPool) ->Result<
     }
 }
 
-
 /// latest_dtg: get the date of the most recent activity; used to filter the activity API
-async fn activity_latest_dtg(pool:&PgPool)->Result<DateTime<Utc>, TradeWebError>{
+async fn activity_latest_dtg(pool:PgPool)->Result<DateTime<Utc>, TradeWebError>{
 
-    match sqlx::query_as!(ActivityLatest, r#"select max(dtg)::timestamptz as "dtg!" from alpaca_activity"#).fetch_one(pool).await{
+    match sqlx::query_as!(ActivityLatest, r#"select max(dtg)::timestamptz as "dtg!" from alpaca_activity"#).fetch_one(&pool).await{
         Ok(latest_dtg)=> Ok(latest_dtg.dtg),
         Err(_e)=>Err(TradeWebError::ReqwestError),
     }
 }
 
-async fn activity_get_remote(since_filter:Option<DateTime<Utc>>, settings: &Settings) -> Result<Vec<Activity>, TradeWebError> {
+async fn activity_get_remote(since_filter:Option<DateTime<Utc>>, settings: Settings) -> Result<Vec<Activity>, TradeWebError> {
     let mut headers = HeaderMap::new();
     let api_key = settings.alpaca_paper_id.clone();
     let api_secret = settings.alpaca_paper_secret.clone();
@@ -874,7 +874,7 @@ async fn activity_get_remote(since_filter:Option<DateTime<Utc>>, settings: &Sett
     return_val
 }
 
-async fn activity_save_to_db(activity: &Activity, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
+async fn activity_save_to_db(activity: &Activity, pool: PgPool) -> Result<PgQueryResult, sqlx::Error> {
     let result = sqlx::query!(
             r#"
             insert into alpaca_activity
@@ -915,9 +915,22 @@ async fn activity_save_to_db(activity: &Activity, pool: &PgPool) -> Result<PgQue
             activity.cum_qty,
             activity.leaves_qty,
             activity.order_id
-        ).execute(pool).await;
+        ).execute(&pool).await;
 
     tracing::info!("[save_to_db] activity insert result: {:?}", &result);
     result
 }
+
+// /// insert a new transaction if one doesn't currently exist, otherwise error
+// /// TODO: not currently used; used by trade_poller
+// async fn start_buy(symbol:&str, pool:&PgPool)->Result<(), TransactionError>{
+//     // if an entry exists then a buy order exists; otherwise create one with default 0 shares
+//     match sqlx::query!(r#"
+//             insert into alpaca_transaction_status(dtg, symbol, posn_shares)
+//             values(now()::timestamptz, $1, 0.0)"#, symbol
+//         ).execute(pool).await{
+//         Ok(_)=>Ok(()),
+//         Err(_e)=>Err(TransactionError::PositionExists), // or db error
+//     }
+// }
 

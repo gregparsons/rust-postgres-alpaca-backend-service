@@ -47,18 +47,17 @@ fn main() {
     tokio_runtime.block_on(async {
 
         let db_actor = DbActor::new().await;
-        let tx_db = db_actor.run().await;
-
-        tracing::debug!("[main] tx_db: {:?}", &tx_db);
+        let tr = tokio::runtime::Handle::current();
+        let _ = db_actor.run(tr).await;
+        let tx_db = db_actor.tx.clone();
+        // tracing::debug!("[main] tx_db: {:?}", &tx_db);
+        WebServer::run(tx_db).await;
 
         // let tick = crossbeam::channel::tick(Duration::from_secs(2));
         // for _ in 0..5 {
         //     tracing::debug!("[main] ping db result: {:?}", tx_db.send(DbMsg::PingDb));
         //     tick.recv().unwrap();
         // }
-
-        WebServer::run(tx_db.clone()).await;
-
 
     });
 }

@@ -55,6 +55,7 @@ impl AlpacaTransaction{
     }
 
     /// sell if a buy order previously created an entry in this table and subsequently the count of shares is greater than zero
+    /// TODO: not currently used
     pub async fn start_sell(symbol:&str, pool:&PgPool)->Result<BigDecimal, TransactionError>{
         match sqlx::query_as!(AlpacaTransaction, r#"select dtg as "dtg!", symbol as "symbol!", posn_shares as "posn_shares!" from alpaca_transaction_status where symbol=$1 and posn_shares > 0.0"#, symbol.to_lowercase()).fetch_one(pool).await{
             Ok(transaction)=> Ok(transaction.posn_shares),

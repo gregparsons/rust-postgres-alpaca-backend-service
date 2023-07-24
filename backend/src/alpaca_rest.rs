@@ -2,7 +2,6 @@
 //!
 //! Restful Alpaca Poller
 
-use std::time::Duration;
 use chrono::Utc;
 use crossbeam_channel::Sender;
 use sqlx::PgPool;

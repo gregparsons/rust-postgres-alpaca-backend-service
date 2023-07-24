@@ -18,7 +18,7 @@ pub async fn get_account(hb: web::Data<Handlebars<'_>>, tx_db: web::Data<crossbe
 
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
 
-        tracing::debug!("[main] ping db result: {:?}", tx_db.send(DbMsg::PingDb));
+        // tracing::debug!("[main] ping db result: {:?}", tx_db.send(DbMsg::PingDb));
 
 
         // Turn the Arc<crossbeam_channel::Sender<DbMsg>> back into the channel we need after
