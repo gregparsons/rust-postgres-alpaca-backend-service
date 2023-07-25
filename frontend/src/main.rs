@@ -46,10 +46,17 @@ fn main() {
     tokio_runtime.block_on(async {
 
         let db_actor = DbActor::new().await;
-        let tr = tokio::runtime::Handle::current();
-        let _ = db_actor.run(tr);
         let tx_db = db_actor.tx.clone();
-        // tracing::debug!("[main] tx_db: {:?}", &tx_db);
+        let rt = tokio::runtime::Handle::current();
+
+        std::thread::spawn(move || {
+            tracing::debug!("[backend] db thread");
+
+            db_actor.run(rt);
+            tracing::debug!("[backend] db thread done");
+        });
+        tracing::debug!("[backend] db thread spawned");
+
         WebServer::run(tx_db).await;
 
         // let tick = crossbeam::channel::tick(Duration::from_secs(2));

@@ -79,7 +79,7 @@ impl DbActor {
     /// Other threads can send DbMsg messages via crossbeam to perform inserts into the database cross-thread.
     ///
     /// Each db network call takes 150-300ms on LAN/wifi
-    pub fn run(&self, tr: Handle) /*-> JoinHandle<()> */{
+    pub fn run(&self, rt: Handle) /*-> JoinHandle<()> */{
 
         let rx = self.rx.clone();
         let pool = self.pool.clone();
@@ -92,13 +92,17 @@ impl DbActor {
 
             let pool = pool.clone();
             crossbeam::channel::select! {
+
+                // TODO: potentially handle a separate channel that controls startup and shutdown of this db actor
+                // https://ryhl.io/blog/actors-with-tokio/
+
                 recv(rx) -> result => {
                     match result {
                         Ok(msg)=>{
                             // tracing::debug!("[run] msg: {:?}", &msg);
 
                             // blocking not required for sqlx and reqwest async libraries
-                            let _x = tr.spawn(async {
+                            let _x = rt.spawn(async {
                                 tracing::debug!("[run] tokio spawn process_message()");
                                 process_message(msg, pool).await;
                             });
@@ -110,7 +114,8 @@ impl DbActor {
                     }
                 },
                 default=>{
-                    // infinite loop if nothing to read
+                    // potentially do something if no message is coming in, like check a
+                    // semaphore to shutdown, for example.
                     // tracing::debug!("[run] nothing to receive");
                 }
             }
