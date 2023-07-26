@@ -6,11 +6,17 @@ use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use crossbeam_channel::SendError;
 use serde::{Deserialize, Serialize};
-use tokio::sync::oneshot;
-use tokio::sync::oneshot::error::RecvError;
 use crate::db::DbMsg;
 use crate::error::TradeWebError;
 use crate::settings::Settings;
+
+// use bigdecimal::BigDecimal;
+// use chrono::{DateTime, Utc};
+// use crossbeam_channel::SendError;
+// use serde::{Deserialize, Serialize};
+// use crate::common::db::DbMsg;
+// use crate::common::error::TradeWebError;
+// use crate::settings::Settings;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Account {
@@ -93,34 +99,33 @@ impl Account {
     }
 
     /// latest from database
-    pub async fn get(tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<AccountWithDate, RecvError> {
-        let (resp_tx, resp_rx) = oneshot::channel();
+    pub async fn get(tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<AccountWithDate, TradeWebError> {
+        let (resp_tx, resp_rx) = crossbeam_channel::unbounded();
         let msg = DbMsg::AccountGet{ resp_tx };
         tx_db.send(msg).unwrap();
-        let result = resp_rx.await;
-        result
-
+        match resp_rx.recv(){
+            Ok(result)=>Ok(result),
+            Err(_e)=>Err(TradeWebError::ChannelError),
+        }
     }
 
     /// Return the cash in dollars available to trade with (not including day trade minimum)
     pub async fn available_cash(tx_db: crossbeam_channel::Sender<DbMsg>)->Result<BigDecimal, TradeWebError>{
-        let (resp_tx, resp_rx) = oneshot::channel();
+        let (resp_tx, resp_rx) = crossbeam_channel::unbounded();
         let msg = DbMsg::AccountAvailableCash{ sender_tx:resp_tx };
         tx_db.send(msg).unwrap();
-        match resp_rx.await {
-            Ok(cash) => Ok(cash),
-            Err(e) => {
-                tracing::error!("[available_cash] channel error: {:?}", &e);
-                Err(TradeWebError::ChannelError)
-            }
+        match resp_rx.recv(){
+            Ok(result)=>Ok(result),
+            Err(_e)=>Err(TradeWebError::ChannelError),
         }
+
     }
 
 
     /// get account from the web API and save to the local database
     pub fn load_account(settings:&Settings, tx_db: crossbeam_channel::Sender<DbMsg>){
 
-        match Account::get_remote(settings, tx_db.clone()) {
+        match Account::get_remote(settings.clone(), tx_db.clone()) {
             Ok(account)=>{
                 tracing::debug!("[load_account] got remote account, saving to db...");
                 match account.save_to_db(tx_db.clone()){
@@ -141,15 +146,18 @@ impl Account {
 
     /// GET https://paper-api.alpaca.markets/v2/account
     /// TODO: move the web api calls out of db.rs so they're not competing with that thread
-    pub fn get_remote(settings:&Settings, tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<Account, RecvError> {
-        let (resp_tx, resp_rx) = oneshot::channel();
+    pub fn get_remote(settings:Settings, tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<Account, TradeWebError> {
+        let (resp_tx, resp_rx) = crossbeam_channel::unbounded();
         let msg = DbMsg::AccountGetRemote{
             settings:settings.clone(),
             resp_tx
         };
         tx_db.send(msg).unwrap();
-        let result = resp_rx.blocking_recv();
-        result
+        match resp_rx.recv(){
+            Ok(result)=>Ok(result),
+            Err(_e)=>Err(TradeWebError::ChannelError),
+        }
+
 
     }
 
@@ -211,6 +219,7 @@ pub struct AccountWithDate {
 #[cfg(test)]
 mod tests{
     use crate::account::Account;
+    use crate::common::account::Account;
 
     #[test]
     /// confirm parsing from json to struct

@@ -6,6 +6,7 @@ use std::fmt;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use strum::Display;
 use crate::alpaca_order::Order;
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -435,3 +436,10 @@ pub struct MinuteBar {
 // TODO: trade parse test
 // [{"T":"t","S":"TSLA","i":5471,"x":"V","p":286.39,"s":100,"c":["@"],"z":"C","t":"2023-07-17T15:21:55.787214158Z"}]
 // [{"T":"t","S":"T","i":54191554971494,"x":"V","p":13.77,"s":41,"c":[" ","I"],"z":"A","t":"2023-07-17T15:21:55.585613056Z"},{"T":"t","S":"T","i":54191554971509,"x":"V","p":13.77,"s":100,"c":[" "],"z":"A","t":"2023-07-17T15:21:55.585622016Z"},{"T":"t","S":"T","i":54191554971717,"x":"V","p":13.77,"s":59,"c":[" ","I"],"z":"A","t":"2023-07-17T15:21:55.58563712Z"}]
+
+#[derive(Debug, Display, Clone)]
+pub enum CrossStatus{
+    Up,
+    Down,
+    None,
+}

@@ -17,9 +17,8 @@ use bigdecimal::BigDecimal;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use tokio::sync::oneshot;
-use tokio::sync::oneshot::error::RecvError;
 use crate::db::DbMsg;
+use crate::error::TradeWebError;
 use crate::settings::Settings;
 use crate::trade_struct::TradeSide;
 
@@ -69,11 +68,13 @@ pub struct ActivityLatest{
 impl Activity {
 
     /// latest_dtg: get the date of the most recent activity; used to filter the activity API
-    pub fn latest_dtg(tx_db:crossbeam_channel::Sender<DbMsg>) -> Result<DateTime<Utc>, RecvError> {
-        let (resp_tx, resp_rx) = oneshot::channel();
+    pub fn latest_dtg(tx_db:crossbeam_channel::Sender<DbMsg>) -> Result<DateTime<Utc>, TradeWebError> {
+        let (resp_tx, resp_rx) = crossbeam_channel::unbounded();
         let _ = tx_db.send(DbMsg::ActivityLatestDtg { resp_tx });
-        let result = resp_rx.blocking_recv();
-        result
+        match resp_rx.recv(){
+            Ok(result)=>Ok(result),
+            Err(_e)=>Err(TradeWebError::ChannelError),
+        }
 
     }
 
@@ -88,12 +89,13 @@ impl Activity {
     ///      --header 'accept: application/json'
     ///
     pub fn get_remote(since_filter:Option<DateTime<Utc>>, settings: &Settings, tx_db:crossbeam_channel::Sender<DbMsg>)
-        -> Result<Vec<Activity>, RecvError> {
-        let (resp_tx, resp_rx) = oneshot::channel();
+        -> Result<Vec<Activity>, TradeWebError> {
+        let (resp_tx, resp_rx) = crossbeam_channel::unbounded();
         let _ = tx_db.send(DbMsg::ActivityGetRemote { since_option:since_filter, settings:settings.clone(), resp_tx});
-        let result = resp_rx.blocking_recv();
-        tracing::info!("[get_remote] activities success: {:?}", &result);
-        result
+        match resp_rx.recv(){
+            Ok(result)=>Ok(result),
+            Err(_e)=>Err(TradeWebError::ChannelError),
+        }
 
     }
 

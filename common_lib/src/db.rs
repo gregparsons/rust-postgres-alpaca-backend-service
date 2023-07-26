@@ -8,10 +8,24 @@ use bigdecimal::BigDecimal;
 use sqlx::postgres::PgQueryResult;
 use sqlx::{Error, PgPool};
 use chrono::{DateTime, Utc};
+use crossbeam_channel::Sender;
 use reqwest::header::HeaderMap;
 use tokio::runtime::Handle;
-use tokio::sync::oneshot;
 use crate::settings::Settings;
+
+// trade imports
+// use crate::account::{Account, AccountWithDate};
+// use crate::alpaca_activity::{Activity, ActivityLatest};
+// use crate::alpaca_api_structs::{AlpacaTradeWs, MinuteBar, Ping};
+// use crate::alpaca_order::Order;
+// use crate::alpaca_order_log::AlpacaOrderLogEvent;
+// use crate::alpaca_position::{Position, TempPosition};
+// use crate::error::TradeWebError;
+// use crate::finnhub::{FinnhubPing, FinnhubTrade};
+// use crate::symbol_list::QrySymbol;
+// use crate::trade_struct::TradeSide;
+// use crate::alpaca_transaction_status::*;
+// use crate::sqlx_pool::create_sqlx_pg_pool;
 
 // trade imports
 use crate::account::{Account, AccountWithDate};
@@ -20,29 +34,16 @@ use crate::alpaca_api_structs::{AlpacaTradeWs, MinuteBar, Ping};
 use crate::alpaca_order::Order;
 use crate::alpaca_order_log::AlpacaOrderLogEvent;
 use crate::alpaca_position::{Position, TempPosition};
-use crate::alpaca_transaction_status::TransactionError;
-use crate::error::TradeWebError;
+use crate::error::{PollerError, TradeWebError};
 use crate::finnhub::{FinnhubPing, FinnhubTrade};
 use crate::symbol_list::QrySymbol;
-use crate::trade_struct::TradeSide;
+use crate::trade_struct::{JsonTrade, TradeSide};
 use crate::alpaca_transaction_status::*;
+use crate::diff_calc::DiffCalc;
+use crate::order_log_entry::OrderLogEntry;
+use crate::sell_position::SellPosition;
 use crate::sqlx_pool::create_sqlx_pg_pool;
-
-// trade_poll imports
-// use crate::common::alpaca_activity::ActivityLatest;
-// use crate::common::sqlx_pool::SqlxPool;
-// use crate::sqlx_pool::create_sqlx_pg_pool;
-// use crate::common::account::{Account, AccountWithDate};
-// use crate::common::alpaca_activity::Activity;
-// use crate::common::alpaca_api_structs::{AlpacaTradeWs, MinuteBar, Ping};
-// use crate::common::alpaca_order::Order;
-// use crate::common::alpaca_order_log::AlpacaOrderLogEvent;
-// use crate::common::alpaca_position::{Position, TempPosition};
-// use crate::common::alpaca_transaction_status::{AlpacaTransaction, TransactionError};
-// use crate::common::error::TradeWebError;
-// use crate::common::finnhub::{FinnhubPing, FinnhubTrade};
-// use crate::common::symbol_list::QrySymbol;
-// use crate::common::trade_side::TradeSide;
+use crate::symbol::Symbol;
 
 #[derive(Debug)]
 pub enum DbMsg {
@@ -57,26 +58,39 @@ pub enum DbMsg {
     RefreshRating,
     OrderLogEvent(AlpacaOrderLogEvent),
     GetSettingsWithSecret{ resp_tx: crossbeam_channel::Sender<Settings> },
+    TransactionDeleteOne{ symbol:String },
     TransactionDeleteAll,
-    AccountGet{ resp_tx: oneshot::Sender<AccountWithDate> },
+    AccountGet{ resp_tx: Sender<AccountWithDate> },
     // TODO: pass settings to others that'd need updated settings while running
-    AccountGetRemote{ settings:Settings, resp_tx: oneshot::Sender<Account> },
+    AccountGetRemote{ settings:Settings, resp_tx: Sender<Account> },
     AccountSaveToDb{ account:Account},
-    AccountAvailableCash{ sender_tx: oneshot::Sender<BigDecimal> },
-
-    PositionGetRemote{ settings:Settings, resp_tx: oneshot::Sender<Vec<Position>> },
-    PositionDeleteAll,
-    PositionSaveToDb { position:Position },
+    AccountAvailableCash{ sender_tx: Sender<BigDecimal> },
 
     TransactionInsertPosition { position:Position },
+    TransactionStartBuy { symbol:String, sender: Sender<BuyResult>},
+    TransactionStartSell { symbol:String},
 
-    ActivityLatestDtg{ resp_tx: oneshot::Sender<DateTime<Utc>> },
-    ActivityGetRemote{ since_option:Option<DateTime<Utc>>, settings:Settings, resp_tx: oneshot::Sender<Vec<Activity>>},
+
+    ActivityLatestDtg{ resp_tx: Sender<DateTime<Utc>> },
+    ActivityGetRemote{ since_option:Option<DateTime<Utc>>, settings:Settings, resp_tx: Sender<Vec<Activity>>},
     ActivitySaveToDb { activity:Activity },
 
-    GetSymbolList{resp_tx: crossbeam_channel::Sender<Vec<String>> },
+    GetSymbolList{sender_tx: Sender<Vec<String>> },
+    SymbolLoadOne{symbol:String, sender_tx: Sender<Symbol> },
 
     OrderSave{ order:Order },
+
+    PositionGetRemote{ settings:Settings, resp_tx: Sender<Vec<Position>> },
+    PositionDeleteAll,
+    PositionSaveToDb { position:Position },
+    PositionListShowingProfit{ pl_filter: BigDecimal, sender_tx: Sender<Vec<SellPosition>>},
+
+    OrderLogEntrySave{entry: OrderLogEntry},
+
+    DiffCalcGet{ sender: Sender<Result<Vec<DiffCalc>, PollerError>> },
+
+
+    RestPostOrder{ json_trade:JsonTrade, settings:Settings, sender: Sender<Order> },
 
 }
 
@@ -153,9 +167,37 @@ async fn process_message(msg:DbMsg, pool: PgPool){
     // tracing::debug!("[process_message] DbMsg: {:?}", &msg);
 
     match msg {
+
+        // TODO: move to a REST handler, not the database
+        DbMsg::RestPostOrder {json_trade, settings, sender}=>{
+            match rest_post_order(&json_trade, &settings).await{
+                Ok(order)=>{
+                    let _ = sender.send(order);
+                },
+                Err(_e)=>{
+                    //
+                }
+            }
+        },
+
+        DbMsg::DiffCalcGet {sender} => {
+
+            let result = diffcalc_get(pool).await;
+            sender.send(result).unwrap();
+
+        }
+
+        DbMsg::OrderLogEntrySave{entry}=>{
+            let _ = order_log_entry_save(entry, pool).await;
+        }
+
         DbMsg::PingDb=>{
             tracing::debug!("[db_thread][DbMsg::PingDb] pong: db thread here!");
         },
+
+        DbMsg::OrderSave{ order }=>{
+            let _ = order_save(order, pool).await;
+        }
 
         DbMsg::GetSettingsWithSecret{resp_tx}=>{
             tracing::debug!("[db] received DbMsg::GetSettingsWithSecret");
@@ -227,9 +269,28 @@ async fn process_message(msg:DbMsg, pool: PgPool){
             let _ = position_save_to_db(&position, &pool).await;
         },
 
+        DbMsg::PositionListShowingProfit{ pl_filter, sender_tx} => {
+            if let Ok(position_list_showing_profit) = position_list_showing_profit(pl_filter, pool).await {
+                sender_tx.send(position_list_showing_profit).unwrap();
+            }
+        }
+
+
         DbMsg::TransactionInsertPosition{ position }=>{
             let _ = transaction_insert_position(&position, &pool).await;
         },
+
+        // sender:oneshot::Sender<Result<(), TransactionError>>
+        DbMsg::TransactionStartBuy { symbol, sender }=>{
+            let is_transaction_allowed = transaction_start_buy(symbol.as_str(), pool).await;
+            let _ = sender.send(is_transaction_allowed);
+        }
+
+        // /// not currently used
+        // DbMsg::TransactionStartSell { symbol }=>{
+        //     let result = transaction_start_sell(symbol.as_str(), pool).await;
+        //
+        // }
 
 
         DbMsg::AccountSaveToDb{ account }=>{
@@ -237,17 +298,21 @@ async fn process_message(msg:DbMsg, pool: PgPool){
         },
 
 
-        DbMsg::GetSymbolList{resp_tx}=>{
+        DbMsg::GetSymbolList{sender_tx}=>{
             let result = symbols_get_active(&pool).await;
             if let Ok(symbols) = result {
-                let _ = resp_tx.send(symbols);
+                let _ = sender_tx.send(symbols);
             }
         },
 
 
         DbMsg::TransactionDeleteAll=>{
             let _ = transaction_delete_all(&pool).await;
-        }
+        },
+
+        DbMsg::TransactionDeleteOne{symbol} => {
+            let _ = transaction_delete_one(&symbol, pool).await;
+        },
 
 
         DbMsg::TradeAlpaca(t) => {
@@ -520,14 +585,14 @@ async fn settings_load_with_secret(pool:PgPool) -> Result<Settings, Error> {
 
 }
 
-async fn transaction_delete_all(pool:&PgPool) -> Result<(), TransactionError> {
+async fn transaction_delete_all(pool:&PgPool) -> Result<(), TradeWebError> {
     match sqlx::query!(
             r#"
                 delete from alpaca_transaction_status
             "#
         ).execute(pool).await{
         Ok(_)=>Ok(()),
-        Err(_e)=>Err(TransactionError::DeleteFailed), // or db error
+        Err(_e)=>Err(TradeWebError::DeleteFailed), // or db error
     }
 }
 
@@ -835,7 +900,7 @@ async fn position_save_to_db(position:&Position, pool:&PgPool) -> Result<PgQuery
 }
 
 /// create a new entry or update the position's shares with the current timestamp
-async fn transaction_insert_position(position:&Position, pool:&PgPool) ->Result<(), TransactionError>{
+async fn transaction_insert_position(position:&Position, pool:&PgPool) ->Result<(), TradeWebError>{
 
     match sqlx::query!(
         r#"
@@ -853,7 +918,7 @@ async fn transaction_insert_position(position:&Position, pool:&PgPool) ->Result<
         },
         Err(e)=>{
             tracing::error!("[transaction_insert_position] unsuccessful insert: {:?}", &e);
-            Err(TransactionError::DeleteFailed)
+            Err(TradeWebError::DeleteFailed)
         } // or db error
     }
 }
@@ -982,7 +1047,7 @@ async fn account_available_cash(pool: PgPool)->Result<BigDecimal, TradeWebError>
 //             values(now()::timestamptz, $1, 0.0)"#, symbol
 //         ).execute(pool).await{
 //         Ok(_)=>Ok(()),
-//         Err(_e)=>Err(TransactionError::PositionExists), // or db error
+//         Err(_e)=>Err(TradeWebError::PositionExists), // or db error
 //     }
 // }
 
@@ -1045,4 +1110,222 @@ pub async fn order_save(order:Order, pool:PgPool) {
         ).execute(&pool).await;
 
     tracing::debug!("[save_to_db] result: {:?}", result);
+}
+
+
+/// positions with a market value per share higher than their purchase price per share.
+pub async fn position_list_showing_profit(pl_filter:BigDecimal, pool: PgPool) ->Result<Vec<SellPosition>,PollerError>{
+    let result = sqlx::query_as!(SellPosition,r#"
+            select
+                stock_symbol as "symbol!"
+                , price as "avg_entry_price!"
+                , sell_qty as "qty!"
+                , sell_qty_available as "qty_available!"
+                , unrealized_pl_per_share as "unrealized_pl_per_share!"
+                , cost as "cost_basis!"
+                , unrealized_pl_total as "unrealized_pl_total!"
+                , coalesce(trade_size,0.0) as "trade_size!"
+                , coalesce(age_min,0.0) as "age_minute!"
+            from fn_positions_to_sell_high($1) a
+            left join t_symbol b on upper(a.stock_symbol) = upper(b.symbol)
+        "#, pl_filter).fetch_all(&pool).await;
+    match result {
+        Ok(positions)=>Ok(positions),
+        Err(_e)=> Err(PollerError::Sqlx)
+    }
+}
+
+/// save a new order before it's submitted
+pub async fn order_log_entry_save(entry: OrderLogEntry, pool:PgPool) -> Result<PgQueryResult, Error> {
+    tracing::debug!("[order_log_entry_save]: {:?}", &entry);
+    sqlx::query!(
+            r#"insert into log_orders(id, id_group, id_client, dtg, symbol, side, qty)
+            values($1, $2, $3, $4, $5, $6, $7)"#,
+            entry.id, entry.id_group, entry.id_client(), entry.dtg, entry.symbol, entry.side.to_string(), entry.qty
+        ).execute(&pool).await
+}
+
+pub async fn transaction_delete_one(symbol:&str, pool:PgPool)->Result<(), TradeWebError>{
+    match sqlx::query!(r#"delete from alpaca_transaction_status where symbol=$1"#, symbol.to_lowercase()).execute(&pool).await{
+        Ok(_)=>Ok(()),
+        Err(_e)=>Err(TradeWebError::DeleteFailed), // or db error
+    }
+}
+
+/// insert a new transaction if one doesn't currently exist, otherwise error
+pub async fn transaction_start_buy(symbol:&str, pool:PgPool)->BuyResult{
+    // if an entry exists then a buy order exists; otherwise create one with default 0 shares
+    match sqlx::query!(r#"
+
+                insert into alpaca_transaction_status(dtg, symbol, posn_shares)
+                values(now()::timestamptz, $1, 0.0
+
+            )"#, symbol.to_lowercase()).execute(&pool).await{
+        Ok(_)=>{
+            BuyResult::Allowed
+        },
+        Err(_e)=>BuyResult::NotAllowed{error:TradeWebError::PositionExists}, // or db error
+    }
+}
+
+// /// sell if a buy order previously created an entry in this table and subsequently the count of shares is greater than zero
+// /// TODO: not currently used
+// pub async fn transaction_start_sell(symbol:&str, pool:PgPool)->Result<BigDecimal, TransactionError>{
+//     match sqlx::query_as!(AlpacaTransaction, r#"select dtg as "dtg!", symbol as "symbol!", posn_shares as "posn_shares!" from alpaca_transaction_status where symbol=$1 and posn_shares > 0.0"#, symbol.to_lowercase())
+//         .fetch_one(&pool).await{
+//             Ok(transaction)=> Ok(transaction.posn_shares),
+//             Err(_e)=>Err(TradeWebError::NoSharesFound), // or db error
+//         }
+// }
+
+
+/// Get the grid provided by v_alpaca_diff
+pub(crate) async fn diffcalc_get(pool:PgPool)->Result<Vec<DiffCalc>, PollerError>{
+
+    /*
+
+    -- if this number is positive the crossover is rising; a less negative number minus a more negative number
+    -- price_8 = -20 (slower to rise)
+    -- price_5 = -5  (faster to rise)
+    -- price_5_8 = -5 - -20 = +15 (rising!)
+    -- Or, if peaking and falling...
+    -- price_8 = 20 (slower to rise)
+    -- price_5 = 15  (faster to rise)
+    -- price_5_8 = 15 - 20 = -5 (negative, so falling, crossover has occurred and we're headed down)
+
+     */
+    let time_start = std::time::SystemTime::now();
+
+    let result = sqlx::query_as!(DiffCalc,r#"
+            select
+                now()::timestamp as "dtg!"
+                , timezone('US/Pacific',now())::timestamp as "dtg_pacific!"
+                , symbol as "symbol!:String"
+                , diff_30s_1 as "diff_30s_1!"
+                , diff_30s_3 as "diff_30s_3!"
+                , diff_30s_5 as "diff_30s_5!"
+                , price_last as "price_last!"
+                , price_30s as "price_30s!"
+                , price_1m as "price_1m!"
+                , price_3m as "price_3m!"
+                , price_5m as "price_5m!"
+                , dtg_last::timestamp as "dtg_last!"
+                , dtg_last_pacific::timestamp as "dtg_last_pacific!"
+            -- from v_finnhub_diff
+            from v_alpaca_diff
+            "#).fetch_all(&pool).await;
+
+    if let Ok(elapsed) = time_start.elapsed(){ tracing::debug!("[Poller::get] elapsed: {:?}", &elapsed); }
+
+    match result {
+        Ok(vec) => Ok(vec),
+        Err(e) => {
+            tracing::debug!("[DiffCalc::get] sqlx error: {:?}", &e);
+            Err(PollerError::Sqlx)
+        }
+    }
+}
+
+pub async fn symbol_load_one(symbol: &str, pool: &PgPool) -> Result<Symbol, TradeWebError> {
+    match sqlx::query_as!(Symbol,
+        r#"
+            select
+                symbol as "symbol!"
+                ,active as "active!"
+                ,coalesce(trade_size,0.0) as "trade_size!"
+            from t_symbol where upper(symbol)=upper($1)
+        "#,
+        symbol
+    ).fetch_one(pool).await {
+        Ok(symbol_list) => {
+            // tracing::debug!("[get_symbols] symbol_list: {:?}", &symbol_list);
+            // let s = symbol_list.iter().map(|x| { x.symbol.clone() }).collect();
+            Ok(symbol_list)
+        },
+        Err(e) => {
+            tracing::debug!("[get_symbols] error: {:?}", &e);
+            Err(TradeWebError::SqlxError)
+        }
+    }
+}
+
+/// do the REST part of the orders POST API
+/// see documentation above
+async fn rest_post_order(json_trade: &JsonTrade, settings: &Settings) -> Result<Order, TradeWebError> {
+    let mut headers = HeaderMap::new();
+
+    let api_key = settings.alpaca_paper_id.clone();
+    let api_secret = settings.alpaca_paper_secret.clone();
+
+    headers.insert("APCA-API-KEY-ID", api_key.parse().unwrap());
+    headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
+
+    let client = reqwest::Client::new();
+
+    let response = client.post("https://paper-api.alpaca.markets/v2/orders")
+        .headers(headers)
+        .json(json_trade)
+        .send()
+        .await;
+
+    match response {
+        Ok(resp) => {
+            match resp.status() {
+                reqwest::StatusCode::OK => {
+                    tracing::debug!("[perform_trade] response code: {:?} from the orders API", reqwest::StatusCode::OK);
+
+                    let json: Result<Order, reqwest::Error> = resp.json().await;
+
+                    match json {
+                        Ok(json) => Ok(json),
+                        Err(e) => {
+                            tracing::debug!("[post_order] json error: {:?}", &e);
+                            Err(TradeWebError::JsonError)
+                        }
+                    }
+                },
+                reqwest::StatusCode::FORBIDDEN => {
+                    // 403
+                    // https://docs.rs/http/0.2.9/http/status/struct.StatusCode.html#associatedconstant.UNPROCESSABLE_ENTITY
+                    // https://alpaca.markets/docs/api-references/trading-api/orders/
+                    // response may look like:
+                    // {"code":40310000,"message":"cannot open a long buy while a short sell order is open"}
+
+                    // ("{\"available\":\"7\",\"code\":40310000,\"existing_qty\":\"14\",\"held_for_orders\":\"7\",\"message\":\"insufficient qty available for order (requested: 14, available: 7)\",\"related_orders\":[\"2da05e7c-7d91-4a06-9275-b7bb96f6d45c\"],\"symbol\":\"WBD\"}")
+
+                    tracing::debug!("[perform_trade:403] response code: {:?} from the orders API", reqwest::StatusCode::FORBIDDEN);
+                    tracing::debug!("[perform_trade:403] response: {:?} ", &resp);
+
+                    let json = resp.text().await;
+                    tracing::debug!("[perform_trade:403] json body: {:?}", &json);
+
+
+                    // resp.json().await
+                    Err(TradeWebError::Alpaca403)
+                },
+                reqwest::StatusCode::UNPROCESSABLE_ENTITY => {
+                    // 422
+                    tracing::debug!("[perform_trade] response code: {:?} from the orders API", reqwest::StatusCode::UNPROCESSABLE_ENTITY);
+                    tracing::debug!("[perform_trade] response: {:?} ", &resp);
+                    // tracing::debug!("[perform_trade] response: {:?} ", resp.text().await.unwrap());
+
+                    let json = resp.text().await;
+                    tracing::debug!("[perform_trade:422] json body: {:?}", &json);
+
+                    Err(TradeWebError::Alpaca422)
+                },
+                _ => {
+                    tracing::debug!("[perform_trade] response code: {:?} from the orders API", &resp.status());
+                    // reqwest::Error
+                    // resp.json().await
+                    Err(TradeWebError::ReqwestError)
+                }
+            }
+        },
+        Err(e) => {
+            // Err(e)
+            tracing::debug!("[post_order] reqwest error: {:?}", &e);
+            Err(TradeWebError::ReqwestError)
+        }
+    }
 }

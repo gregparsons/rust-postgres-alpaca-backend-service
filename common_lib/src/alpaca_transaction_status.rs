@@ -7,21 +7,33 @@ use crossbeam_channel::Sender;
 use sqlx::PgPool;
 use crate::alpaca_position::Position;
 use crate::db::DbMsg;
+use crate::error::TradeWebError;
+
+// poller includes
+//
+// use bigdecimal::BigDecimal;
+// use chrono::{DateTime, Utc};
+// use crossbeam_channel::Sender;
+// use sqlx::PgPool;
+// use crate::common::alpaca_position::Position;
+// use crate::common::db::DbMsg;
+// use crate::common::error::TradeWebError;
 
 pub enum TransactionStatus{
     Found{shares:BigDecimal},
     NotFound
 }
 
-#[derive(Debug)]
-pub enum TransactionError{
-    TransactionNotFound,
-    BuyOrderExists,
-    PositionExists,
-    DeleteFailed,
-    NoSharesFound,
-}
+// #[derive(Debug)]
+// pub enum TransactionError{
+//     TransactionNotFound,
+//     BuyOrderExists,
+//     PositionExists,
+//     DeleteFailed,
+//     NoSharesFound,
+// }
 
+#[derive(PartialEq)]
 pub enum TransactionNextStep {
     Continue,
     DeleteTransaction,
@@ -36,34 +48,36 @@ pub struct AlpacaTransaction{
     posn_shares:BigDecimal,
 }
 
+#[derive(PartialEq)]
+pub enum BuyResult{
+    Allowed,
+    NotAllowed{error:TradeWebError},
+}
+
 impl AlpacaTransaction{
 
     /// insert a new transaction if one doesn't currently exist, otherwise error
-    pub async fn start_buy(symbol:&str, pool:&PgPool)->Result<(), TransactionError>{
-        // if an entry exists then a buy order exists; otherwise create one with default 0 shares
-        match sqlx::query!(r#"
 
-                insert into alpaca_transaction_status(dtg, symbol, posn_shares)
-                values(now()::timestamptz, $1, 0.0
+    pub fn start_buy(symbol:&str, tx_db:Sender<DbMsg>)-> BuyResult {
+        let (tx, rx) = crossbeam_channel::unbounded();
+        tx_db.send(DbMsg::TransactionStartBuy { symbol:symbol.to_string(), sender: tx}).unwrap();
+        match rx.recv() {
+            Ok(buy_result) => buy_result,
+            Err(_) => BuyResult::NotAllowed { error: TradeWebError::ChannelError },
+        }
 
-            )"#, symbol.to_lowercase()).execute(pool).await{
-                Ok(_)=>{
-                    Ok(())
-                },
-                Err(_e)=>Err(TransactionError::PositionExists), // or db error
-            }
     }
 
+    // /// sell if a buy order previously created an entry in this table and subsequently the count of shares is greater than zero
+    // /// TODO: not currently used
+    // pub async fn start_sell(symbol:&str, tx_db:Sender<DbMsg>) {
+    //     tx_db.send(TransactionStartSell {symbol:symbol.to_string()}).unwrap()
+    // }
 
-    /// sell if a buy order previously created an entry in this table and subsequently the count of shares is greater than zero
-    /// TODO: not currently used
-    pub async fn start_sell(symbol:&str, tx_db:Sender<DbMsg>) {
-        tx_db.send(TransactionStartSell {symbol:symbol.to_string()}).unwrap()
-    }
 
     /// start the order slate blank
-    pub fn delete_one(symbol:&str, pool:&PgPool) ->Result<(), TransactionError>{
-        tx_db.send(DbMsg::TransactionDeleteOne).unwrap();
+    pub fn delete_one(symbol:&str, tx_db: Sender<DbMsg>) {
+        tx_db.send(DbMsg::TransactionDeleteOne{ symbol:symbol.to_string()}).unwrap()
     }
 
     /// start the order slate blank
@@ -73,7 +87,7 @@ impl AlpacaTransaction{
 
     /// TODO: move to database; for now only called from within database crossbeam message anyway
     /// delete all "orders" without positions; start_buy() relies on the non-existence of a symbol to start an order
-    pub async fn clean(pool:&PgPool)->Result<(), TransactionError>{
+    pub async fn clean(pool:&PgPool)->Result<(), TradeWebError>{
         match sqlx::query!(
             r#"
                 delete from alpaca_transaction_status
@@ -81,14 +95,13 @@ impl AlpacaTransaction{
             "#
         ).execute(pool).await{
             Ok(_)=>Ok(()),
-            Err(_e)=>Err(TransactionError::DeleteFailed), // or db error
+            Err(_e)=>Err(TradeWebError::DeleteFailed), // or db error
         }
     }
 
-
     /// TODO: move to database; for now only called from within database crossbeam message anyway
     /// insert a new transaction if one doesn't currently exist, otherwise error
-    pub async fn decrement(symbol:&str, shares_to_decrement:BigDecimal, pool:&PgPool)->Result<(), TransactionError>{
+    pub async fn decrement(symbol:&str, shares_to_decrement:BigDecimal, pool:&PgPool)->Result<(), TradeWebError>{
         match sqlx::query!(
             r#"
                 update alpaca_transaction_status
@@ -98,7 +111,7 @@ impl AlpacaTransaction{
             symbol.to_lowercase()
         ).execute(pool).await{
             Ok(_)=>Ok(()),
-            Err(_e)=>Err(TransactionError::DeleteFailed), // or db error
+            Err(_e)=>Err(TradeWebError::DeleteFailed), // or db error
         }
     }
 

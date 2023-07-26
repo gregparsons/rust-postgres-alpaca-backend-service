@@ -2,10 +2,10 @@
 //!
 //! get the active symbols from the database
 
-use crossbeam_channel::RecvError;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use crate::db::DbMsg;
+use crate::error::TradeWebError;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct QrySymbol {
@@ -16,13 +16,15 @@ pub struct SymbolList {}
 
 impl SymbolList {
     /// get a vec of stock symbols
-    pub async fn get_active_symbols(tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<Vec<String>, RecvError> {
+    pub async fn get_active_symbols(tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<Vec<String>, TradeWebError> {
 
         let (resp_tx, resp_rx) = crossbeam_channel::unbounded();
-        let msg = DbMsg::GetSymbolList{ resp_tx };
+        let msg = DbMsg::GetSymbolList{ sender_tx: resp_tx };
         tx_db.send(msg).unwrap();
-        let result = resp_rx.recv();
-        result
+        match resp_rx.recv(){
+            Ok(result)=>Ok(result),
+            Err(_e)=>Err(TradeWebError::ChannelError),
+        }
 
     }
 

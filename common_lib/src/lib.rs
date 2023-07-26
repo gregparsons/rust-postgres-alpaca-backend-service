@@ -19,3 +19,7 @@ pub mod trade_struct;
 pub mod alpaca_order_log;
 pub mod alpaca_transaction_status;
 pub mod db;
+pub mod symbol;
+mod sell_position;
+mod order_log_entry;
+mod diff_calc;

@@ -10,9 +10,8 @@ use sqlx::PgPool;
 use std::fmt;
 use chrono::{DateTime, Utc};
 use std::fmt::{Debug, Display};
-use tokio::sync::oneshot;
-use tokio::sync::oneshot::error::RecvError;
 use crate::db::DbMsg;
+use crate::error::TradeWebError;
 
 ///
 /// curl -X GET \
@@ -160,16 +159,17 @@ impl Position {
     }
 
     // Call the Alpaca API to get the remote position snapshot
-    pub fn get_remote(settings:&Settings, tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<Vec<Position>, RecvError> {
-        let (resp_tx, resp_rx) = oneshot::channel();
+    pub fn get_remote(settings:&Settings, tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<Vec<Position>, TradeWebError> {
+        let (resp_tx, resp_rx) = crossbeam_channel::unbounded();
         let msg = DbMsg::PositionGetRemote{
             settings:settings.clone(),
             resp_tx
         };
         tx_db.send(msg).unwrap();
-        let result = resp_rx.blocking_recv();
-        result
-
+        match resp_rx.recv(){
+            Ok(result)=>Ok(result),
+            Err(_e)=>Err(TradeWebError::ChannelError),
+        }
     }
 
     /// delete_all_db
