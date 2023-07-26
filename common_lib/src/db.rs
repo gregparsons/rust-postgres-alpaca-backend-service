@@ -3,25 +3,46 @@
 //! start() spawns a long-running thread to maintain an open connection to a database pool
 //!
 
+// common imports
+use bigdecimal::BigDecimal;
 use sqlx::postgres::PgQueryResult;
 use sqlx::{Error, PgPool};
 use chrono::{DateTime, Utc};
 use reqwest::header::HeaderMap;
 use tokio::runtime::Handle;
 use tokio::sync::oneshot;
+use crate::settings::Settings;
+
+// trade imports
 use crate::account::{Account, AccountWithDate};
 use crate::alpaca_activity::{Activity, ActivityLatest};
 use crate::alpaca_api_structs::{AlpacaTradeWs, MinuteBar, Ping};
+use crate::alpaca_order::Order;
 use crate::alpaca_order_log::AlpacaOrderLogEvent;
 use crate::alpaca_position::{Position, TempPosition};
 use crate::alpaca_transaction_status::TransactionError;
 use crate::error::TradeWebError;
 use crate::finnhub::{FinnhubPing, FinnhubTrade};
-use crate::settings::Settings;
-use crate::sqlx_pool::create_sqlx_pg_pool;
 use crate::symbol_list::QrySymbol;
 use crate::trade_struct::TradeSide;
 use crate::alpaca_transaction_status::*;
+use crate::sqlx_pool::create_sqlx_pg_pool;
+
+// trade_poll imports
+// use crate::common::alpaca_activity::ActivityLatest;
+// use crate::common::sqlx_pool::SqlxPool;
+// use crate::sqlx_pool::create_sqlx_pg_pool;
+// use crate::common::account::{Account, AccountWithDate};
+// use crate::common::alpaca_activity::Activity;
+// use crate::common::alpaca_api_structs::{AlpacaTradeWs, MinuteBar, Ping};
+// use crate::common::alpaca_order::Order;
+// use crate::common::alpaca_order_log::AlpacaOrderLogEvent;
+// use crate::common::alpaca_position::{Position, TempPosition};
+// use crate::common::alpaca_transaction_status::{AlpacaTransaction, TransactionError};
+// use crate::common::error::TradeWebError;
+// use crate::common::finnhub::{FinnhubPing, FinnhubTrade};
+// use crate::common::symbol_list::QrySymbol;
+// use crate::common::trade_side::TradeSide;
 
 #[derive(Debug)]
 pub enum DbMsg {
@@ -41,6 +62,7 @@ pub enum DbMsg {
     // TODO: pass settings to others that'd need updated settings while running
     AccountGetRemote{ settings:Settings, resp_tx: oneshot::Sender<Account> },
     AccountSaveToDb{ account:Account},
+    AccountAvailableCash{ sender_tx: oneshot::Sender<BigDecimal> },
 
     PositionGetRemote{ settings:Settings, resp_tx: oneshot::Sender<Vec<Position>> },
     PositionDeleteAll,
@@ -53,6 +75,8 @@ pub enum DbMsg {
     ActivitySaveToDb { activity:Activity },
 
     GetSymbolList{resp_tx: crossbeam_channel::Sender<Vec<String>> },
+
+    OrderSave{ order:Order },
 
 }
 
@@ -164,6 +188,16 @@ async fn process_message(msg:DbMsg, pool: PgPool){
                 let _ = resp_tx.send(activities);
             }
         },
+
+        DbMsg::AccountAvailableCash{ sender_tx }=>{
+            match account_available_cash(pool).await {
+                Ok(cash_available)=>{
+                    let _ = sender_tx.send(cash_available);
+                }
+                Err(_e)=>tracing::error!("[DbMsg::AccountAvailableCash] couldn't get cash available from database: {:?}", &_e),
+            }
+
+        }
 
         DbMsg::AccountGet{resp_tx} =>{
             let result = account_get(&pool).await;
@@ -383,8 +417,8 @@ async fn insert_finnhub_trade(trade: &FinnhubTrade, pool: &PgPool) -> Result<PgQ
         trade.price,
         trade.volume
     )
-    .execute(pool)
-    .await
+        .execute(pool)
+        .await
 }
 
 /// Continuously overwrite only the latest trade for a given symbol so we have a fast way of getting the most recent price.
@@ -403,8 +437,8 @@ async fn insert_finnhub_trade_latest(
         trade.price,
         trade.volume
     )
-    .execute(pool)
-    .await
+        .execute(pool)
+        .await
 }
 
 /// Insert an Alpaca trade received on the websocket
@@ -925,6 +959,20 @@ async fn activity_save_to_db(activity: &Activity, pool: PgPool) -> Result<PgQuer
     result
 }
 
+/// the amount of unused funds above the minimum day trade balance
+async fn account_available_cash(pool: PgPool)->Result<BigDecimal, TradeWebError>{
+    match sqlx::query!(r#"
+        select (
+            (select acct_min_cash_dollars from t_settings) - (select position_market_value from alpaca_account order by dtg limit 1)
+        ) as "available_cash!";
+    "#).fetch_one(&pool).await{
+        Ok(result_struct)=>{
+            Ok(result_struct.available_cash)
+        },
+        Err(_e)=>Err(TradeWebError::SqlxError)
+    }
+}
+
 // /// insert a new transaction if one doesn't currently exist, otherwise error
 // /// TODO: not currently used; used by trade_poller
 // async fn start_buy(symbol:&str, pool:&PgPool)->Result<(), TransactionError>{
@@ -938,3 +986,63 @@ async fn activity_save_to_db(activity: &Activity, pool: PgPool) -> Result<PgQuer
 //     }
 // }
 
+/// Save a single order to the database
+pub async fn order_save(order:Order, pool:PgPool) {
+    /*
+
+        [{"id":"2412874c-45a4-4e47-b0eb-98c00c1f05eb","client_order_id":"b6f91215-4e78-400d-b2ac-1bb546f86237","created_at":"2023-03-17T06:02:42.552044Z","updated_at":"2023-03-17T06:02:42.552044Z","submitted_at":"2023-03-17T06:02:42.551444Z","filled_at":null,"expired_at":null,"canceled_at":null,"failed_at":null,"replaced_at":null,"replaced_by":null,"replaces":null,"asset_id":"8ccae427-5dd0-45b3-b5fe-7ba5e422c766","symbol":"TSLA","asset_class":"us_equity","notional":null,"qty":"1","filled_qty":"0","filled_avg_price":null,"order_class":"","order_type":"market","type":"market","side":"buy","time_in_force":"day","limit_price":null,"stop_price":null,"status":"accepted","extended_hours":false,"legs":null,"trail_percent":null,"trail_price":null,"hwm":null,"subtag":null,"source":null}]
+
+    */
+
+    let result = sqlx::query!(
+            r#"insert into alpaca_order(
+                id,
+                client_order_id,
+                created_at,
+                updated_at,
+                submitted_at,
+                filled_at,
+
+                -- expired_at,
+                -- canceled_at,
+                -- failed_at,
+                -- replaced_at,
+                -- replaced_by,
+                -- replaces,
+                -- asset_id,
+
+                symbol,
+                -- asset_class,
+                -- notional,
+                qty,
+                filled_qty,
+                filled_avg_price,
+                -- order_class,
+                order_type_v2,
+                side,
+                time_in_force,
+                limit_price,
+                stop_price,
+                status
+                -- extended_hours,
+                -- trail_percent,
+                -- trail_price,
+                -- hwm
+                )
+            values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, lower($11), lower($12), lower($13), $14, $15, $16)
+
+            "#,
+            order.id, order.client_order_id, order.created_at, order.updated_at, order.submitted_at,
+            order.filled_at, // $7
+            order.symbol,
+            order.qty, order.filled_qty, order.filled_avg_price,
+            order.order_type_v2.to_string(), // $11
+            order.side.to_string(),          // $12
+            order.time_in_force.to_string(), // $13
+            order.limit_price,
+            order.stop_price,
+            order.status
+        ).execute(&pool).await;
+
+    tracing::debug!("[save_to_db] result: {:?}", result);
+}

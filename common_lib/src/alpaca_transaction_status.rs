@@ -54,21 +54,21 @@ impl AlpacaTransaction{
             }
     }
 
+
     /// sell if a buy order previously created an entry in this table and subsequently the count of shares is greater than zero
     /// TODO: not currently used
-    pub async fn start_sell(symbol:&str, pool:&PgPool)->Result<BigDecimal, TransactionError>{
-        match sqlx::query_as!(AlpacaTransaction, r#"select dtg as "dtg!", symbol as "symbol!", posn_shares as "posn_shares!" from alpaca_transaction_status where symbol=$1 and posn_shares > 0.0"#, symbol.to_lowercase()).fetch_one(pool).await{
-            Ok(transaction)=> Ok(transaction.posn_shares),
-            Err(_e)=>Err(TransactionError::NoSharesFound), // or db error
-        }
+    pub async fn start_sell(symbol:&str, tx_db:Sender<DbMsg>) {
+        tx_db.send(TransactionStartSell {symbol:symbol.to_string()}).unwrap()
     }
 
-    /// insert a new transaction if one doesn't currently exist, otherwise error
-    pub async fn delete(symbol:&str, pool:&PgPool)->Result<(), TransactionError>{
-        match sqlx::query!(r#"delete from alpaca_transaction_status where symbol=$1"#, symbol.to_lowercase()).execute(pool).await{
-            Ok(_)=>Ok(()),
-            Err(_e)=>Err(TransactionError::DeleteFailed), // or db error
-        }
+    /// start the order slate blank
+    pub fn delete_one(symbol:&str, pool:&PgPool) ->Result<(), TransactionError>{
+        tx_db.send(DbMsg::TransactionDeleteOne).unwrap();
+    }
+
+    /// start the order slate blank
+    pub fn delete_all(tx_db: Sender<DbMsg>){
+        tx_db.send(DbMsg::TransactionDeleteAll).unwrap();
     }
 
     /// TODO: move to database; for now only called from within database crossbeam message anyway
@@ -83,13 +83,6 @@ impl AlpacaTransaction{
             Ok(_)=>Ok(()),
             Err(_e)=>Err(TransactionError::DeleteFailed), // or db error
         }
-    }
-
-    /// start the order slate blank
-    pub fn delete_all(tx_db: Sender<DbMsg>){
-
-        tx_db.send(DbMsg::TransactionDeleteAll).unwrap();
-
     }
 
 

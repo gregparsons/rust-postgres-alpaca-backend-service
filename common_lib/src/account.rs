@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
 use tokio::sync::oneshot::error::RecvError;
 use crate::db::DbMsg;
+use crate::error::TradeWebError;
 use crate::settings::Settings;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -99,6 +100,20 @@ impl Account {
         let result = resp_rx.await;
         result
 
+    }
+
+    /// Return the cash in dollars available to trade with (not including day trade minimum)
+    pub async fn available_cash(tx_db: crossbeam_channel::Sender<DbMsg>)->Result<BigDecimal, TradeWebError>{
+        let (resp_tx, resp_rx) = oneshot::channel();
+        let msg = DbMsg::AccountAvailableCash{ sender_tx:resp_tx };
+        tx_db.send(msg).unwrap();
+        match resp_rx.await {
+            Ok(cash) => Ok(cash),
+            Err(e) => {
+                tracing::error!("[available_cash] channel error: {:?}", &e);
+                Err(TradeWebError::ChannelError)
+            }
+        }
     }
 
 
