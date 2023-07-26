@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select max(dtg)::timestamptz as \"dtg!\" from alpaca_activity",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "dtg!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "85a249f6c84fe265732afafc3156e4166eb3a117ca447f04471d8bcacfdd3e1d"
+}

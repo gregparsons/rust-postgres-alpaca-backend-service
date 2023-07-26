@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select * from fn_grade_stocks()",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "fn_grade_stocks",
+        "type_info": "Void"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "c243f022f6ae728ead04c7260773743c27a513247e308a930cd8e0e6375b3c14"
+}

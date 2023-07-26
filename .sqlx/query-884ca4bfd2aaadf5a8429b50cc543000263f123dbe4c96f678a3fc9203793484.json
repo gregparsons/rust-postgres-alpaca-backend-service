@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "delete from alpaca_order",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "884ca4bfd2aaadf5a8429b50cc543000263f123dbe4c96f678a3fc9203793484"
+}

@@ -9,8 +9,10 @@ backend:
 	./backend/all.sh
 sqlx:
 	# https://lib.rs/crates/sqlx-cli (is out of date about --workspace)
-	# cargo sqlx prepare --merged
-	cargo sqlx prepare --workspace
+	# 0.6.3
+	cargo sqlx prepare --merged
+	# 0.7.0
+	#cargo sqlx prepare --workspace
 maintenance:
 	cargo fmt
 	cargo clippy

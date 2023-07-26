@@ -1,0 +1,212 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            select\n                dtg as \"dtg!\"\n                ,cash as \"cash!\"\n                ,position_market_value as \"position_market_value!\"\n                ,equity as \"equity!\"\n                ,last_equity as \"last_equity!\"\n                ,daytrade_count as \"daytrade_count!\"\n                ,balance_asof as \"balance_asof!\"\n                ,pattern_day_trader as \"pattern_day_trader!\"\n                ,id as \"id!\"\n                ,account_number as \"account_number!\"\n                ,status as \"status!\"\n                -- crypto_status as \"!\"\n                ,currency as \"currency!\"\n                            ,buying_power as \"buying_power!\"\n                ,regt_buying_power as \"regt_buying_power!\"\n                ,daytrading_buying_power as \"daytrading_buying_power!\"\n                ,effective_buying_power as \"effective_buying_power!\"\n                ,non_marginable_buying_power as \"non_marginable_buying_power!\"\n\n                   ,bod_dtbp as \"bod_dtbp!\"\n                ,accrued_fees as \"accrued_fees!\"\n                ,pending_transfer_in as \"pending_transfer_in!\"\n                --,portfolio_value as \"portfolio_value!\"    --deprecated (same as equity field)\n                ,trading_blocked as \"trading_blocked!\"\n                ,transfers_blocked as \"transfers_blocked!\"\n                ,account_blocked as \"account_blocked!\"\n                ,created_at as \"created_at!\"\n                ,trade_suspended_by_user as \"trade_suspended_by_user!\"\n                ,multiplier as \"multiplier!\"\n                ,shorting_enabled as \"shorting_enabled!\"\n                ,long_market_value as \"long_market_value!\"\n                ,short_market_value as \"short_market_value!\"\n                ,initial_margin as \"initial_margin!\"\n                ,maintenance_margin as \"maintenance_margin!\"\n                ,last_maintenance_margin as \"last_maintenance_margin!\"\n                ,sma as \"sma!\"\n            from alpaca_account\n            order by dtg desc\n            limit 1\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "dtg!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 1,
+        "name": "cash!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "position_market_value!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "equity!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "last_equity!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "daytrade_count!",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 6,
+        "name": "balance_asof!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "pattern_day_trader!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "id!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "account_number!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "status!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 11,
+        "name": "currency!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 12,
+        "name": "buying_power!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 13,
+        "name": "regt_buying_power!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 14,
+        "name": "daytrading_buying_power!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 15,
+        "name": "effective_buying_power!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 16,
+        "name": "non_marginable_buying_power!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 17,
+        "name": "bod_dtbp!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 18,
+        "name": "accrued_fees!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 19,
+        "name": "pending_transfer_in!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 20,
+        "name": "trading_blocked!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 21,
+        "name": "transfers_blocked!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 22,
+        "name": "account_blocked!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 23,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 24,
+        "name": "trade_suspended_by_user!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 25,
+        "name": "multiplier!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 26,
+        "name": "shorting_enabled!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 27,
+        "name": "long_market_value!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 28,
+        "name": "short_market_value!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 29,
+        "name": "initial_margin!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 30,
+        "name": "maintenance_margin!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 31,
+        "name": "last_maintenance_margin!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 32,
+        "name": "sma!",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "167dd2268f447cecb71941614e033df8aecfb57cc51a2d7c90a686a9019e4db0"
+}

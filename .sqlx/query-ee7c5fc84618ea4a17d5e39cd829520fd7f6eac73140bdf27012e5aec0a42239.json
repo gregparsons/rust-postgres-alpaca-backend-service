@@ -1,0 +1,128 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                select\n                    dtg as \"dtg!\"\n                    ,symbol as \"symbol!\"\n                    ,exchange as \"exchange!\"\n                    ,asset_class as \"asset_class!\"\n                    ,coalesce(avg_entry_price, 0.0) as \"avg_entry_price!\"\n                    ,coalesce(qty,0.0) as \"qty!\"\n                    ,coalesce(qty_available,0.0) as \"qty_available!\"\n                    ,side as \"side!:PositionSide\"\n                    ,coalesce(market_value,0.0) as \"market_value!\"\n                    ,coalesce(cost_basis,0.0) as \"cost_basis!\"\n                    ,coalesce(unrealized_pl,0.0) as \"unrealized_pl!\"\n                    ,coalesce(unrealized_plpc,0.0) as \"unrealized_plpc!\"\n                    ,coalesce(unrealized_intraday_pl,0.0) as \"unrealized_intraday_pl!\"\n                    ,coalesce(unrealized_intraday_plpc,0.0) as \"unrealized_intraday_plpc!\"\n                    ,coalesce(current_price,0.0) as \"current_price!\"\n                    ,coalesce(lastday_price,0.0) as \"lastday_price!\"\n                    ,coalesce(change_today,0.0) as \"change_today!\"\n                    ,asset_id as \"asset_id!\"\n                    ,dtg_updated as \"dtg_updated!\"\n                from\n                alpaca_position\n                order by symbol\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "dtg!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 1,
+        "name": "symbol!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "exchange!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "asset_class!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "avg_entry_price!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "qty!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "qty_available!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 7,
+        "name": "side!:PositionSide",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "market_value!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 9,
+        "name": "cost_basis!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 10,
+        "name": "unrealized_pl!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 11,
+        "name": "unrealized_plpc!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 12,
+        "name": "unrealized_intraday_pl!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 13,
+        "name": "unrealized_intraday_plpc!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 14,
+        "name": "current_price!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 15,
+        "name": "lastday_price!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 16,
+        "name": "change_today!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 17,
+        "name": "asset_id!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 18,
+        "name": "dtg_updated!",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      false,
+      true,
+      true,
+      null,
+      null,
+      null,
+      true,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      true,
+      true
+    ]
+  },
+  "hash": "ee7c5fc84618ea4a17d5e39cd829520fd7f6eac73140bdf27012e5aec0a42239"
+}

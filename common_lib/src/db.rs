@@ -1146,7 +1146,7 @@ pub async fn transaction_start_buy(symbol:&str, pool:PgPool)->BuyResult{
 
 
 /// Get the grid provided by v_alpaca_diff
-pub  async fn diffcalc_get(pool:PgPool)->Result<Vec<DiffCalc>, PollerError>{
+async fn diffcalc_get(pool:PgPool)->Result<Vec<DiffCalc>, PollerError>{
 
     /*
 
@@ -1162,24 +1162,27 @@ pub  async fn diffcalc_get(pool:PgPool)->Result<Vec<DiffCalc>, PollerError>{
      */
     let time_start = std::time::SystemTime::now();
 
-    let result = sqlx::query_as!(DiffCalc,r#"
-            select
-                now()::timestamp as "dtg!"
-                , timezone('US/Pacific',now())::timestamp as "dtg_pacific!"
-                , symbol as "symbol!:String"
-                , diff_30s_1 as "diff_30s_1!"
-                , diff_30s_3 as "diff_30s_3!"
-                , diff_30s_5 as "diff_30s_5!"
-                , price_last as "price_last!"
-                , price_30s as "price_30s!"
-                , price_1m as "price_1m!"
-                , price_3m as "price_3m!"
-                , price_5m as "price_5m!"
-                , dtg_last::timestamp as "dtg_last!"
-                , dtg_last_pacific::timestamp as "dtg_last_pacific!"
+    let result = sqlx::query_as!(
+        DiffCalc,
+        r#"
+        select
+            now()::timestamptz as "dtg!"
+             , timezone('US/Pacific',now())::timestamptz as "dtg_pacific!"
+             , symbol as "symbol!:String"
+             , diff_30s_1 as "diff_30s_1!"
+             , diff_30s_3 as "diff_30s_3!"
+             , diff_30s_5 as "diff_30s_5!"
+             , price_last as "price_last!"
+             , price_30s as "price_30s!"
+             , price_1m as "price_1m!"
+             , price_3m as "price_3m!"
+             , price_5m as "price_5m!"
+             , dtg_last::timestamptz as "dtg_last!"
+             , dtg_last_pacific::timestamptz as "dtg_last_pacific!"
             -- from v_finnhub_diff
-            from v_alpaca_diff
-            "#).fetch_all(&pool).await;
+        from v_alpaca_diff
+        "#
+    ).fetch_all(&pool).await;
 
     if let Ok(elapsed) = time_start.elapsed(){ tracing::debug!("[Poller::get] elapsed: {:?}", &elapsed); }
 

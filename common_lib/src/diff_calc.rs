@@ -5,7 +5,7 @@
 
 use std::iter::zip;
 use bigdecimal::BigDecimal;
-use chrono::NaiveDateTime;
+use chrono::{DateTime, Utc};
 use crate::alpaca_api_structs::CrossStatus;
 use crate::db::DbMsg;
 use crate::error::{PollerError, TradeWebError};
@@ -19,8 +19,8 @@ use crate::error::{PollerError, TradeWebError};
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct DiffCalc{
-    pub dtg:NaiveDateTime,
-    pub dtg_pacific:NaiveDateTime,
+    pub dtg:DateTime<Utc>,
+    pub dtg_pacific:DateTime<Utc>,
     pub symbol:String,
     pub diff_30s_1:BigDecimal,
     pub diff_30s_3:BigDecimal,
@@ -30,8 +30,8 @@ pub struct DiffCalc{
     pub price_1m:BigDecimal,
     pub price_3m:BigDecimal,
     pub price_5m:BigDecimal,
-    pub dtg_last:NaiveDateTime,
-    pub dtg_last_pacific:NaiveDateTime,
+    pub dtg_last:DateTime<Utc>,
+    pub dtg_last_pacific:DateTime<Utc>,
 }
 
 #[allow(dead_code)]

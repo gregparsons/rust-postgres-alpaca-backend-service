@@ -1,0 +1,194 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                select\n                    id as \"id!\"\n                    , client_order_id as \"client_order_id!\"\n                    , created_at as \"created_at!\"\n                    , updated_at as \"updated_at!\"\n                    , submitted_at as \"submitted_at!\"\n                    , filled_at\n                    , expired_at\n                    , canceled_at\n                    , failed_at\n                    , replaced_at\n                    , replaced_by\n                    , replaces\n                    , asset_id as \"asset_id!:Option<String>\"\n                    , symbol as \"symbol!:String\"\n                    , asset_class as \"asset_class!:Option<String>\"\n                    , notional as \"notional!:Option<BigDecimal>\"\n                    , coalesce(qty, 0.0) as \"qty!:BigDecimal\"\n                    , filled_qty as \"filled_qty!:Option<BigDecimal>\"\n                    , filled_avg_price as \"filled_avg_price!:Option<BigDecimal>\"\n                    , order_class as \"order_class!:Option<String>\"\n                    , order_type_v2 as \"order_type_v2!:OrderType\"\n                    , side as \"side!:TradeSide\"\n                    , time_in_force as \"time_in_force!:TimeInForce\"\n                    , limit_price as \"limit_price!:Option<BigDecimal>\"\n                    , stop_price as \"stop_price!:Option<BigDecimal>\"\n                    , status as \"status!\"\n                    , coalesce(extended_hours, false) as \"extended_hours!\"\n                    , trail_percent\n                    , trail_price\n                    , hwm\n                from alpaca_order\n                where filled_at is null\n                order by symbol asc\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "client_order_id!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 3,
+        "name": "updated_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 4,
+        "name": "submitted_at!",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 5,
+        "name": "filled_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 6,
+        "name": "expired_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 7,
+        "name": "canceled_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 8,
+        "name": "failed_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 9,
+        "name": "replaced_at",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 10,
+        "name": "replaced_by",
+        "type_info": "Timestamptz"
+      },
+      {
+        "ordinal": 11,
+        "name": "replaces",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 12,
+        "name": "asset_id!:Option<String>",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 13,
+        "name": "symbol!:String",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 14,
+        "name": "asset_class!:Option<String>",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 15,
+        "name": "notional!:Option<BigDecimal>",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 16,
+        "name": "qty!:BigDecimal",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 17,
+        "name": "filled_qty!:Option<BigDecimal>",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 18,
+        "name": "filled_avg_price!:Option<BigDecimal>",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 19,
+        "name": "order_class!:Option<String>",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 20,
+        "name": "order_type_v2!:OrderType",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 21,
+        "name": "side!:TradeSide",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 22,
+        "name": "time_in_force!:TimeInForce",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 23,
+        "name": "limit_price!:Option<BigDecimal>",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 24,
+        "name": "stop_price!:Option<BigDecimal>",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 25,
+        "name": "status!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 26,
+        "name": "extended_hours!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 27,
+        "name": "trail_percent",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 28,
+        "name": "trail_price",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 29,
+        "name": "hwm",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      null,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      null,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "9321c48e63b3aa63c9a199651abb950eb7afb6e6c8376b33f10e2228ed996aff"
+}

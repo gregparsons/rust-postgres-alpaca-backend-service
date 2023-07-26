@@ -1,0 +1,20 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "select symbol as \"symbol!\" from t_symbol where active=true",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "symbol!",
+        "type_info": "Varchar"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "41e310b7a132e9b1fe68c9c9549392df44f6206231105591f371d00e75d6342b"
+}

@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            select\n                symbol as \"symbol!\"\n                ,active as \"active!\"\n                ,coalesce(trade_size,0.0) as \"trade_size!\"\n            from t_symbol where active=true",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "symbol!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "active!",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 2,
+        "name": "trade_size!",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      null
+    ]
+  },
+  "hash": "641eb9dd1c480ccc423b35def138d576f22b37d947087f4f1276f1034c40dd8b"
+}

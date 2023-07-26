@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            select\n                stock_symbol as \"symbol!\"\n                , price as \"avg_entry_price!\"\n                , sell_qty as \"qty!\"\n                , sell_qty_available as \"qty_available!\"\n                , unrealized_pl_per_share as \"unrealized_pl_per_share!\"\n                , cost as \"cost_basis!\"\n                , unrealized_pl_total as \"unrealized_pl_total!\"\n                , coalesce(trade_size,0.0) as \"trade_size!\"\n                , coalesce(age_min,0.0) as \"age_minute!\"\n            from fn_positions_to_sell_old($1) a\n            left join t_symbol b on upper(a.stock_symbol) = upper(b.symbol)\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "symbol!",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 1,
+        "name": "avg_entry_price!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 2,
+        "name": "qty!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 3,
+        "name": "qty_available!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 4,
+        "name": "unrealized_pl_per_share!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 5,
+        "name": "cost_basis!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 6,
+        "name": "unrealized_pl_total!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 7,
+        "name": "trade_size!",
+        "type_info": "Numeric"
+      },
+      {
+        "ordinal": 8,
+        "name": "age_minute!",
+        "type_info": "Numeric"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Numeric"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "6096eaf4c31d8d64ead6916f40056f96102b199a58eb36c502118e4a5617be0d"
+}
