@@ -10,20 +10,29 @@
 //! 2. If want to sell, check here, there needs to be an outstanding position to actually sell. (or really
 //! make sure the settings to disallow short sales is turned off.
 //!
+//! TODO: make database calls non-blocking (either with dedicated db thread and crossbeam or tokio spawn)
+//!
 
 //! alpaca_order
 //!
 
+use std::fmt;
+use serde::{Serialize, Deserialize};
+use bigdecimal::BigDecimal;
+use chrono::{DateTime, Utc};
+use crossbeam_channel::Sender;
+use reqwest::header::HeaderMap;
+use sqlx::{Error, PgPool};
+use sqlx::postgres::PgQueryResult;
+use crate::db::DbMsg;
 use crate::error::TradeWebError;
 use crate::settings::Settings;
 use crate::trade_struct::{OrderType, TimeInForce, TradeSide};
-use bigdecimal::BigDecimal;
-use chrono::{DateTime, Utc};
-use reqwest::header::HeaderMap;
-use serde::{Deserialize, Serialize};
-use sqlx::postgres::PgQueryResult;
-use sqlx::PgPool;
-use std::fmt;
+
+#[derive(Deserialize)]
+struct OrderCount{
+    order_count:i64,
+}
 
 ///
 ///
@@ -96,7 +105,8 @@ pub struct Order {
     pub filled_qty: Option<BigDecimal>,
     pub filled_avg_price: Option<BigDecimal>,
     pub order_class: Option<String>,
-    // deprecated
+    // deprecated (so they could use "type" screw up every programming language reserved keyword SERDE)
+    // order_type: String,
     #[serde(rename = "type")]
     pub order_type_v2: OrderType,
     pub side: TradeSide,
@@ -109,11 +119,14 @@ pub struct Order {
     pub trail_percent: Option<BigDecimal>,
     pub trail_price: Option<BigDecimal>,
     pub hwm: Option<BigDecimal>,
+
 }
 
 impl Order {
+
     /// Get all outstanding orders from Alpaca API
-    pub async fn get_remote(settings: &Settings) -> Result<Vec<Order>, TradeWebError> {
+    pub async fn remote(settings: &Settings) -> Result<Vec<Order>, TradeWebError> {
+
         let mut headers = HeaderMap::new();
         let api_key = settings.alpaca_paper_id.clone();
         let api_secret = settings.alpaca_paper_secret.clone();
@@ -121,8 +134,7 @@ impl Order {
         headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
         let client = reqwest::Client::new();
 
-        let http_result = client
-            .get("https://paper-api.alpaca.markets/v2/orders")
+        let http_result = client.get("https://paper-api.alpaca.markets/v2/orders")
             .headers(headers)
             .send()
             .await;
@@ -130,20 +142,23 @@ impl Order {
         // parse_http_result_to_vec::<Order>(http_result).await
 
         let return_val = match http_result {
-            Ok(response) => match &response.text().await {
-                Ok(response_text) => match serde_json::from_str::<Vec<Order>>(&response_text) {
-                    Ok(orders) => Ok(orders),
-                    Err(e) => {
-                        tracing::debug!(
-                            "[get_remote] deserialization to json vec failed: {:?}",
-                            &e
-                        );
+            Ok(response) => {
+                match &response.text().await{
+                    Ok(response_text)=>{
+                        match serde_json::from_str::<Vec<Order>>(&response_text){
+                            Ok(orders)=> {
+                                Ok(orders)
+                            },
+                            Err(e)=>{
+                                tracing::debug!("[get_remote] deserialization to json vec failed: {:?}", &e);
+                                Err(TradeWebError::JsonError)
+                            }
+                        }
+                    },
+                    Err(e)=>{
+                        tracing::debug!("[get_remote] deserialization to json text failed: {:?}", &e);
                         Err(TradeWebError::JsonError)
                     }
-                },
-                Err(e) => {
-                    tracing::debug!("[get_remote] deserialization to json text failed: {:?}", &e);
-                    Err(TradeWebError::JsonError)
                 }
             },
             Err(e) => {
@@ -153,10 +168,14 @@ impl Order {
         };
 
         return_val
+
     }
 
     /// Get the most recent list of positions from the database
-    pub async fn get_unfilled_orders_from_db(pool: &PgPool) -> Result<Vec<Order>, sqlx::Error> {
+    ///
+    /// TODO: make these simple inserts non-blocking and non-async
+    pub async fn local(pool:&PgPool) -> Result<Vec<Order>, sqlx::Error> {
+
         // Assume the latest batch was inserted at the same time; get the most recent timestamp, get the most recent matching positions
         // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
         let result_vec = sqlx::query_as!(
@@ -195,167 +214,65 @@ impl Order {
                     , hwm
                 from alpaca_order
                 where filled_at is null
-                order by updated_at desc
+                order by symbol asc
             "#
-        )
-        .fetch_all(pool)
-        .await;
+        ).fetch_all(pool).await;
 
         result_vec
+
     }
 
     /// Save a single order to the database
-    pub async fn save_to_db(&self, pool: &sqlx::PgPool) {
-        /*
-
-            [{"id":"2412874c-45a4-4e47-b0eb-98c00c1f05eb","client_order_id":"b6f91215-4e78-400d-b2ac-1bb546f86237","created_at":"2023-03-17T06:02:42.552044Z","updated_at":"2023-03-17T06:02:42.552044Z","submitted_at":"2023-03-17T06:02:42.551444Z","filled_at":null,"expired_at":null,"canceled_at":null,"failed_at":null,"replaced_at":null,"replaced_by":null,"replaces":null,"asset_id":"8ccae427-5dd0-45b3-b5fe-7ba5e422c766","symbol":"TSLA","asset_class":"us_equity","notional":null,"qty":"1","filled_qty":"0","filled_avg_price":null,"order_class":"","order_type":"market","type":"market","side":"buy","time_in_force":"day","limit_price":null,"stop_price":null,"status":"accepted","extended_hours":false,"legs":null,"trail_percent":null,"trail_price":null,"hwm":null,"subtag":null,"source":null}]
-
-        */
-
-        let result = sqlx::query!(
-            r#"insert into alpaca_order(
-                id,
-                client_order_id,
-                created_at,
-                updated_at,
-                submitted_at,
-                filled_at,
-
-                -- expired_at,
-                -- canceled_at,
-                -- failed_at,
-                -- replaced_at,
-                -- replaced_by,
-                -- replaces,
-                -- asset_id,
-
-                symbol,
-                -- asset_class,
-                -- notional,
-                qty,
-                filled_qty,
-                filled_avg_price,
-                -- order_class,
-                order_type_v2,
-                side,
-                time_in_force,
-                limit_price,
-                stop_price,
-                status
-                -- extended_hours,
-                -- trail_percent,
-                -- trail_price,
-                -- hwm
-                )
-            values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, lower($11), lower($12), lower($13), $14, $15, $16)
-
-            "#,
-            self.id, self.client_order_id, self.created_at, self.updated_at, self.submitted_at,
-            self.filled_at, // $7
-            self.symbol,
-            self.qty, self.filled_qty, self.filled_avg_price,
-            self.order_type_v2.to_string(), // $11
-            self.side.to_string(),          // $12
-            self.time_in_force.to_string(), // $13
-            self.limit_price,
-            self.stop_price,
-            self.status
-        ).execute(pool).await;
-        tracing::debug!("[save_to_db] result: {:?}", result);
+    pub fn save(&self, tx_db:Sender<DbMsg>) {
+        let _ = tx_db.send(DbMsg::OrderSave{ order:self.clone() });
     }
 
-    pub async fn delete_all_db(pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
-        sqlx::query!(r#"delete from alpaca_order"#)
-            .execute(pool)
-            .await
+    pub async fn clear(pool: &PgPool)->Result<PgQueryResult,sqlx::Error> {
+        sqlx::query!(r#"delete from alpaca_order"#).execute(pool).await
+    }
+
+    pub async fn exists(symbol:&str, trade_side:TradeSide, pool:&PgPool) -> Result<u64, Error> {
+        match sqlx::query_as!(OrderCount,
+            r#"
+                select count(*) as "order_count!:i64"
+                from alpaca_order where upper(symbol)=upper($1) and side=$2
+            "#,
+            symbol,
+            &trade_side.to_string()
+        ).fetch_one(pool).await {
+            Ok(oc) => {
+                // return an unsigned int regardless of what the designers of Postgres think is best
+                if oc.order_count <= 0 {
+                    Ok(0)
+                } else {
+                    Ok(oc.order_count as u64)
+                }
+
+            },
+            Err(e) => Err(e),
+        }
     }
 }
 
 impl fmt::Display for Order {
+
     /// enable to_string() for Order
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         //fmt::Debug::fmt(self, f)
-        match self.limit_price.as_ref() {
+        match self.limit_price.as_ref(){
             Some(limit_p) => {
-                write!(
-                    f,
-                    "{}\t{}\t{}\t{}\t{}\t{:?}\t{}\t",
-                    self.symbol,
-                    self.side,
-                    self.qty,
-                    self.order_type_v2,
-                    limit_p,
-                    self.filled_at,
-                    self.id
-                )
-            }
-            None => {
-                write!(
-                    f,
-                    "{}\t{}\t{}\t{}\t{}\t{:?}\t{}\t",
-                    self.symbol,
-                    self.side,
-                    self.qty,
-                    self.order_type_v2,
-                    0.0,
-                    self.filled_at,
-                    self.id
-                )
+                write!(f, "{}\t{}\t{}\t{}\t{}\t{:?}\t{}\t", self.symbol, self.side, self.qty, self.order_type_v2, limit_p, self.filled_at, self.id)
+            },
+            None=>{
+                write!(f, "{}\t{}\t{}\t{}\t{}\t{:?}\t{}\t", self.symbol, self.side, self.qty, self.order_type_v2, 0.0, self.filled_at, self.id)
             }
         }
     }
 }
 
 
-#[cfg(test)]
-mod tests{
-    use crate::alpaca_order::{Order};
-
-    #[test]
-    /// confirm parsing from json to struct of inbound (over api and websocket) Orders works
-    fn parse_order(){
-        println!("test_order: {}", TEST_ORDER);
-        let order_result = serde_json::from_str::<Order>(TEST_ORDER);
-        println!("order_result: {:?}", &order_result);
-        assert!(order_result.is_ok(), "order result was not okay");
-    }
-
-    const TEST_ORDER:&str = r#"
-        {
-           "id": "559320e3-acf7-4952-ac95-bff7910c6a6a",
-           "client_order_id": "559320e3-acf7-4952-ac95-bff7910c6a6a",
-           "created_at": "2023-01-01T01:10:10Z",
-           "updated_at": "2023-01-01T01:10:10Z",
-           "submitted_at": "2023-01-01T01:10:10Z",
-           "filled_at": "2023-01-01T01:10:10Z",
-           "expired_at": "2023-01-01T01:10:10Z",
-           "canceled_at": "2023-01-01T01:10:10Z",
-           "failed_at": "2023-01-01T01:10:10Z",
-           "replaced_at": "2023-01-01T01:10:10Z",
-           "replaced_by": "2023-01-01T01:10:10Z",
-           "replaces": null,
-           "asset_id": "904837e3-3b76-47ec-b432-046db621571b",
-           "symbol": "AAPL",
-           "asset_class": "us_equity",
-           "qty": "99",
-           "filled_qty": "98",
-           "filled_avg_price": "499.99",
-           "order_class": "unknown",
-           "type": "market",
-           "side": "buy",
-           "time_in_force": "day",
-           "limit_price": "599.99",
-           "stop_price": "600.00",
-           "status": "accepted",
-           "extended_hours": false,
-           "legs": null,
-           "trail_percent": null,
-           "trail_price": null,
-           "hwm": null
-        }
-    "#;
 
 
 
-}
+
 

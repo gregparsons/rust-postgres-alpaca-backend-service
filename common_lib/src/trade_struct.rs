@@ -5,16 +5,17 @@ use bigdecimal::BigDecimal;
 use serde::{Deserialize, Serialize};
 use strum::Display;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct JsonTrade {
     pub(crate) symbol: String,
     pub(crate) side: TradeSide,
     pub(crate) time_in_force: TimeInForce,
-    pub(crate) qty: usize,
+    pub(crate) qty: BigDecimal,
     #[serde(rename = "type")]
     pub(crate) order_type: OrderType,
     pub(crate) limit_price: Option<BigDecimal>,
     pub(crate) extended_hours: Option<bool>,
+    pub client_order_id: String,
 }
 
 /*

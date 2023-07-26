@@ -24,3 +24,4 @@ pub mod sell_position;
 pub mod order_log_entry;
 pub mod diff_calc;
 pub mod trade_data;
+pub mod alpaca_api;
