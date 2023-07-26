@@ -3,7 +3,6 @@
 //! start() spawns a long-running thread to maintain an open connection to a database pool
 //!
 
-use std::sync::mpsc::Sender;
 // common imports
 use bigdecimal::BigDecimal;
 use sqlx::postgres::PgQueryResult;
