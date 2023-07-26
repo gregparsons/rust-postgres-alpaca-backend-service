@@ -92,8 +92,14 @@ impl DiffCalc{
         let (tx, resp_rx) = crossbeam_channel::unbounded();
         tx_db.send(DbMsg::DiffCalcGet{sender:tx}).unwrap();
         match resp_rx.recv(){
-            Ok(result)=>Ok(result),
-            Err(_e)=>Err(TradeWebError::ChannelError),
+            Ok(result)=>{
+                tracing::debug!("[get] result: {:?}", &result);
+                Ok(result)
+            },
+            Err(_e)=>{
+                tracing::error!("[get] recv error: {:?}", &_e);
+                Err(TradeWebError::ChannelError)
+            },
         }
     }
 }
