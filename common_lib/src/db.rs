@@ -1180,7 +1180,7 @@ pub async fn transaction_start_buy(symbol:&str, pool:PgPool)->BuyResult{
 
 
 /// Get the grid provided by v_alpaca_diff
-pub(crate) async fn diffcalc_get(pool:PgPool)->Result<Vec<DiffCalc>, PollerError>{
+pub  async fn diffcalc_get(pool:PgPool)->Result<Vec<DiffCalc>, PollerError>{
 
     /*
 

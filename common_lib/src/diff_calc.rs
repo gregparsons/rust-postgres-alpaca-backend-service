@@ -39,7 +39,7 @@ impl DiffCalc{
 
     /// Compare two containing rows of stocks and associated snapshot data. Compare two snapshots for each
     /// given stock to see if a cross up/down has occurred for that stock for that pair of lines.
-    pub(crate) fn compare_snapshots(
+    pub fn compare_snapshots(
         snapshot_0: &Result<Vec<DiffCalc>,PollerError>,
         snapshot_1: &Result<Vec<DiffCalc>,PollerError>
     ) -> Result<Vec<(String, CrossStatus)>, PollerError>{
@@ -88,7 +88,7 @@ impl DiffCalc{
     }
 
     /// Get the grid provided by v_alpaca_diff
-    pub(crate) fn get(tx_db:crossbeam_channel::Sender<DbMsg>)->Result<Result<Vec<DiffCalc>, PollerError>, TradeWebError> {
+    pub fn get(tx_db:crossbeam_channel::Sender<DbMsg>)->Result<Result<Vec<DiffCalc>, PollerError>, TradeWebError> {
         let (tx, resp_rx) = crossbeam_channel::unbounded();
         tx_db.send(DbMsg::DiffCalcGet{sender:tx}).unwrap();
         match resp_rx.recv(){

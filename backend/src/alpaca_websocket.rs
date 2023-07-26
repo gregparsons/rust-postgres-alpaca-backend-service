@@ -36,7 +36,7 @@ impl AlpacaWebsocket {
     //     AlpacaWebsocket::ws_connect(tx_db, stream_type, symbols, &settings);
     // }
 
-    pub(crate) fn run(tx_db: Sender<DbMsg>, stream_type: &WebsocketMessageFormat, symbols: Vec<String>, settings: Settings) {
+    pub  fn run(tx_db: Sender<DbMsg>, stream_type: &WebsocketMessageFormat, symbols: Vec<String>, settings: Settings) {
 
         let settings = &settings;
 

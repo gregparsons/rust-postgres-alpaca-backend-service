@@ -31,7 +31,7 @@ const ENABLE_REST_ACCOUNT: bool = true;
 
 
 
-pub(crate) struct AlpacaRest{}
+pub  struct AlpacaRest{}
 
 impl AlpacaRest {
 

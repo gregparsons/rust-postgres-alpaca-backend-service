@@ -7,14 +7,14 @@ use strum::Display;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct JsonTrade {
-    pub(crate) symbol: String,
-    pub(crate) side: TradeSide,
-    pub(crate) time_in_force: TimeInForce,
-    pub(crate) qty: BigDecimal,
+    pub  symbol: String,
+    pub  side: TradeSide,
+    pub  time_in_force: TimeInForce,
+    pub  qty: BigDecimal,
     #[serde(rename = "type")]
-    pub(crate) order_type: OrderType,
-    pub(crate) limit_price: Option<BigDecimal>,
-    pub(crate) extended_hours: Option<bool>,
+    pub  order_type: OrderType,
+    pub  limit_price: Option<BigDecimal>,
+    pub  extended_hours: Option<bool>,
     pub client_order_id: String,
 }
 

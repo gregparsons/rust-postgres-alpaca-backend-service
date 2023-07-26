@@ -9,7 +9,7 @@ use crate::error::TradeWebError;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct QrySymbol {
-    pub(crate) symbol: String,
+    pub  symbol: String,
 }
 
 pub struct SymbolList {}

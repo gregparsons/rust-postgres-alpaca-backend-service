@@ -94,7 +94,7 @@ pub struct TempPosition {
 }
 
 impl Position {
-    pub(crate) fn from_temp(dt_updated_now: DateTime<Utc>, t: TempPosition) -> Position {
+    pub  fn from_temp(dt_updated_now: DateTime<Utc>, t: TempPosition) -> Position {
         Position {
             // TODO: alpaca doesn't provide a timestamp of when the position started; it needs to be gleaned
             // from the Activity API; but it'd be useful to be able to know how old a position is
