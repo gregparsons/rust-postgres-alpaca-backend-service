@@ -19,13 +19,16 @@ pub struct Symbol {
 impl Symbol {
     /// get a stock symbol
     pub fn load_one(symbol:String, tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<Symbol, TradeWebError>{
-
+        tracing::debug!("[load_one] symbol: {}", &symbol);
         let (resp_tx, resp_rx) = crossbeam_channel::unbounded();
         let msg = DbMsg::SymbolLoadOne{ symbol, sender_tx:resp_tx };
         tx_db.send(msg).unwrap();
         match resp_rx.recv() {
             Ok(symbol)=>Ok(symbol),
-            Err(_e)=>Err(TradeWebError::ChannelError),
+            Err(_e)=>{
+                tracing::debug!("[load_one] error: {:?}", &_e);
+                Err(TradeWebError::ChannelError)
+            },
         }
     }
 

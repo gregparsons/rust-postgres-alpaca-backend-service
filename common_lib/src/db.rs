@@ -279,6 +279,7 @@ async fn process_message(msg:DbMsg, pool: PgPool){
         }
 
 
+
         DbMsg::TransactionInsertPosition{ position }=>{
             let _ = transaction_insert_position(&position, &pool).await;
         },
@@ -306,6 +307,15 @@ async fn process_message(msg:DbMsg, pool: PgPool){
             if let Ok(symbols) = result {
                 let _ = sender_tx.send(symbols);
             }
+        },
+
+        DbMsg::SymbolLoadOne{symbol, sender_tx }=>{
+
+            if let Ok(symbol) = symbol_load_one(symbol.as_str(), pool).await{
+                let _ = sender_tx.send(symbol);
+            }
+
+
         },
 
 
@@ -1195,7 +1205,7 @@ async fn diffcalc_get(pool:PgPool)->Result<Vec<DiffCalc>, PollerError>{
     }
 }
 
-pub async fn symbol_load_one(symbol: &str, pool: &PgPool) -> Result<Symbol, TradeWebError> {
+pub async fn symbol_load_one(symbol: &str, pool: PgPool) -> Result<Symbol, TradeWebError> {
     match sqlx::query_as!(Symbol,
         r#"
             select
@@ -1205,7 +1215,7 @@ pub async fn symbol_load_one(symbol: &str, pool: &PgPool) -> Result<Symbol, Trad
             from t_symbol where upper(symbol)=upper($1)
         "#,
         symbol
-    ).fetch_one(pool).await {
+    ).fetch_one(&pool).await {
         Ok(symbol_list) => {
             // tracing::debug!("[get_symbols] symbol_list: {:?}", &symbol_list);
             // let s = symbol_list.iter().map(|x| { x.symbol.clone() }).collect();
