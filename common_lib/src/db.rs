@@ -1272,8 +1272,8 @@ async fn rest_post_order(json_trade: &JsonTrade, settings: &Settings) -> Result<
 
                     // ("{\"available\":\"7\",\"code\":40310000,\"existing_qty\":\"14\",\"held_for_orders\":\"7\",\"message\":\"insufficient qty available for order (requested: 14, available: 7)\",\"related_orders\":[\"2da05e7c-7d91-4a06-9275-b7bb96f6d45c\"],\"symbol\":\"WBD\"}")
 
-                    tracing::debug!("[perform_trade:403] response code: {:?} from the orders API", reqwest::StatusCode::FORBIDDEN);
-                    tracing::debug!("[perform_trade:403] response: {:?} ", &resp);
+                    tracing::error!("[perform_trade:403] response code: {:?} from the orders API", reqwest::StatusCode::FORBIDDEN);
+                    tracing::error!("[perform_trade:403] response: {:?} ", &resp);
 
                     let json = resp.text().await;
                     tracing::debug!("[perform_trade:403] json body: {:?}", &json);
@@ -1284,8 +1284,8 @@ async fn rest_post_order(json_trade: &JsonTrade, settings: &Settings) -> Result<
                 },
                 reqwest::StatusCode::UNPROCESSABLE_ENTITY => {
                     // 422
-                    tracing::debug!("[perform_trade] response code: {:?} from the orders API", reqwest::StatusCode::UNPROCESSABLE_ENTITY);
-                    tracing::debug!("[perform_trade] response: {:?} ", &resp);
+                    tracing::error!("[perform_trade] response code: {:?} from the orders API", reqwest::StatusCode::UNPROCESSABLE_ENTITY);
+                    tracing::error!("[perform_trade] response: {:?} ", &resp);
                     // tracing::debug!("[perform_trade] response: {:?} ", resp.text().await.unwrap());
 
                     let json = resp.text().await;
@@ -1294,7 +1294,7 @@ async fn rest_post_order(json_trade: &JsonTrade, settings: &Settings) -> Result<
                     Err(TradeWebError::Alpaca422)
                 },
                 _ => {
-                    tracing::debug!("[perform_trade] response code: {:?} from the orders API", &resp.status());
+                    tracing::error!("[perform_trade] response code: {:?} from the orders API", &resp.status());
                     // reqwest::Error
                     // resp.json().await
                     Err(TradeWebError::ReqwestError)

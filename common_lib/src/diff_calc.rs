@@ -57,6 +57,7 @@ impl DiffCalc{
         let v1 = snapshot_1 .as_ref().unwrap();
         if v0.len() != v1.len(){
             // These vectors should be sorted and should have the same number of entries
+            tracing::debug!("[compare_snapshots] different size snapshots, returning");
             return Err(PollerError::DifferentSizeSnapshots)
         }
 
