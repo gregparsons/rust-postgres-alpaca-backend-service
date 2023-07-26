@@ -43,55 +43,20 @@ impl Settings {
     /// TODO: encrypt alpaca credentials in database and decrypt here using .env
     ///
     pub fn load_with_secret(tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<Settings, crossbeam_channel::RecvError> {
-
         tracing::debug!("[load_with_secret]");
-
         // response channel
-        let (resp_tx, resp_rx) = crossbeam_channel::unbounded();
-
-        tx_db.send(DbMsg::GetSettingsWithSecret{ resp_tx }).unwrap();
-
+        let (sender_tx, resp_rx) = crossbeam_channel::unbounded();
+        tx_db.send(DbMsg::SettingsWithSecret { sender_tx }).unwrap();
         let settings_result = resp_rx.recv();
-
-        // don't put secrets in the log
-        // tracing::debug!("[load_with_secret] settings_result: {:?}", &settings_result);
-
         settings_result
     }
 
-    /// return blank secret for front-end type uses
-    pub async fn load_no_secret(pool: &PgPool) -> Result<Settings, sqlx::Error> {
-        let settings_result = sqlx::query_as!(
-            Settings,
-            r#"
-                SELECT
-                    dtg as "dtg!",
-                    alpaca_paper_id as "alpaca_paper_id!:String",
-                    '' as "alpaca_paper_secret!:String",
-                    alpaca_live_id as "alpaca_live_id!:String",
-                    '' as "alpaca_live_secret!:String",
-                    trade_size as "trade_size!",
-                    trade_enable_buy as "trade_enable_buy!",
-                    trade_ema_small_size as "trade_ema_small_size!",
-                    trade_ema_large_size as "trade_ema_large_size!",
-                    trade_sell_high_per_cent_multiplier as "trade_sell_high_per_cent_multiplier!",
-                    trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
-                    ,finnhub_key as "finnhub_key!:String"
-                    ,coalesce(account_start_value,0.0) as "account_start_value!"
-                    ,coalesce(max_position_age_minute,0.0) as "max_position_age_minute!"
-                    ,coalesce(upgrade_min_profit,0.0) as "upgrade_min_profit!"
-                    ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as "upgrade_sell_elapsed_minutes_min!"
-                    ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as "upgrade_posn_max_elapsed_minutes!"
-                    ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as "upgrade_posn_loss_allowed_dollars!"
-                    ,coalesce(acct_max_position_market_value,10.0) as "acct_max_position_market_value!"
-                    ,coalesce(acct_min_cash_dollars,10.0) as "acct_min_cash_dollars!"
-                FROM t_settings
-                ORDER BY t_settings.dtg DESC
-                LIMIT 1
-            "#
-        )
-        .fetch_one(pool)
-        .await;
+    pub fn load_no_secret(tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<Settings, crossbeam_channel::RecvError> {
+        tracing::debug!("[load_with_secret]");
+        // response channel
+        let (sender_tx, resp_rx) = crossbeam_channel::unbounded();
+        tx_db.send(DbMsg::SettingsNoSecret { sender_tx }).unwrap();
+        let settings_result = resp_rx.recv();
         settings_result
     }
 

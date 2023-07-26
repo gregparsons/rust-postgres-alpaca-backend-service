@@ -174,52 +174,13 @@ impl Order {
     /// Get the most recent list of positions from the database
     ///
     /// TODO: make these simple inserts non-blocking and non-async
-    pub async fn local(pool:&PgPool) -> Result<Vec<Order>, sqlx::Error> {
-
-        // Assume the latest batch was inserted at the same time; get the most recent timestamp, get the most recent matching positions
-        // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
-        let result_vec = sqlx::query_as!(
-            Order,
-            r#"
-                select
-                    id as "id!"
-                    , client_order_id as "client_order_id!"
-                    , created_at as "created_at!"
-                    , updated_at as "updated_at!"
-                    , submitted_at as "submitted_at!"
-                    , filled_at
-                    , expired_at
-                    , canceled_at
-                    , failed_at
-                    , replaced_at
-                    , replaced_by
-                    , replaces
-                    , asset_id as "asset_id!:Option<String>"
-                    , symbol as "symbol!:String"
-                    , asset_class as "asset_class!:Option<String>"
-                    , notional as "notional!:Option<BigDecimal>"
-                    , coalesce(qty, 0.0) as "qty!:BigDecimal"
-                    , filled_qty as "filled_qty!:Option<BigDecimal>"
-                    , filled_avg_price as "filled_avg_price!:Option<BigDecimal>"
-                    , order_class as "order_class!:Option<String>"
-                    , order_type_v2 as "order_type_v2!:OrderType"
-                    , side as "side!:TradeSide"
-                    , time_in_force as "time_in_force!:TimeInForce"
-                    , limit_price as "limit_price!:Option<BigDecimal>"
-                    , stop_price as "stop_price!:Option<BigDecimal>"
-                    , status as "status!"
-                    , coalesce(extended_hours, false) as "extended_hours!"
-                    , trail_percent
-                    , trail_price
-                    , hwm
-                from alpaca_order
-                where filled_at is null
-                order by symbol asc
-            "#
-        ).fetch_all(pool).await;
-
-        result_vec
-
+    pub fn local(tx_db:Sender<DbMsg>) -> Result<Vec<Order>, TradeWebError> {
+        let (tx, rx) = crossbeam_channel::unbounded();
+        tx_db.send(DbMsg::OrderLocal { sender_tx: tx }).unwrap();
+        match rx.recv(){
+            Ok(result)=>Ok(result),
+            Err(_e) => Err(TradeWebError::ChannelError),
+        }
     }
 
     /// Save a single order to the database

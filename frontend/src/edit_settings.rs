@@ -4,6 +4,7 @@
 
 use actix_session::Session;
 use actix_web::{web, HttpResponse};
+use crossbeam_channel::Sender;
 use common_lib::common_structs::SESSION_USERNAME;
 use common_lib::http::redirect_home;
 use common_lib::settings::Settings;
@@ -11,25 +12,22 @@ use common_lib::trade_setting_profile::TradeSettingsProfile;
 use handlebars::Handlebars;
 use serde_json::json;
 use sqlx::PgPool;
+use common_lib::db::DbMsg;
 
 /// GET /settings
-pub async fn get_settings(
-    pool: web::Data<PgPool>,
-    hb: web::Data<Handlebars<'_>>,
-    session: Session,
-) -> HttpResponse {
-    get_settings_with_message(pool, hb, session, "").await
+pub async fn get_settings(tx_db: web::Data<Sender<DbMsg>>, hb: web::Data<Handlebars<'_>>, session: Session) -> HttpResponse {
+    get_settings_with_message(tx_db, hb, session, "").await
 }
 
-async fn get_settings_with_message(
-    pool: web::Data<PgPool>,
-    hb: web::Data<Handlebars<'_>>,
-    session: Session,
-    message: &str,
-) -> HttpResponse {
+async fn get_settings_with_message(tx_db: web::Data<Sender<DbMsg>>, hb: web::Data<Handlebars<'_>>, session: Session, message: &str) -> HttpResponse {
+
     // require login
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
-        let setting_result = Settings::load_no_secret(&pool).await;
+
+        let tx_db = tx_db.into_inner().as_ref().clone();
+        let tx_db1 = tx_db.clone();
+
+        let setting_result = Settings::load_no_secret(tx_db1);
         match setting_result {
             Ok(settings) => {
                 let data = json!({
@@ -62,12 +60,7 @@ async fn get_settings_with_message(
 /// select * from fn_set_trade_settings('close2');
 ///
 /// GET /settings/button/{name}
-pub async fn get_settings_button(
-    path: web::Path<TradeSettingsProfile>,
-    pool: web::Data<PgPool>,
-    hb: web::Data<Handlebars<'_>>,
-    session: Session,
-) -> HttpResponse {
+pub async fn get_settings_button(path: web::Path<TradeSettingsProfile>, pool: web::Data<PgPool>, hb: web::Data<Handlebars<'_>>, session: Session) -> HttpResponse {
     // tracing::debug!("[get_settings_button] path: {}", &path);
 
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {

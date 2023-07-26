@@ -37,7 +37,7 @@ use crate::alpaca_position::{Position, TempPosition};
 use crate::error::{PollerError, TradeWebError};
 use crate::finnhub::{FinnhubPing, FinnhubTrade};
 use crate::symbol_list::QrySymbol;
-use crate::trade_struct::{JsonTrade, TradeSide};
+use crate::trade_struct::{JsonTrade, OrderType, TimeInForce, TradeSide};
 use crate::alpaca_transaction_status::*;
 use crate::diff_calc::DiffCalc;
 use crate::order_log_entry::OrderLogEntry;
@@ -57,7 +57,10 @@ pub enum DbMsg {
     PingAlpaca(Ping),
     RefreshRating,
     OrderLogEvent(AlpacaOrderLogEvent),
-    GetSettingsWithSecret{ resp_tx: crossbeam_channel::Sender<Settings> },
+
+    SettingsWithSecret { sender_tx: Sender<Settings> },
+    SettingsNoSecret { sender_tx: Sender<Settings> },
+
     TransactionDeleteOne{ symbol:String },
     TransactionDeleteAll,
     AccountGet{ resp_tx: Sender<AccountWithDate> },
@@ -79,6 +82,7 @@ pub enum DbMsg {
     SymbolLoadOne{symbol:String, sender_tx: Sender<Symbol> },
 
     OrderSave{ order:Order },
+    OrderLocal{ sender_tx: Sender<Vec<Order>> },
 
     PositionGetRemote{ settings:Settings, resp_tx: Sender<Vec<Position>> },
     PositionDeleteAll,
@@ -199,19 +203,18 @@ async fn process_message(msg:DbMsg, pool: PgPool){
             let _ = order_save(order, pool).await;
         }
 
-        DbMsg::GetSettingsWithSecret{resp_tx}=>{
-            tracing::debug!("[db] received DbMsg::GetSettingsWithSecret");
+        DbMsg::SettingsWithSecret {sender_tx}=>{
             match settings_load_with_secret(pool).await {
-                Ok(settings)=>{
-                    tracing::debug!("[db] got settings; sending them back...");
-                    let send_result = resp_tx.send(settings);
-                    tracing::debug!("[db] send_result: {:?}", &send_result);
+                Ok(settings) => { let _ = sender_tx.send(settings); },
+                Err(_e)=> tracing::debug!("[db] received DbMsg::GetSettingsWithSecret error: {:?}", &_e),
+            }
+        },
 
-                },
-                Err(_e)=>{
-                    tracing::debug!("[db] received DbMsg::GetSettingsWithSecret error: {:?}", &_e);
-
-                }
+        DbMsg::SettingsNoSecret {sender_tx}=>{
+            tracing::debug!("[db] received DbMsg::SettingsNoSecret");
+            match settings_load_with_secret(pool).await {
+                Ok(settings) => { let _ = sender_tx.send(settings); },
+                Err(_e)=> tracing::debug!("[db] received DbMsg::GetSettingsWithSecret error: {:?}", &_e),
             }
         },
 
@@ -331,24 +334,23 @@ async fn process_message(msg:DbMsg, pool: PgPool){
                 Ok(_)=> tracing::debug!("[db_thread, DbMsg::WsTrade] latest alpaca trade inserted"),
                 Err(e) => tracing::debug!("[db_thread, DbMsg::WsTrade] latest alpaca trade not inserted: {:?}", &e),
             }
-        }
+        },
+
+        DbMsg::OrderLocal{ sender_tx }=>{
+
+            if let Ok(result) = order_local(pool).await{
+                let _ = sender_tx.send(result);
+            }
+
+        },
 
         DbMsg::OrderLogEvent(event)=>{
             tracing::debug!("[db] received DbMsg::OrderLogEvent: {:?}", &event);
-
             let _ = insert_order_log_entry(&event, &pool).await;
-
-            // if this is a Fill event on the Sell side, decrement the shares filled from the alpaca_transaction_status entry
-
-            // tracing::info!("[DbMsg::OrderLogEvent][Fill] log_evt: {:?}", &log_evt);
-
             if event.event=="fill" && event.order.side== TradeSide::Sell {
-
                 tracing::info!("[DbMsg::OrderLogEvent][Fill][Sell] {}:{:?}", &event.order.symbol, &event.order.filled_qty);
                 if let Some(qty) = event.order.filled_qty{
-
                     let _ = AlpacaTransaction::decrement(&event.order.symbol.clone(), qty, &pool).await;
-                    // if the remaining shares are zero or less delete the entry (TODO: make this one sql statement)
                     let _ = AlpacaTransaction::clean(&pool).await;
                 }
             }
@@ -357,7 +359,7 @@ async fn process_message(msg:DbMsg, pool: PgPool){
         DbMsg::RefreshRating => {
             tracing::debug!("[db] received DbMsg::RefreshRating");
             refresh_rating(&pool).await;
-        }
+        },
 
         DbMsg::TradeFinnhub(finnhub_trade) => {
 
@@ -382,7 +384,7 @@ async fn process_message(msg:DbMsg, pool: PgPool){
 
         DbMsg::PingAlpaca(ping) => {
             let _ = insert_alpaca_ping(&ping, &pool).await;
-        }
+        },
 
         _ => { }
     }
@@ -547,43 +549,7 @@ async fn insert_alpaca_ping(ping: &Ping, pool: &PgPool, ) -> Result<PgQueryResul
     ).execute(pool).await
 }
 
-async fn settings_load_with_secret(pool:PgPool) -> Result<Settings, Error> {
 
-    let settings_result = sqlx::query_as!(
-            Settings,
-            r#"
-                SELECT
-                    dtg as "dtg!",
-                    alpaca_paper_id as "alpaca_paper_id!:String",
-                    alpaca_paper_secret as "alpaca_paper_secret!:String",
-                    alpaca_live_id as "alpaca_live_id!:String",
-                    alpaca_live_secret as "alpaca_live_secret!:String",
-                    trade_size as "trade_size!",
-                    trade_enable_buy as "trade_enable_buy!",
-                    trade_ema_small_size as "trade_ema_small_size!",
-                    trade_ema_large_size as "trade_ema_large_size!",
-                    trade_sell_high_per_cent_multiplier as "trade_sell_high_per_cent_multiplier!",
-                    trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
-                    ,finnhub_key as "finnhub_key!:String"
-                    ,coalesce(account_start_value,0.0) as "account_start_value!"
-                    ,coalesce(max_position_age_minute,0.0) as "max_position_age_minute!"
-                    ,coalesce(upgrade_min_profit,0.0) as "upgrade_min_profit!"
-                    ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as "upgrade_sell_elapsed_minutes_min!"
-                    ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as "upgrade_posn_max_elapsed_minutes!"
-                    ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as "upgrade_posn_loss_allowed_dollars!"
-                    ,coalesce(acct_max_position_market_value,10.0) as "acct_max_position_market_value!"
-                    ,coalesce(acct_min_cash_dollars,10.0) as "acct_min_cash_dollars!"
-                FROM t_settings
-                ORDER BY t_settings.dtg DESC
-                LIMIT 1
-            "#
-        )
-        .fetch_one(&pool)
-        .await;
-
-    settings_result
-
-}
 
 async fn transaction_delete_all(pool:&PgPool) -> Result<(), TradeWebError> {
     match sqlx::query!(
@@ -1328,4 +1294,133 @@ async fn rest_post_order(json_trade: &JsonTrade, settings: &Settings) -> Result<
             Err(TradeWebError::ReqwestError)
         }
     }
+}
+
+/// Get the most recent list of positions from the database
+///
+/// TODO: make these simple inserts non-blocking and non-async
+pub async fn order_local(pool:PgPool) -> Result<Vec<Order>, TradeWebError> {
+
+    // Assume the latest batch was inserted at the same time; get the most recent timestamp, get the most recent matching positions
+    // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
+    let result_vec = sqlx::query_as!(
+            Order,
+            r#"
+                select
+                    id as "id!"
+                    , client_order_id as "client_order_id!"
+                    , created_at as "created_at!"
+                    , updated_at as "updated_at!"
+                    , submitted_at as "submitted_at!"
+                    , filled_at
+                    , expired_at
+                    , canceled_at
+                    , failed_at
+                    , replaced_at
+                    , replaced_by
+                    , replaces
+                    , asset_id as "asset_id!:Option<String>"
+                    , symbol as "symbol!:String"
+                    , asset_class as "asset_class!:Option<String>"
+                    , notional as "notional!:Option<BigDecimal>"
+                    , coalesce(qty, 0.0) as "qty!:BigDecimal"
+                    , filled_qty as "filled_qty!:Option<BigDecimal>"
+                    , filled_avg_price as "filled_avg_price!:Option<BigDecimal>"
+                    , order_class as "order_class!:Option<String>"
+                    , order_type_v2 as "order_type_v2!:OrderType"
+                    , side as "side!:TradeSide"
+                    , time_in_force as "time_in_force!:TimeInForce"
+                    , limit_price as "limit_price!:Option<BigDecimal>"
+                    , stop_price as "stop_price!:Option<BigDecimal>"
+                    , status as "status!"
+                    , coalesce(extended_hours, false) as "extended_hours!"
+                    , trail_percent
+                    , trail_price
+                    , hwm
+                from alpaca_order
+                where filled_at is null
+                order by symbol asc
+            "#
+        ).fetch_all(&pool).await;
+
+    match result_vec {
+        Ok(v) => Ok(v),
+        Err(_e) => Err(TradeWebError::SqlxError),
+    }
+
+}
+
+/// return blank secret for front-end type uses
+pub async fn load_no_secret(pool: PgPool) -> Result<Settings, TradeWebError> {
+    let settings_result = sqlx::query_as!(Settings,
+        r#"
+            SELECT
+                dtg as "dtg!",
+                alpaca_paper_id as "alpaca_paper_id!:String",
+                '' as "alpaca_paper_secret!:String",
+                alpaca_live_id as "alpaca_live_id!:String",
+                '' as "alpaca_live_secret!:String",
+                trade_size as "trade_size!",
+                trade_enable_buy as "trade_enable_buy!",
+                trade_ema_small_size as "trade_ema_small_size!",
+                trade_ema_large_size as "trade_ema_large_size!",
+                trade_sell_high_per_cent_multiplier as "trade_sell_high_per_cent_multiplier!",
+                trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
+                ,finnhub_key as "finnhub_key!:String"
+                ,coalesce(account_start_value,0.0) as "account_start_value!"
+                ,coalesce(max_position_age_minute,0.0) as "max_position_age_minute!"
+                ,coalesce(upgrade_min_profit,0.0) as "upgrade_min_profit!"
+                ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as "upgrade_sell_elapsed_minutes_min!"
+                ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as "upgrade_posn_max_elapsed_minutes!"
+                ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as "upgrade_posn_loss_allowed_dollars!"
+                ,coalesce(acct_max_position_market_value,10.0) as "acct_max_position_market_value!"
+                ,coalesce(acct_min_cash_dollars,10.0) as "acct_min_cash_dollars!"
+            FROM t_settings
+            ORDER BY t_settings.dtg DESC
+            LIMIT 1
+        "#
+    ).fetch_one(&pool).await;
+    match settings_result{
+        Ok(result)=>Ok(result),
+        Err(_e)=>Err(TradeWebError::SqlxError),
+    }
+}
+
+async fn settings_load_with_secret(pool:PgPool) -> Result<Settings, TradeWebError> {
+
+    let settings_result = sqlx::query_as!(
+        Settings,
+        r#"
+            SELECT
+                dtg as "dtg!",
+                alpaca_paper_id as "alpaca_paper_id!:String",
+                alpaca_paper_secret as "alpaca_paper_secret!:String",
+                alpaca_live_id as "alpaca_live_id!:String",
+                alpaca_live_secret as "alpaca_live_secret!:String",
+                trade_size as "trade_size!",
+                trade_enable_buy as "trade_enable_buy!",
+                trade_ema_small_size as "trade_ema_small_size!",
+                trade_ema_large_size as "trade_ema_large_size!",
+                trade_sell_high_per_cent_multiplier as "trade_sell_high_per_cent_multiplier!",
+                trade_sell_high_upper_limit_cents as "trade_sell_high_upper_limit_cents!"
+                ,finnhub_key as "finnhub_key!:String"
+                ,coalesce(account_start_value,0.0) as "account_start_value!"
+                ,coalesce(max_position_age_minute,0.0) as "max_position_age_minute!"
+                ,coalesce(upgrade_min_profit,0.0) as "upgrade_min_profit!"
+                ,coalesce(upgrade_sell_elapsed_minutes_min,60.0) as "upgrade_sell_elapsed_minutes_min!"
+                ,coalesce(upgrade_posn_max_elapsed_minutes,60.0) as "upgrade_posn_max_elapsed_minutes!"
+                ,coalesce(upgrade_posn_loss_allowed_dollars,10.0) as "upgrade_posn_loss_allowed_dollars!"
+                ,coalesce(acct_max_position_market_value,10.0) as "acct_max_position_market_value!"
+                ,coalesce(acct_min_cash_dollars,10.0) as "acct_min_cash_dollars!"
+            FROM t_settings
+            ORDER BY t_settings.dtg DESC
+            LIMIT 1
+        "#
+    ).fetch_one(&pool).await;
+
+    match settings_result{
+        Ok(result)=>Ok(result),
+        Err(_e)=>Err(TradeWebError::SqlxError),
+    }
+
 }

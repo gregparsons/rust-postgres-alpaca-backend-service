@@ -19,7 +19,6 @@ pub async fn get_account(hb: web::Data<Handlebars<'_>>, tx_db: web::Data<crossbe
 
         // tracing::debug!("[main] ping db result: {:?}", tx_db.send(DbMsg::PingDb));
 
-
         // Turn the Arc<crossbeam_channel::Sender<DbMsg>> back into the channel we need after
         // Actix turns the channel into web::Data and wraps it in an Arc
         let tx_db = tx_db.into_inner().as_ref().clone();

@@ -2,31 +2,35 @@
 
 use actix_session::Session;
 use actix_web::{web, HttpResponse};
+use crossbeam_channel::Sender;
 use common_lib::alpaca_order::Order;
 use common_lib::common_structs::SESSION_USERNAME;
 use common_lib::http::redirect_home;
 use common_lib::settings::Settings;
 use handlebars::Handlebars;
 use serde_json::json;
-use sqlx::PgPool;
+use common_lib::db::DbMsg;
 
 /// GET /order
 pub async fn get_order(
-    pool: web::Data<PgPool>,
-    hb: web::Data<Handlebars<'_>>,
-    session: Session,
-) -> HttpResponse {
+    tx_db: web::Data<Sender<DbMsg>>, hb: web::Data<Handlebars<'_>>, session: Session) -> HttpResponse {
     // require login
     tracing::debug!("[get_orders]");
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
 
         // no need to bring in passwords here
-        let setting_result = Settings::load_no_secret(&pool).await;
+
+        let tx_db = tx_db.into_inner().as_ref().clone();
+        let tx_db1 = tx_db.clone();
+
+
+        let setting_result = Settings::load_no_secret(tx_db1);
 
         match setting_result {
             Ok(settings) => {
 
-                let orders = Order::get_unfilled_orders_from_db(&pool).await;
+                let tx_db2 = tx_db.clone();
+                let orders = Order::local(tx_db2);
 
                 let (message, orders) = match orders {
                     Ok(orders) => {
