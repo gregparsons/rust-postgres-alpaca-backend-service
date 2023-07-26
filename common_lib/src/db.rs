@@ -145,7 +145,7 @@ impl DbActor {
 
                             // blocking not required for sqlx and reqwest async libraries
                             let _x = rt.spawn(async {
-                                tracing::debug!("[run] tokio spawn process_message(): {:?}", &msg);
+                                tracing::debug!("[run] tokio spawn process_message: {:?}", &msg);
                                 process_message(msg, pool).await;
                             });
 
