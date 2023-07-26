@@ -1,5 +1,7 @@
 //! common_lib/src/lib.rs
 
+pub mod trade_data;
+pub mod alpaca_api;
 pub mod account;
 pub mod alpaca_activity;
 pub mod alpaca_api_structs;
@@ -23,5 +25,3 @@ pub mod symbol;
 pub mod sell_position;
 pub mod order_log_entry;
 pub mod diff_calc;
-pub mod trade_data;
-pub mod alpaca_api;
