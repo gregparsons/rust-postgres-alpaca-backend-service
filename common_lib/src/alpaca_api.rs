@@ -93,11 +93,11 @@ impl AlpacaApi {
 
         match AlpacaApi::post_order(json_trade, settings, tx_rest) {
             Ok(order)=>{
-                tracing::debug!("[sell] sale order posted: {:?}", &order);
+                tracing::info!("[sell] sale order posted: {:?}", &order);
                 let tx_db2 = tx_db.clone();
                 let _save_result = order.save(tx_db2);
             },
-            Err(e) => tracing::debug!("[sell] sale error: {:?}", &e)
+            Err(e) => tracing::error!("[sell] sale error: {:?}", &e)
         }
 
         id

@@ -1251,14 +1251,14 @@ async fn rest_post_order(json_trade: &JsonTrade, settings: &Settings) -> Result<
         Ok(resp) => {
             match resp.status() {
                 reqwest::StatusCode::OK => {
-                    tracing::debug!("[perform_trade] response code: {:?} from the orders API", reqwest::StatusCode::OK);
+                    tracing::info!("[perform_trade] response code: {:?} from the orders API", reqwest::StatusCode::OK);
 
                     let json: Result<Order, reqwest::Error> = resp.json().await;
 
                     match json {
                         Ok(json) => Ok(json),
                         Err(e) => {
-                            tracing::debug!("[post_order] json error: {:?}", &e);
+                            tracing::error!("[post_order] json error: {:?}", &e);
                             Err(TradeWebError::JsonError)
                         }
                     }
