@@ -38,7 +38,7 @@ impl AlpacaApi {
     pub async fn sell(symbol: &str, qty_to_sell: BigDecimal, limit_price:Option<BigDecimal>,
                       settings: &Settings, tx_db:Sender<DbMsg>) -> Option<String> {
 
-        tracing::debug!("[AlpacaApi::sell] ************** SELL ************** {}, {} shares for {:?}", symbol, qty_to_sell, limit_price);
+        tracing::info!("[AlpacaApi::sell] ************** SELL ************** {}, {} shares for {:?}", symbol, qty_to_sell, limit_price);
 
         // generate a new order and save to the order log
         // not the TransactionLog (which prevents duplicates)
