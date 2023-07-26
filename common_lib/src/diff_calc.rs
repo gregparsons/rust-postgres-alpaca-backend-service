@@ -44,8 +44,11 @@ impl DiffCalc{
         snapshot_1: &Result<Vec<DiffCalc>,PollerError>
     ) -> Result<Vec<(String, CrossStatus)>, PollerError>{
 
+        tracing::debug!("[compare_snapshots]");
+
         // Do error detection first
         if (snapshot_0.is_ok() && snapshot_1.is_ok()) == false {
+            tracing::debug!("[compare_snapshots] both snapshots are not Ok, returning");
             return Err(PollerError::SnapshotsNotOkayFromDatabase)
         }
 
