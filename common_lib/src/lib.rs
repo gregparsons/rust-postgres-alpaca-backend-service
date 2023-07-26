@@ -23,3 +23,4 @@ pub mod symbol;
 mod sell_position;
 mod order_log_entry;
 mod diff_calc;
+mod trade_data;
