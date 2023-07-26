@@ -1273,10 +1273,10 @@ async fn rest_post_order(json_trade: &JsonTrade, settings: &Settings) -> Result<
                     // ("{\"available\":\"7\",\"code\":40310000,\"existing_qty\":\"14\",\"held_for_orders\":\"7\",\"message\":\"insufficient qty available for order (requested: 14, available: 7)\",\"related_orders\":[\"2da05e7c-7d91-4a06-9275-b7bb96f6d45c\"],\"symbol\":\"WBD\"}")
 
                     tracing::error!("[perform_trade:403] response code: {:?} from the orders API", reqwest::StatusCode::FORBIDDEN);
-                    tracing::error!("[perform_trade:403] response: {:?} ", &resp);
+                    tracing::info!("[perform_trade:403] response: {:?} ", &resp);
 
                     let json = resp.text().await;
-                    tracing::debug!("[perform_trade:403] json body: {:?}", &json);
+                    tracing::error!("[perform_trade:403] json body: {:?}", &json);
 
 
                     // resp.json().await
