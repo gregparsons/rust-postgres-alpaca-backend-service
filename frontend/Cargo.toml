@@ -26,17 +26,21 @@ serde_json="1.0.91"
 reqwest = { version = "0.11.14", features = ["rustls-tls-webpki-roots", "json"] }
 
 #bigdecimal = {version = "0.4.1", features = ["serde"]}
-bigdecimal = {version = "0.3.0", features = ["serde"]}
+
+actix-web = {version ="4.3.1", features=["rustls"]}
+actix-session = { version = "0.7.2", features = ["cookie-session"] }
+rustls = "0.20.8"
+rustls-pemfile = "1.0.3"
 
 chrono = { version = "0.4.23", features = ["serde"]}
 chrono-tz = "0.8.2"
 time = "0.3.20"
+# TODO: remove this:
 rust_decimal = "1.27.0"
-actix-web = "4"
+bigdecimal = {version = "0.3.0", features = ["serde"]}
 config = "0.13.3"
 handlebars = { version = "4.3.6", features = ["dir_source"] }
 uuid = { version = "0.8.2", features = ["v4"] }
 argon2 = { version = "0.4.1", features = ["std"] }
 rand = { version = "0.8.5", features=["std_rng"] }
-actix-session = { version = "0.7.2", features = ["cookie-session"] }
 once_cell = "1.17.1"
