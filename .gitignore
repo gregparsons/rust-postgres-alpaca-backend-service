@@ -9,4 +9,4 @@ configuration.yaml
 Cargo.lock
 push_frontend.sh
 push_backend.sh
-
+frontend/static/certificate
