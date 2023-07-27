@@ -78,20 +78,48 @@ impl WebServer {
         // https://github.com/rustls/rustls/blob/main/examples/src/bin/tlsserver-mio.rs
         // let certs = load_certs("/Users/gp/trade/frontend/certificate/cert.pem");
         // let privkey = load_private_key("/Users/gp/trade/frontend/certificate/key.pem");
-        let certs = load_certs("frontend/static/certificate/cert.pem");
-        let privkey = load_private_key("frontend/static/certificate/key.pem");
-        // let ocsp = load_ocsp(&args.flag_ocsp);
 
-        let config = rustls::ServerConfig::builder()
-            .with_cipher_suites(&rustls::ALL_CIPHER_SUITES.to_vec())
-            .with_safe_default_kx_groups()
-            .with_protocol_versions(&rustls::ALL_VERSIONS.to_vec())
-            .expect("inconsistent cipher-suites/versions specified")
-            // .with_client_cert_verifier(NoClientAuth::)
-            // .with_single_cert_with_ocsp(certs, privkey, ocsp)
-            .with_no_client_auth()
-            .with_single_cert(certs, privkey)
-            .expect("bad certificates/private key");
+        let config = match config_location.as_str(){
+            "docker" => {
+                let certs = load_certs("./static/certificate/cert.pem");
+                let privkey = load_private_key("./static/certificate/key.pem");
+                // let ocsp = load_ocsp(&args.flag_ocsp);
+
+                let config = rustls::ServerConfig::builder()
+                    .with_cipher_suites(&rustls::ALL_CIPHER_SUITES.to_vec())
+                    .with_safe_default_kx_groups()
+                    .with_protocol_versions(&rustls::ALL_VERSIONS.to_vec())
+                    .expect("inconsistent cipher-suites/versions specified")
+                    // .with_client_cert_verifier(NoClientAuth::)
+                    // .with_single_cert_with_ocsp(certs, privkey, ocsp)
+                    .with_no_client_auth()
+                    .with_single_cert(certs, privkey)
+                    .expect("bad certificates/private key");
+
+                config
+
+            }
+            "not_docker" | _ => {
+                let certs = load_certs("frontend/static/certificate/cert.pem");
+                let privkey = load_private_key("frontend/static/certificate/key.pem");
+                // let ocsp = load_ocsp(&args.flag_ocsp);
+
+                let config = rustls::ServerConfig::builder()
+                    .with_cipher_suites(&rustls::ALL_CIPHER_SUITES.to_vec())
+                    .with_safe_default_kx_groups()
+                    .with_protocol_versions(&rustls::ALL_VERSIONS.to_vec())
+                    .expect("inconsistent cipher-suites/versions specified")
+                    // .with_client_cert_verifier(NoClientAuth::)
+                    // .with_single_cert_with_ocsp(certs, privkey, ocsp)
+                    .with_no_client_auth()
+                    .with_single_cert(certs, privkey)
+                    .expect("bad certificates/private key");
+
+                config
+            }
+        };
+
+
 
         let server = HttpServer::new(move || {
             App::new()
