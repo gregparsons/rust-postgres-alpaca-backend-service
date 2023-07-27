@@ -2,12 +2,14 @@
 
 use std::fs;
 use std::io::{BufReader};
+use std::str::FromStr;
 use crate::configuration::get_yaml_configuration;
 use actix_session::storage::CookieSessionStore;
 use actix_session::SessionMiddleware;
 use actix_web::{web, App, HttpServer};
 use handlebars::Handlebars;
 use sqlx::PgPool;
+use common_lib::common_structs::ConfigLocation;
 use common_lib::db::DbMsg;
 use crate::account::get_account;
 use crate::activities::{get_activities, get_activity_for_symbol};
@@ -22,6 +24,8 @@ use crate::utils::*;
 
 // this corresponds to the Dockerfile "COPY static /app/frontend/static"
 // static STATIC_FILE_DIR:&'static str = "./frontend/static/templates";
+
+
 
 pub struct WebServer {}
 impl WebServer {
@@ -52,12 +56,13 @@ impl WebServer {
         // https://github.com/actix/examples/blob/master/templating/handlebars/src/main.rs
         // https://github.com/sunng87/handlebars-rust/tree/master/examples
         let mut handlebars = Handlebars::new();
-        let config_location = std::env::var("CONFIG_LOCATION").unwrap_or_else(|_| "not_docker".to_owned());
+        let config_location:ConfigLocation = ConfigLocation::from_str(&std::env::var("CONFIG_LOCATION").unwrap_or_else(|_| "not_docker".to_owned())).expect("CONFIG_LOCATION");
+
         // or CARGO_PKG_NAME
         let package_name = env!("CARGO_MANIFEST_DIR");
-        let handlebar_static_path = match config_location.as_str() {
-            "docker" => "./static/templates".to_string(),
-            "not_docker" | _ => {
+        let handlebar_static_path = match config_location {
+            ConfigLocation::Docker => "./static/templates".to_string(),
+            ConfigLocation::NotDocker => {
                 // frontend/static/templates
                 // /Users/xyz/.../trade/frontend/static/templates
                 format!("{}/static/templates", &package_name)
@@ -78,47 +83,31 @@ impl WebServer {
         // https://github.com/rustls/rustls/blob/main/examples/src/bin/tlsserver-mio.rs
         // let certs = load_certs("/Users/gp/trade/frontend/certificate/cert.pem");
         // let privkey = load_private_key("/Users/gp/trade/frontend/certificate/key.pem");
-
-        let config = match config_location.as_str(){
-            "docker" => {
+        let (certs, privkey) = match config_location{
+            ConfigLocation::Docker => {
                 let certs = load_certs("./static/certificate/cert.pem");
                 let privkey = load_private_key("./static/certificate/key.pem");
                 // let ocsp = load_ocsp(&args.flag_ocsp);
-
-                let config = rustls::ServerConfig::builder()
-                    .with_cipher_suites(&rustls::ALL_CIPHER_SUITES.to_vec())
-                    .with_safe_default_kx_groups()
-                    .with_protocol_versions(&rustls::ALL_VERSIONS.to_vec())
-                    .expect("inconsistent cipher-suites/versions specified")
-                    // .with_client_cert_verifier(NoClientAuth::)
-                    // .with_single_cert_with_ocsp(certs, privkey, ocsp)
-                    .with_no_client_auth()
-                    .with_single_cert(certs, privkey)
-                    .expect("bad certificates/private key");
-
-                config
-
-            }
-            "not_docker" | _ => {
+                (certs, privkey)
+            },
+            ConfigLocation::NotDocker => {
                 let certs = load_certs("frontend/static/certificate/cert.pem");
                 let privkey = load_private_key("frontend/static/certificate/key.pem");
                 // let ocsp = load_ocsp(&args.flag_ocsp);
-
-                let config = rustls::ServerConfig::builder()
-                    .with_cipher_suites(&rustls::ALL_CIPHER_SUITES.to_vec())
-                    .with_safe_default_kx_groups()
-                    .with_protocol_versions(&rustls::ALL_VERSIONS.to_vec())
-                    .expect("inconsistent cipher-suites/versions specified")
-                    // .with_client_cert_verifier(NoClientAuth::)
-                    // .with_single_cert_with_ocsp(certs, privkey, ocsp)
-                    .with_no_client_auth()
-                    .with_single_cert(certs, privkey)
-                    .expect("bad certificates/private key");
-
-                config
+                (certs, privkey)
             }
         };
 
+        let config = rustls::ServerConfig::builder()
+            .with_cipher_suites(&rustls::ALL_CIPHER_SUITES.to_vec())
+            .with_safe_default_kx_groups()
+            .with_protocol_versions(&rustls::ALL_VERSIONS.to_vec())
+            .expect("inconsistent cipher-suites/versions specified")
+            // .with_client_cert_verifier(NoClientAuth::)
+            // .with_single_cert_with_ocsp(certs, privkey, ocsp)
+            .with_no_client_auth()
+            .with_single_cert(certs, privkey)
+            .expect("bad certificates/private key");
 
 
         let server = HttpServer::new(move || {

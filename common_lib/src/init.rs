@@ -1,18 +1,20 @@
 //! init.rs
 
+use std::str::FromStr;
 use tracing_subscriber::layer::SubscriberExt;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{fmt, EnvFilter};
+use crate::common_structs::ConfigLocation;
 
 pub fn init(package_name: &str) {
     // load .env
     // if docker, load .env from the root directory, otherwise use the cargo workspace directory
-    let config_location = std::env::var("CONFIG_LOCATION").unwrap_or_else(|_| "not_docker".to_owned());
+    let config_location:ConfigLocation = ConfigLocation::from_str(&std::env::var("CONFIG_LOCATION").unwrap_or_else(|_| "not_docker".to_owned())).expect("CONFIG_LOCATION");
     println!("[init] config_location: {}", &config_location);
 
-    let dot_env_path = match config_location.as_str() {
-        "docker" => ".env".to_string(),
-        "not_docker" | _ => {
+    let dot_env_path = match config_location {
+        ConfigLocation::Docker => ".env".to_string(),
+        ConfigLocation::NotDocker => {
             // backend/.env
             // frontend/.env
             // etc
