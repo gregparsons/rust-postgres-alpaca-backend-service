@@ -150,6 +150,8 @@ impl WebServer {
             // .route("/order/{symbol}", web::get().to(get_orders))
         })
         .bind_rustls(("0.0.0.0", web_port), config)?
+        // .bind_rustls(("0.0.0.0", 8443), config)?
+        // https://docs.rs/actix-web-lab/latest/actix_web_lab/middleware/struct.RedirectHttps.html
         .workers(2)
         .run();
 
