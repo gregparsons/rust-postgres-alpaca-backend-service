@@ -1,0 +1,49 @@
+{{#*inline "page"}}
+<h2><p>{{title}}</p></h2>
+<p>{{message}}</p>
+<style>
+    table {
+        font-family: arial, sans-serif;
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    td, th {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+    }
+
+    tr:nth-child(even) {
+        background-color: #dddddd;
+    }
+</style>
+<br>
+<table>
+    <tr>
+        <td>symbol</td>
+        <td>qty</td>
+        <td>pl</td>
+        <td>pl_per_share</td>
+        <td>basis</td>
+        <td>market_value</td>
+        <td>price</td>
+        <td>dtg</td>
+        <td>posn_age_sec</td>
+    <tr>
+    {{#each data}}
+    <tr>
+        <td><a href="https://finance.yahoo.com/chart/{{this.symbol}}">{{this.symbol}}</a></td>
+        <td>{{this.qty}}</td>
+        <td>{{this.pl}}</td>
+        <td>{{this.pl_per_share}}</td>
+        <td>{{this.basis}}</td>
+        <td>{{this.market_value}}</td>
+        <td>{{this.price}}</td>
+        <td>{{this.dtg}}</td>
+        <td>{{this.posn_age_sec}}</td>
+    </tr>
+    {{/each}}
+</table>
+{{/inline}}
+{{> (lookup this "parent")}}

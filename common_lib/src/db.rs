@@ -11,6 +11,7 @@ use chrono::{DateTime, Utc};
 use crossbeam_channel::Sender;
 use reqwest::header::HeaderMap;
 use tokio::runtime::Handle;
+use tokio::sync::oneshot;
 use crate::settings::Settings;
 
 // trade imports
@@ -41,6 +42,7 @@ use crate::trade_struct::{JsonTrade, OrderType, TimeInForce, TradeSide};
 use crate::alpaca_transaction_status::*;
 use crate::diff_calc::DiffCalc;
 use crate::order_log_entry::OrderLogEntry;
+use crate::position_local::PositionLocal;
 use crate::sell_position::SellPosition;
 use crate::sqlx_pool::create_sqlx_pg_pool;
 use crate::symbol::Symbol;
@@ -93,8 +95,9 @@ pub enum DbMsg {
 
     DiffCalcGet{ sender: Sender<Result<Vec<DiffCalc>, PollerError>> },
 
-
     RestPostOrder{ json_trade:JsonTrade, settings:Settings, sender: Sender<Order> },
+
+    PositionLocalGet{sender: oneshot::Sender<Vec<PositionLocal>>},
 
 }
 
@@ -171,6 +174,15 @@ async fn process_message(msg:DbMsg, pool: PgPool){
     // tracing::debug!("[process_message] DbMsg: {:?}", &msg);
 
     match msg {
+
+        // positions for display in the web UI
+        DbMsg::PositionLocalGet{sender}=>{
+            match position_local_get(pool).await{
+                Ok(positions)=>sender.send(positions).unwrap(),
+                Err(_e)=>{ } // already reported
+            }
+        }
+
 
         // TODO: move to a REST handler, not the database
         DbMsg::RestPostOrder {json_trade, settings, sender}=>{
@@ -1286,10 +1298,10 @@ async fn rest_post_order(json_trade: &JsonTrade, settings: &Settings) -> Result<
                     // 422
                     tracing::error!("[perform_trade] response code: {:?} from the orders API", reqwest::StatusCode::UNPROCESSABLE_ENTITY);
                     tracing::error!("[perform_trade] response: {:?} ", &resp);
-                    // tracing::debug!("[perform_trade] response: {:?} ", resp.text().await.unwrap());
+                    // tracing::error!("[perform_trade] response: {:?} ", &resp.text().await.unwrap());
 
                     let json = resp.text().await;
-                    tracing::debug!("[perform_trade:422] json body: {:?}", &json);
+                    tracing::error!("[perform_trade:422] json body: {:?}", &json);
 
                     Err(TradeWebError::Alpaca422)
                 },
@@ -1434,6 +1446,36 @@ async fn settings_load_with_secret(pool:PgPool) -> Result<Settings, TradeWebErro
     match settings_result{
         Ok(result)=>Ok(result),
         Err(_e)=>Err(TradeWebError::SqlxError),
+    }
+
+}
+
+/// get the positions from the local database, filtered and P/L computed to display on the web frontend
+async fn position_local_get(pool:PgPool)->Result<Vec<PositionLocal>, TradeWebError>{
+
+    let result = sqlx::query_as!(PositionLocal, r#"
+        select
+            a.symbol as "symbol!"
+            , coalesce(qty,0) as "qty!"
+            , a.basis + b.price*a.qty as "pl!"
+            , (a.basis + b.price*a.qty)/a.qty as "pl_per_share!"
+            , a.basis as "basis!"
+            , b.price*a.qty as "market_value!"
+            , b.price as "price!"
+            , a.dtg as "dtg!"
+            , a.posn_age_sec as "posn_age_sec!"
+        from fn_transaction('%') a
+        left join trade_alp_latest b on a.symbol = b.symbol
+        where posn_age_sec is not null
+        order by a.symbol, a.dtg desc
+    "#).fetch_all(&pool).await;
+
+    match result {
+        Ok(vec)=>Ok(vec),
+        Err(e) =>{
+            tracing::error!("[position_get_local] error: {:?}", &e);
+            Err(TradeWebError::SqlxError)
+        }
     }
 
 }
