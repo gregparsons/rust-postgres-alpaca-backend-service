@@ -6,6 +6,8 @@
 
 use bigdecimal::{BigDecimal, FromPrimitive};
 use crossbeam_channel::Sender;
+
+use crate::account::Account;
 use crate::alpaca_order::Order;
 use crate::alpaca_transaction_status::{AlpacaTransaction, BuyResult, TransactionNextStep};
 use crate::db::DbMsg;
@@ -101,8 +103,9 @@ pub async fn sell(symbol: &str, qty_to_sell: BigDecimal, limit_price:Option<BigD
 
 }
 
+
 /// buy
-pub fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>) {
+pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>) {
 
     // 1. check if a position or order already exists
     // old, no longer refreshing order table from API
@@ -116,6 +119,8 @@ pub fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>) {
 
     // start_buy checks if there's already an order in play; if there is it returns an error
     let tx_db1 = tx_db.clone();
+
+    // TODO: combine the db call to get the stock symbol with Account::buy_decision_cash_available
     match AlpacaTransaction::start_buy(&stock_symbol.symbol, tx_db1){
 
         BuyResult::NotAllowed { error } => {
@@ -124,50 +129,63 @@ pub fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>) {
         }
         BuyResult::Allowed => {
 
-            // buy the quantity pertaining to the specific stock in the t_symbol table
-            let qty = stock_symbol.trade_size.clone();
-
-            tracing::info!("[buy] ************** BUY ************** {}:{}", &stock_symbol.symbol, &qty);
-
-            // catch whatever was causing us to buy 65000 shares
-            assert!(qty <= BigDecimal::from_usize(QTY_SIZE_SAFETY_LIMIT).unwrap_or_else(|| BigDecimal::from(300)), "{}",
-                    format!("[alpaca_api::buy quantity to sell is not less than {}", QTY_SIZE_SAFETY_LIMIT));
-
-            // generate a new order and save to the order log
-            let order_log_entry = OrderLogEntry::new(stock_symbol.symbol.clone(), TradeSide::Buy, qty.clone());
-
-            let tx_db1 = tx_db.clone();
-            let _result = order_log_entry.save(tx_db1);
-
-            // JSON for alpaca API
-            let json_trade = JsonTrade {
-                symbol: order_log_entry.symbol(), // to uppercase,
-                side: TradeSide::Buy,
-                time_in_force: TimeInForce::Day,
-                qty: qty.clone(),
-                order_type: OrderType::Market,
-                limit_price: None,
-                extended_hours: Some(BUY_EXTENDED_HOURS),
-                client_order_id: order_log_entry.id_client(),
+            // TODO: get current price at the same time as the current cash available
+            let qty = match Account::buy_decision_cash_available(tx_db.clone()).await {
+                Err(_e)=> BigDecimal::from(0),
+                Ok(buy_decision) => buy_decision.qty_possible,
             };
 
-            // Delete the new transaction in alpaca_transaction_status if posting an order fails
-            // We know the order was newly created and currently set to 0.0 shares since it allowed
-            // creating a new order above.
-            let tx_rest1 = tx_db.clone();
-            let next_step = match post_order(json_trade, settings, tx_rest1) {
-                Ok(order)=>{
-                    let tx_db1 = tx_db.clone();
-                    order.save(tx_db1);
-                    TransactionNextStep::Continue
-                },
-                Err(_)=> TransactionNextStep::DeleteTransaction
-            };
+            if qty <= BigDecimal::from(0) {
+                // qty we can buy is zero
+                tracing::info!("[buy] ************** BUY ************** {}: cannot buy any; over spending limit", &stock_symbol.symbol);
 
-            if next_step == TransactionNextStep::DeleteTransaction {
-                let tx_db2 = tx_db.clone();
-                AlpacaTransaction::delete_one(&stock_symbol.symbol, tx_db2);
+            } else {
 
+
+                // // buy the quantity pertaining to the specific stock in the t_symbol table
+                // let qty = stock_symbol.trade_size.clone();
+
+                tracing::info!("[buy] ************** BUY ************** {}:{}", &stock_symbol.symbol, &qty);
+
+                // catch whatever was causing us to buy 65000 shares
+                assert!(qty <= BigDecimal::from_usize(QTY_SIZE_SAFETY_LIMIT).unwrap_or_else(|| BigDecimal::from(300)), "{}",
+                        format!("[alpaca_api::buy quantity to sell is not less than {}", QTY_SIZE_SAFETY_LIMIT));
+
+                // generate a new order and save to the order log
+                let order_log_entry = OrderLogEntry::new(stock_symbol.symbol.clone(), TradeSide::Buy, qty.clone());
+
+                let tx_db1 = tx_db.clone();
+                let _result = order_log_entry.save(tx_db1);
+
+                // JSON for alpaca API
+                let json_trade = JsonTrade {
+                    symbol: order_log_entry.symbol(), // to uppercase,
+                    side: TradeSide::Buy,
+                    time_in_force: TimeInForce::Day,
+                    qty: qty.clone(),
+                    order_type: OrderType::Market,
+                    limit_price: None,
+                    extended_hours: Some(BUY_EXTENDED_HOURS),
+                    client_order_id: order_log_entry.id_client(),
+                };
+
+                // Delete the new transaction in alpaca_transaction_status if posting an order fails
+                // We know the order was newly created and currently set to 0.0 shares since it allowed
+                // creating a new order above.
+                let tx_rest1 = tx_db.clone();
+                let next_step = match post_order(json_trade, settings, tx_rest1) {
+                    Ok(order) => {
+                        let tx_db1 = tx_db.clone();
+                        order.save(tx_db1);
+                        TransactionNextStep::Continue
+                    },
+                    Err(_) => TransactionNextStep::DeleteTransaction
+                };
+
+                if next_step == TransactionNextStep::DeleteTransaction {
+                    let tx_db2 = tx_db.clone();
+                    AlpacaTransaction::delete_one(&stock_symbol.symbol, tx_db2);
+                }
             }
         }
     }

@@ -58,6 +58,8 @@ impl AlpacaTransaction{
 
     /// insert a new transaction if one doesn't currently exist, otherwise error
 
+
+    // TODO: combine this with Account::buy_decision_cash_available
     pub fn start_buy(symbol:&str, tx_db:Sender<DbMsg>)-> BuyResult {
         let (tx, rx) = crossbeam_channel::unbounded();
         tx_db.send(DbMsg::TransactionStartBuy { symbol:symbol.to_string(), sender: tx}).unwrap();

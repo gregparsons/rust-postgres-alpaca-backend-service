@@ -6,7 +6,8 @@ use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use crossbeam_channel::SendError;
 use serde::{Deserialize, Serialize};
-use crate::db::DbMsg;
+use tokio::sync::oneshot;
+use crate::db::{BuyDecision, DbMsg};
 use crate::error::TradeWebError;
 use crate::settings::Settings;
 
@@ -110,13 +111,22 @@ impl Account {
     }
 
     /// Return the cash in dollars available to trade with (not including day trade minimum)
-    pub async fn available_cash(tx_db: crossbeam_channel::Sender<DbMsg>)->Result<BigDecimal, TradeWebError>{
-        let (resp_tx, resp_rx) = crossbeam_channel::unbounded();
-        let msg = DbMsg::AccountAvailableCash{ sender_tx:resp_tx };
-        tx_db.send(msg).unwrap();
-        match resp_rx.recv(){
-            Ok(result)=>Ok(result),
-            Err(_e)=>Err(TradeWebError::ChannelError),
+    pub async fn buy_decision_cash_available(tx_db: crossbeam_channel::Sender<DbMsg>) ->Result<BuyDecision, TradeWebError>{
+        let (tx, rx) = oneshot::channel();
+        match tx_db.send(DbMsg::AcctCashAvailable { sender_tx: tx }){
+            Ok(_)=>{
+                match rx.await {
+                    Ok(result)=>Ok(result),
+                    Err(e)=>{
+                        tracing::error!("[cash_available] receive error: {:?}", &e);
+                        Err(TradeWebError::ChannelError)
+                    }
+                }
+            },
+            Err(e)=>{
+                tracing::error!("[cash_available] send error: {:?}", &e);
+                Err(TradeWebError::ChannelError)
+            }
         }
 
     }

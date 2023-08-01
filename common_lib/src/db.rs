@@ -69,7 +69,7 @@ pub enum DbMsg {
     // TODO: pass settings to others that'd need updated settings while running
     AccountGetRemote{ settings:Settings, resp_tx: Sender<Account> },
     AccountSaveToDb{ account:Account},
-    AccountAvailableCash{ sender_tx: Sender<BigDecimal> },
+    AcctCashAvailable { sender_tx: oneshot::Sender<BuyDecision> },
 
     TransactionInsertPosition { position:Position },
     TransactionStartBuy { symbol:String, sender: Sender<BuyResult>},
@@ -98,6 +98,15 @@ pub enum DbMsg {
     RestPostOrder{ json_trade:JsonTrade, settings:Settings, sender: Sender<Order> },
 
     PositionLocalGet{sender: oneshot::Sender<Vec<PositionLocal>>},
+
+}
+
+#[derive(Debug)]
+pub struct BuyDecision{
+    pub price:BigDecimal,
+    pub size:BigDecimal,
+    pub cash_available:BigDecimal,
+    pub qty_possible:BigDecimal
 
 }
 
@@ -246,8 +255,8 @@ async fn process_message(msg:DbMsg, pool: PgPool){
             }
         },
 
-        DbMsg::AccountAvailableCash{ sender_tx }=>{
-            match account_available_cash(pool).await {
+        DbMsg::AcctCashAvailable { sender_tx }=>{
+            match acct_cash_available(pool).await {
                 Ok(cash_available)=>{
                     let _ = sender_tx.send(cash_available);
                 }
@@ -1012,19 +1021,7 @@ async fn activity_save_to_db(activity: &Activity, pool: PgPool) -> Result<PgQuer
     result
 }
 
-/// the amount of unused funds above the minimum day trade balance
-async fn account_available_cash(pool: PgPool)->Result<BigDecimal, TradeWebError>{
-    match sqlx::query!(r#"
-        select (
-            (select acct_min_cash_dollars from t_settings) - (select position_market_value from alpaca_account order by dtg limit 1)
-        ) as "available_cash!";
-    "#).fetch_one(&pool).await{
-        Ok(result_struct)=>{
-            Ok(result_struct.available_cash)
-        },
-        Err(_e)=>Err(TradeWebError::SqlxError)
-    }
-}
+
 
 // /// insert a new transaction if one doesn't currently exist, otherwise error
 // /// TODO: not currently used; used by trade_poller
@@ -1478,4 +1475,32 @@ async fn position_local_get(pool:PgPool)->Result<Vec<PositionLocal>, TradeWebErr
         }
     }
 
+}
+
+/// the amount of unused funds above the minimum day trade balance
+/// option 1: select ((select acct_min_cash_dollars from t_settings) - (select position_market_value from alpaca_account order by dtg limit 1)) as "cash_available!"
+/// option 2 (using own calculations and transactions): select coalesce(cash_available,0.0) as "cash_available!" from v_cash_available
+/// option 3: below
+async fn acct_cash_available(pool: PgPool) ->Result<BuyDecision, TradeWebError>{
+    match sqlx::query_as!(BuyDecision, r#"
+        select
+            a.price as "price!"
+            , size as "size!"
+            , cash_available_before as "cash_available!"
+            , coalesce(case when cash_available_before > 0 then floor(cash_available_before / a.price) end, 0.0)::numeric as "qty_possible!"
+        from (
+            select
+                price
+                ,size
+                ,(select acct_max_position_market_value from v_settings) - (select sum(b.price*a.qty) as market_value from fn_transaction('%') a left join trade_alp_latest b on a.symbol = b.symbol where posn_age_sec is not null) as cash_available_before
+                from trade_alp_latest
+                where lower(symbol) = 'nio'
+        ) a;
+    "#).fetch_one(&pool).await {
+        Ok(result_struct)=> Ok(result_struct),
+        Err(_e)=>{
+            tracing::error!("[acct_cash_available] sqlx error: {:?}", &_e);
+            Err(TradeWebError::SqlxError)
+        }
+    }
 }
