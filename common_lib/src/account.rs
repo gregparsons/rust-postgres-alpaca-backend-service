@@ -111,7 +111,7 @@ impl Account {
     }
 
     /// Return the cash in dollars available to trade with (not including day trade minimum)
-    pub async fn buy_decision_cash_available(symbol: &String, tx_db: crossbeam_channel::Sender<DbMsg>) ->Result<BuyDecision, TradeWebError>{
+    pub async fn max_shares_possible_to_buy(symbol: &String, tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<BuyDecision, TradeWebError>{
         let (tx, rx) = oneshot::channel();
         match tx_db.send(DbMsg::AcctCashAvailable { symbol:symbol.clone(), sender_tx: tx }){
             Ok(_)=>{

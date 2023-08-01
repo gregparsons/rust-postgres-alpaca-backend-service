@@ -130,9 +130,12 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
         BuyResult::Allowed => {
 
             // TODO: get current price at the same time as the current cash available
-            let qty = match Account::buy_decision_cash_available(&stock_symbol.symbol, tx_db.clone()).await {
+            let qty = match Account::max_shares_possible_to_buy(&stock_symbol.symbol, tx_db.clone()).await {
                 Err(_e)=> BigDecimal::from(0),
-                Ok(buy_decision) => buy_decision.qty_possible,
+                Ok(buy_decision) => {
+                    // minimum of the max possible and max qty allowed
+                    std::cmp::min(buy_decision.qty_possible, stock_symbol.trade_size.clone())
+                },
             };
 
             if qty <= BigDecimal::from(0) {
@@ -145,7 +148,7 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
                 // // buy the quantity pertaining to the specific stock in the t_symbol table
                 // let qty = stock_symbol.trade_size.clone();
 
-                tracing::info!("[buy] ************** BUY ************** {}:{}", &stock_symbol.symbol, &qty);
+                tracing::info!("[buy] ************** BUY (min of std size and max possible) ************** {}:{}", &stock_symbol.symbol, &qty);
 
                 // catch whatever was causing us to buy 65000 shares
                 assert!(qty <= BigDecimal::from_usize(QTY_SIZE_SAFETY_LIMIT).unwrap_or_else(|| BigDecimal::from(300)), "{}",
