@@ -130,7 +130,7 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
         BuyResult::Allowed => {
 
             // TODO: get current price at the same time as the current cash available
-            let qty = match Account::buy_decision_cash_available(tx_db.clone()).await {
+            let qty = match Account::buy_decision_cash_available(&stock_symbol.symbol, tx_db.clone()).await {
                 Err(_e)=> BigDecimal::from(0),
                 Ok(buy_decision) => buy_decision.qty_possible,
             };

@@ -69,7 +69,7 @@ pub enum DbMsg {
     // TODO: pass settings to others that'd need updated settings while running
     AccountGetRemote{ settings:Settings, resp_tx: Sender<Account> },
     AccountSaveToDb{ account:Account},
-    AcctCashAvailable { sender_tx: oneshot::Sender<BuyDecision> },
+    AcctCashAvailable { symbol:String, sender_tx: oneshot::Sender<BuyDecision> },
 
     TransactionInsertPosition { position:Position },
     TransactionStartBuy { symbol:String, sender: Sender<BuyResult>},
@@ -255,8 +255,8 @@ async fn process_message(msg:DbMsg, pool: PgPool){
             }
         },
 
-        DbMsg::AcctCashAvailable { sender_tx }=>{
-            match acct_cash_available(pool).await {
+        DbMsg::AcctCashAvailable { symbol, sender_tx }=>{
+            match acct_cash_available(&symbol, pool).await {
                 Ok(cash_available)=>{
                     let _ = sender_tx.send(cash_available);
                 }
@@ -1481,7 +1481,7 @@ async fn position_local_get(pool:PgPool)->Result<Vec<PositionLocal>, TradeWebErr
 /// option 1: select ((select acct_min_cash_dollars from t_settings) - (select position_market_value from alpaca_account order by dtg limit 1)) as "cash_available!"
 /// option 2 (using own calculations and transactions): select coalesce(cash_available,0.0) as "cash_available!" from v_cash_available
 /// option 3: below
-async fn acct_cash_available(pool: PgPool) ->Result<BuyDecision, TradeWebError>{
+async fn acct_cash_available(symbol:&str, pool: PgPool) ->Result<BuyDecision, TradeWebError>{
     match sqlx::query_as!(BuyDecision, r#"
         select
             a.price as "price!"
@@ -1492,11 +1492,11 @@ async fn acct_cash_available(pool: PgPool) ->Result<BuyDecision, TradeWebError>{
             select
                 price
                 ,size
-                ,(select acct_max_position_market_value from v_settings) - (select sum(b.price*a.qty) as market_value from fn_transaction('%') a left join trade_alp_latest b on a.symbol = b.symbol where posn_age_sec is not null) as cash_available_before
+                ,(select (select acct_max_position_market_value from v_settings) - (select coalesce(sum(b.price*a.qty),0.0) as market_value from fn_transaction('%') a left join trade_alp_latest b on a.symbol = b.symbol where posn_age_sec is not null)) as cash_available_before
                 from trade_alp_latest
-                where lower(symbol) = 'nio'
+                where lower(symbol) = $1
         ) a;
-    "#).fetch_one(&pool).await {
+    "#, symbol).fetch_one(&pool).await {
         Ok(result_struct)=> Ok(result_struct),
         Err(_e)=>{
             tracing::error!("[acct_cash_available] sqlx error: {:?}", &_e);
