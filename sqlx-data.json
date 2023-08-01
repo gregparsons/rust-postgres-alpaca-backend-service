@@ -939,6 +939,42 @@
     },
     "query": "\n            insert into alpaca_activity\n                (\n                id\n                , activity_type\n                , activity_subtype\n                , dtg\n                , symbol\n                , side\n                , qty\n                , price\n                , cum_qty\n                , leaves_qty\n                , order_id\n                )\n                values (\n                    $1\n                    ,$2\n                    ,$3\n                    ,$4\n                    ,$5\n                    ,lower($6)\n                    ,$7\n                    ,$8\n                    ,$9\n                    ,$10\n                    ,$11\n                    )"
   },
+  "6ce233760a7caced52b76f01dceb214c35b3cc523e8aa314de1da720e6640a82": {
+    "describe": {
+      "columns": [
+        {
+          "name": "price!",
+          "ordinal": 0,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "size!",
+          "ordinal": 1,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "cash_available!",
+          "ordinal": 2,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty_possible!",
+          "ordinal": 3,
+          "type_info": "Numeric"
+        }
+      ],
+      "nullable": [
+        true,
+        true,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n        select\n            a.price as \"price!\"\n            , size as \"size!\"\n            , cash_available_before as \"cash_available!\"\n            , coalesce(case when cash_available_before > 0 then floor(cash_available_before / a.price) end, 0.0)::numeric as \"qty_possible!\"\n        from (\n            select\n                price\n                ,size\n                ,(select acct_max_position_market_value from v_settings) - (select sum(b.price*a.qty) as market_value from fn_transaction('%') a left join trade_alp_latest b on a.symbol = b.symbol where posn_age_sec is not null) as cash_available_before\n                from trade_alp_latest\n                where lower(symbol) = 'nio'\n        ) a;\n    "
+  },
   "7075f9dfd124b73b780d1918570aeff82176454a7d8621ae652026c3908afcf9": {
     "describe": {
       "columns": [],
@@ -1945,24 +1981,6 @@
       }
     },
     "query": "\n                select\n                    a.symbol as \"symbol!\"\n                    , active as \"active!\"\n                    ,coalesce(trade_size, 0.0) as \"trade_size!\"\n                    ,coalesce(b.price,0.0) as \"price_last!\"\n                from t_symbol a left join trade_alp_latest b on upper(a.symbol)=upper(b.symbol)\n                order by a.symbol\n            "
-  },
-  "f06525fbaa5e1c1a4725527fc6d6d4f100ed0dac354112de7283e4205b61b992": {
-    "describe": {
-      "columns": [
-        {
-          "name": "available_cash!",
-          "ordinal": 0,
-          "type_info": "Numeric"
-        }
-      ],
-      "nullable": [
-        null
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n        select (\n            (select acct_min_cash_dollars from t_settings) - (select position_market_value from alpaca_account order by dtg limit 1)\n        ) as \"available_cash!\";\n    "
   },
   "f0aaef665b1cfefcd8e37e3f399549b6f877d44a3d110ac018b03769eb3807cb": {
     "describe": {
