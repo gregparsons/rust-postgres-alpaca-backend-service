@@ -1492,7 +1492,8 @@ async fn acct_cash_available(symbol:&str, pool: PgPool) ->Result<MaxBuyPossible,
             select
                 price
                 ,size
-                ,(select (select acct_max_position_market_value from v_settings) - (select coalesce(sum(b.price*a.qty),0.0) as market_value from fn_transaction('%') a left join trade_alp_latest b on a.symbol = b.symbol where posn_age_sec is not null)) as cash_available_before
+                ,(select (select acct_max_position_market_value from v_settings) - (select coalesce(sum(b.price*a.qty),0.0) as market_value from fn_transaction('%') a left join trade_alp_latest b on a.symbol = b.symbol where posn_age_sec is not null))
+                as cash_available_before
                 from trade_alp_latest
                 where lower(symbol) = lower($1)
         ) a;
