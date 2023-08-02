@@ -132,7 +132,7 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
     match start_result {
 
         BuyResult::NotAllowed { error } => {
-            tracing::info!("[buy] ***** already a position or order: {:?}", &error);
+            tracing::debug!("[buy] ***** already a position or order: {:?}", &error);
         }
         BuyResult::Allowed => {
 
