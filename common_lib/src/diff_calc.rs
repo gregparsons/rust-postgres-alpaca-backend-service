@@ -41,7 +41,7 @@ impl DiffCalc{
         tx_db.send(DbMsg::DiffCalcGet{sender:tx}).unwrap();
         match resp_rx.recv(){
             Ok(result)=>{
-                tracing::debug!("[get] result: {:?}", &result);
+                // tracing::debug!("[get] result: {:?}", &result);
                 Ok(result)
             },
             Err(_e)=>{

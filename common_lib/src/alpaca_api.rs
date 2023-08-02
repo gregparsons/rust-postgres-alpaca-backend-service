@@ -107,6 +107,12 @@ pub async fn sell(symbol: &str, qty_to_sell: BigDecimal, limit_price:Option<BigD
 /// buy
 pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>) {
 
+    tracing::info!("[buy] ********************************************************");
+    tracing::info!("[buy] ***** BUY {}: {}", &stock_symbol.symbol, &stock_symbol.trade_size);
+
+
+
+
     // 1. check if a position or order already exists
     // old, no longer refreshing order table from API
     // let count_result = Position::check_position_and_order(&stock_symbol.symbol, pool).await;
@@ -121,34 +127,40 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
     let tx_db1 = tx_db.clone();
 
     // TODO: combine the db call to get the stock symbol with Account::buy_decision_cash_available
-    match AlpacaTransaction::start_buy(&stock_symbol.symbol, tx_db1){
+    let start_result = AlpacaTransaction::buy_check(&stock_symbol.symbol, tx_db1);
+    tracing::info!("[buy] ***** buy check: {:?}", &start_result);
+    match start_result {
 
         BuyResult::NotAllowed { error } => {
-            tracing::debug!("[buy] could not start buy: {:?}", &error);
-            tracing::info!("[buy] ************** BUY ************** {}: already a position or order", &stock_symbol.symbol);
+            tracing::info!("[buy] ***** : already a position or order: {:?}", &error);
         }
         BuyResult::Allowed => {
 
+
             // TODO: get current price at the same time as the current cash available
-            let qty = match Account::max_shares_possible_to_buy(&stock_symbol.symbol, tx_db.clone()).await {
-                Err(_e)=> BigDecimal::from(0),
-                Ok(buy_decision) => {
-                    // minimum of the max possible and max qty allowed
-                    std::cmp::min(buy_decision.qty_possible, stock_symbol.trade_size.clone())
+            let max_buy_result = Account::max_buy_possible(&stock_symbol.symbol, tx_db.clone()).await;
+            tracing::info!("[buy] ***** max shares: {:?}", &max_buy_result);
+            let qty = match max_buy_result {
+                Err(_e)=> {
+                    tracing::info!("[buy] ***** cannot buy; error: {:?}", _e);
+                    BigDecimal::from(0)
                 },
+                Ok(buy_possible) => {
+                    // minimum of the max possible and max qty allowed
+                    tracing::info!("[buy] ***** cash available: {:?}", &buy_possible);
+                    std::cmp::min(buy_possible.qty_possible, stock_symbol.trade_size.clone())
+                }
             };
+            tracing::info!("[buy] ***** shares to attempt to buy: {}", &qty);
 
             if qty <= BigDecimal::from(0) {
                 // qty we can buy is zero
-                tracing::info!("[buy] ************** BUY ************** {}: cannot buy any; over spending limit", &stock_symbol.symbol);
-
+                tracing::info!("[buy] ***** buying zero: {}", &qty);
             } else {
 
 
-                // // buy the quantity pertaining to the specific stock in the t_symbol table
-                // let qty = stock_symbol.trade_size.clone();
-
-                tracing::info!("[buy] ************** BUY (min of std size and max possible) ************** {}:{}", &stock_symbol.symbol, &qty);
+                // buy the quantity pertaining to the specific stock in the t_symbol table
+                tracing::info!("[buy] BUY (minimum of std size and max possible) {}:{}", &stock_symbol.symbol, &qty);
 
                 // catch whatever was causing us to buy 65000 shares
                 assert!(qty <= BigDecimal::from_usize(QTY_SIZE_SAFETY_LIMIT).unwrap_or_else(|| BigDecimal::from(300)), "{}",
@@ -192,6 +204,7 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
             }
         }
     }
+    tracing::info!("[buy] ********************************************************");
 }
 
 /// do the REST part of the orders POST API

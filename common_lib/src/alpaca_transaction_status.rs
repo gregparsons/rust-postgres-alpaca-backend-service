@@ -48,7 +48,7 @@ pub struct AlpacaTransaction{
     posn_shares:BigDecimal,
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum BuyResult{
     Allowed,
     NotAllowed{error:TradeWebError},
@@ -60,7 +60,7 @@ impl AlpacaTransaction{
 
 
     // TODO: combine this with Account::buy_decision_cash_available
-    pub fn start_buy(symbol:&str, tx_db:Sender<DbMsg>)-> BuyResult {
+    pub fn buy_check(symbol:&str, tx_db:Sender<DbMsg>) -> BuyResult {
         let (tx, rx) = crossbeam_channel::unbounded();
         tx_db.send(DbMsg::TransactionStartBuy { symbol:symbol.to_string(), sender: tx}).unwrap();
         match rx.recv() {

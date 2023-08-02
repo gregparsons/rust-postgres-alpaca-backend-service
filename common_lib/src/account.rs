@@ -7,7 +7,7 @@ use chrono::{DateTime, Utc};
 use crossbeam_channel::SendError;
 use serde::{Deserialize, Serialize};
 use tokio::sync::oneshot;
-use crate::db::{BuyDecision, DbMsg};
+use crate::db::{MaxBuyPossible, DbMsg};
 use crate::error::TradeWebError;
 use crate::settings::Settings;
 
@@ -111,7 +111,7 @@ impl Account {
     }
 
     /// Return the cash in dollars available to trade with (not including day trade minimum)
-    pub async fn max_shares_possible_to_buy(symbol: &String, tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<BuyDecision, TradeWebError>{
+    pub async fn max_buy_possible(symbol: &String, tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<MaxBuyPossible, TradeWebError>{
         let (tx, rx) = oneshot::channel();
         match tx_db.send(DbMsg::AcctCashAvailable { symbol:symbol.clone(), sender_tx: tx }){
             Ok(_)=>{
