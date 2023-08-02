@@ -5,7 +5,6 @@ webdev:
 frontend:
 	./frontend/all.sh
 backend:
-	# make -B docker_build_backend
 	./backend/all.sh
 sqlx:
 	# https://lib.rs/crates/sqlx-cli (is out of date about --workspace)

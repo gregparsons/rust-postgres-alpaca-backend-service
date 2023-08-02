@@ -1,3 +1,4 @@
+scp backend/all.sh swimr205:~/trade/backend
 cargo update;
 make sqlx;
 git add .;
