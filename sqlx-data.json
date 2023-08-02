@@ -752,96 +752,6 @@
     },
     "query": "insert into ping_finnhub (ping) values ($1)"
   },
-  "516731ac6e2efb1c8c743def9a207cab7c98d178e6e4a8f05afd03530e4c4b09": {
-    "describe": {
-      "columns": [
-        {
-          "name": "dtg!",
-          "ordinal": 0,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "dtg_pacific!",
-          "ordinal": 1,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "symbol!:String",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "diff_30s_1!",
-          "ordinal": 3,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "diff_30s_3!",
-          "ordinal": 4,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "diff_30s_5!",
-          "ordinal": 5,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price_last!",
-          "ordinal": 6,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price_30s!",
-          "ordinal": 7,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price_1m!",
-          "ordinal": 8,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price_3m!",
-          "ordinal": 9,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price_5m!",
-          "ordinal": 10,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "dtg_last!",
-          "ordinal": 11,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "dtg_last_pacific!",
-          "ordinal": 12,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        null,
-        null,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        null,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n        select\n            now()::timestamptz as \"dtg!\"\n             , timezone('US/Pacific',now())::timestamptz as \"dtg_pacific!\"\n             , symbol as \"symbol!:String\"\n             , diff_30s_1 as \"diff_30s_1!\"\n             , diff_30s_3 as \"diff_30s_3!\"\n             , diff_30s_5 as \"diff_30s_5!\"\n             , price_last as \"price_last!\"\n             , price_30s as \"price_30s!\"\n             , price_1m as \"price_1m!\"\n             , price_3m as \"price_3m!\"\n             , price_5m as \"price_5m!\"\n             , dtg_last::timestamptz as \"dtg_last!\"\n             , dtg_last_pacific::timestamptz as \"dtg_last_pacific!\"\n            -- from v_finnhub_diff\n        from v_alpaca_diff\n        "
-  },
   "5289517c19ee0f73d3cfed9f849e68cb70e1346573d4944d5686fbae96039202": {
     "describe": {
       "columns": [],
@@ -1664,6 +1574,96 @@
       }
     },
     "query": "\n            select\n                user_id, username, password\n            from users\n            where username = $1\n        "
+  },
+  "cb82cdbc9871e71feb0c7629e107134c02d120a15dfeb47a3635bde9a333c693": {
+    "describe": {
+      "columns": [
+        {
+          "name": "dtg!",
+          "ordinal": 0,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "dtg_pacific!",
+          "ordinal": 1,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "symbol!:String",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "diff_30s_1!",
+          "ordinal": 3,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "diff_30s_3!",
+          "ordinal": 4,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "diff_30s_5!",
+          "ordinal": 5,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_last!",
+          "ordinal": 6,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_30s!",
+          "ordinal": 7,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_1m!",
+          "ordinal": 8,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_3m!",
+          "ordinal": 9,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_5m!",
+          "ordinal": 10,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "dtg_last!",
+          "ordinal": 11,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "dtg_last_pacific!",
+          "ordinal": 12,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        null,
+        null,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        null,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n        select\n            now()::timestamptz as \"dtg!\"\n             , timezone('US/Pacific',now())::timestamptz as \"dtg_pacific!\"\n             , symbol as \"symbol!:String\"\n             , diff_30s_1 as \"diff_30s_1!\"\n             , diff_30s_3 as \"diff_30s_3!\"\n             , diff_30s_5 as \"diff_30s_5!\"\n             , price_last as \"price_last!\"\n             , price_30s as \"price_30s!\"\n             , price_1m as \"price_1m!\"\n             , price_3m as \"price_3m!\"\n             , price_5m as \"price_5m!\"\n             , dtg_last::timestamptz as \"dtg_last!\"\n             , dtg_last_pacific::timestamptz as \"dtg_last_pacific!\"\n        from v_finnhub_diff\n        -- from v_alpaca_diff\n        "
   },
   "cbbf8ab72f26935d3fed0b0706bfe4ca8395ed2efe3bf48e5ef45135d11c896a": {
     "describe": {

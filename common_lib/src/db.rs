@@ -1198,8 +1198,8 @@ async fn diffcalc_get(pool:PgPool)->Result<Vec<DiffCalc>, PollerError>{
              , price_5m as "price_5m!"
              , dtg_last::timestamptz as "dtg_last!"
              , dtg_last_pacific::timestamptz as "dtg_last_pacific!"
-            -- from v_finnhub_diff
-        from v_alpaca_diff
+        from v_finnhub_diff
+        -- from v_alpaca_diff
         "#
     ).fetch_all(&pool).await;
 
