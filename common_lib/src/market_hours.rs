@@ -3,8 +3,8 @@
 use chrono::{NaiveTime, Utc};
 use once_cell::sync::Lazy;
 
-pub const OPERATE_API_AFTER_HOURS: bool = false;
-pub const BUY_EXTENDED_HOURS: bool = false;
+pub const OPERATE_API_AFTER_HOURS: bool = true;
+pub const BUY_EXTENDED_HOURS: bool = true;
 pub const SELL_EXTENDED_HOURS: bool = true;
 
 // prod
