@@ -110,9 +110,6 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
     tracing::info!("[buy] ******************************************************** BUY ********************************************************");
     tracing::info!("[buy] ***** BUY {}: {}", &stock_symbol.symbol, &stock_symbol.trade_size);
 
-
-
-
     // 1. check if a position or order already exists
     // old, no longer refreshing order table from API
     // let count_result = Position::check_position_and_order(&stock_symbol.symbol, pool).await;
@@ -136,19 +133,18 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
         }
         BuyResult::Allowed => {
 
-
-            // TODO: get current price at the same time as the current cash available
             let max_buy_result = Account::max_buy_possible(&stock_symbol.symbol, tx_db.clone()).await;
             tracing::info!("[buy] ***** max shares: {:?}", &max_buy_result);
-            let qty = match max_buy_result {
+            let (qty, limit_price) = match max_buy_result {
                 Err(_e)=> {
                     tracing::info!("[buy] ***** cannot buy; error: {:?}", _e);
-                    BigDecimal::from(0)
+                    (BigDecimal::from(0), BigDecimal::from(0))
                 },
                 Ok(buy_possible) => {
                     // minimum of the max possible and max qty allowed
                     tracing::info!("[buy] ***** cash available: {:?}", &buy_possible);
-                    std::cmp::min(buy_possible.qty_possible, stock_symbol.trade_size.clone())
+                    let qty = std::cmp::min(buy_possible.qty_possible, stock_symbol.trade_size.clone());
+                    (qty, buy_possible.price)
                 }
             };
             tracing::info!("[buy] ***** shares to attempt to buy: {}", &qty);
@@ -157,7 +153,6 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
                 // qty we can buy is zero
                 tracing::info!("[buy] ***** buying zero: {}", &qty);
             } else {
-
 
                 // buy the quantity pertaining to the specific stock in the t_symbol table
                 tracing::info!("[buy] BUY (minimum of std size and max possible) {}:{}", &stock_symbol.symbol, &qty);
@@ -172,6 +167,19 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
                 let tx_db1 = tx_db.clone();
                 let _result = order_log_entry.save(tx_db1);
 
+                // 422: extended hours order must be DAY limit orders
+
+
+
+                // TODO: only use buy limit price during after hours
+
+                let limit_price_opt = match BUY_EXTENDED_HOURS {
+                    false => None,
+                    true => Some(limit_price),
+                };
+
+
+
                 // JSON for alpaca API
                 let json_trade = JsonTrade {
                     symbol: order_log_entry.symbol(), // to uppercase,
@@ -179,7 +187,7 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
                     time_in_force: TimeInForce::Day,
                     qty: qty.clone(),
                     order_type: OrderType::Market,
-                    limit_price: None,
+                    limit_price: limit_price_opt,
                     extended_hours: Some(BUY_EXTENDED_HOURS),
                     client_order_id: order_log_entry.id_client(),
                 };
