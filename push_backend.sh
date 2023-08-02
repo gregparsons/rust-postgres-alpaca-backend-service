@@ -1,4 +1,5 @@
-make sqlx; 
+cargo update;
+make sqlx;
 git add .;
 git commit -am "sqlx"; 
 source ~/.bashrc; git push origin dev; ssh swimr205 "cd dev/rust/_trade/trade;

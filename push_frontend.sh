@@ -1,5 +1,6 @@
 # needed for sqlx
-export DATABASE_URL=postgres://postgres:eJk16bVgFNkJI74s3uY248vwCX7rEkUbGXrZtS8V4PDn8e2HcC@localhost:54320/alpaca
+cargo update;
+# export DATABASE_URL=postgres://postgres:eJk16bVgFNkJI74s3uY248vwCX7rEkUbGXrZtS8V4PDn8e2HcC@localhost:54320/alpaca
 make sqlx;
 git add .;
 git commit -am "sqlx";
