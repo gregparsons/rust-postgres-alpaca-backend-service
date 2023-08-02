@@ -167,15 +167,17 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
                 let tx_db1 = tx_db.clone();
                 let _result = order_log_entry.save(tx_db1);
 
-                // 422: extended hours order must be DAY limit orders
+                // 422: errors:
+                // extended hours order must be DAY limit orders
+                // market orders require no stop or limit price
 
 
 
                 // TODO: only use buy limit price during after hours
 
-                let limit_price_opt = match BUY_EXTENDED_HOURS {
-                    false => None,
-                    true => Some(limit_price),
+                let (limit_price_opt, order_type) = match BUY_EXTENDED_HOURS {
+                    false => (None, OrderType::Market),
+                    true => (Some(limit_price), OrderType::Limit),
                 };
 
 
@@ -186,7 +188,7 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
                     side: TradeSide::Buy,
                     time_in_force: TimeInForce::Day,
                     qty: qty.clone(),
-                    order_type: OrderType::Market,
+                    order_type: order_type,
                     limit_price: limit_price_opt,
                     extended_hours: Some(BUY_EXTENDED_HOURS),
                     client_order_id: order_log_entry.id_client(),
