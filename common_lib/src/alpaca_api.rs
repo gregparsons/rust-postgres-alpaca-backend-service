@@ -107,7 +107,7 @@ pub async fn sell(symbol: &str, qty_to_sell: BigDecimal, limit_price:Option<BigD
 /// buy
 pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>) {
 
-    tracing::info!("[buy] ********************************************************");
+    tracing::info!("[buy] ******************************************************** BUY ********************************************************");
     tracing::info!("[buy] ***** BUY {}: {}", &stock_symbol.symbol, &stock_symbol.trade_size);
 
 
@@ -132,7 +132,7 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
     match start_result {
 
         BuyResult::NotAllowed { error } => {
-            tracing::info!("[buy] ***** : already a position or order: {:?}", &error);
+            tracing::info!("[buy] ***** already a position or order: {:?}", &error);
         }
         BuyResult::Allowed => {
 
@@ -204,7 +204,7 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
             }
         }
     }
-    tracing::info!("[buy] ********************************************************");
+    tracing::info!("[buy] ******************************************************** END BUY ****************************************************");
 }
 
 /// do the REST part of the orders POST API

@@ -1295,7 +1295,20 @@
     },
     "query": "delete from alpaca_transaction_status where symbol=$1"
   },
-  "a05d1275767b8f7e6c6708fd232d9848f223000fee95895f041d5e97ed3614ed": {
+  "a77a469257f0965db9d3ab3f8f2a7230126ad44458d497151e4c7ca7b71f5160": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Numeric",
+          "Text"
+        ]
+      }
+    },
+    "query": "\n                update alpaca_transaction_status\n                set posn_shares = posn_shares - $1 where symbol=$2\n            "
+  },
+  "a8d7840efba18bf389f3b10e4ab10fa2ab4f5fb82d7f8547d5df693d5e2fe85b": {
     "describe": {
       "columns": [
         {
@@ -1331,20 +1344,7 @@
         ]
       }
     },
-    "query": "\n        select\n            a.price as \"price!\"\n            , size as \"size!\"\n            , cash_available_before as \"cash_available!\"\n            , coalesce(case when cash_available_before > 0 then floor(cash_available_before / a.price) end, 0.0)::numeric as \"qty_possible!\"\n        from (\n            select\n                price\n                ,size\n                ,(select (select acct_max_position_market_value from v_settings) - (select coalesce(sum(b.price*a.qty),0.0) as market_value from fn_transaction('%') a left join trade_alp_latest b on a.symbol = b.symbol where posn_age_sec is not null)) as cash_available_before\n                from trade_alp_latest\n                where lower(symbol) = $1\n        ) a;\n    "
-  },
-  "a77a469257f0965db9d3ab3f8f2a7230126ad44458d497151e4c7ca7b71f5160": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Numeric",
-          "Text"
-        ]
-      }
-    },
-    "query": "\n                update alpaca_transaction_status\n                set posn_shares = posn_shares - $1 where symbol=$2\n            "
+    "query": "\n        select\n            a.price as \"price!\"\n            , size as \"size!\"\n            , cash_available_before as \"cash_available!\"\n            , coalesce(case when cash_available_before > 0 then floor(cash_available_before / a.price) end, 0.0)::numeric as \"qty_possible!\"\n        from (\n            select\n                price\n                ,size\n                ,(select (select acct_max_position_market_value from v_settings) - (select coalesce(sum(b.price*a.qty),0.0) as market_value from fn_transaction('%') a left join trade_alp_latest b on a.symbol = b.symbol where posn_age_sec is not null)) as cash_available_before\n                from trade_alp_latest\n                where lower(symbol) = lower($1)\n        ) a;\n    "
   },
   "b06ee7778b547595f6f447e4bec99eb15fa6cd84acc3e073d20fa2071da34e40": {
     "describe": {
