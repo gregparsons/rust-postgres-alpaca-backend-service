@@ -27,9 +27,7 @@ pub async fn get_home(hb: web::Data<Handlebars<'_>>, session: Session) -> HttpRe
     });
     let body = hb.render("home", &data).unwrap();
 
-    HttpResponse::Ok()
-        .append_header(("Cache-Control", "no-store"))
-        .body(body)
+    HttpResponse::Ok().append_header(("Cache-Control", "no-store")).body(body)
 }
 
 /// say "pong"

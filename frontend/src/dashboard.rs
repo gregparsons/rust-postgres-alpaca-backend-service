@@ -4,66 +4,58 @@
 
 use actix_session::Session;
 use actix_web::{web, HttpResponse};
+use crossbeam_channel::Sender;
 use common_lib::alpaca_activity::Activity;
 use common_lib::common_structs::SESSION_USERNAME;
 use common_lib::http::redirect_home;
 use common_lib::symbol_list::SymbolList;
 use handlebars::Handlebars;
 use serde_json::json;
-use sqlx::PgPool;
+use common_lib::dashboard;
+use common_lib::db::DbMsg;
 
 /// GET /dashboard
-pub async fn get_dashboard(
-    pool: web::Data<PgPool>,
-    hb: web::Data<Handlebars<'_>>,
-    session: Session,
-) -> HttpResponse {
+pub async fn get_dashboard(tx_db: web::Data<Sender<DbMsg>>, hb: web::Data<Handlebars<'_>>, session: Session) -> HttpResponse {
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
-        let message = "TBD dashboard (no symbol specified)".to_string();
-
-        let symbol_list = match SymbolList::get_all_symbols(&pool).await {
+        let message = "".to_string();
+        let tx_db = tx_db.into_inner().as_ref().clone();
+        let symbol_list = match SymbolList::get_active_symbols(tx_db.clone()).await {
             Ok(symbol_list) => symbol_list,
             Err(e) => {
                 tracing::debug!("[get_dashboard] error getting symbols {:?}", &e);
                 vec![]
             }
         };
-
+        let vec_dashboard = dashboard::get(tx_db.clone()).await;
         let data = json!({
             "title": "",
             "parent": "base0",
             "is_logged_in": true,
             "session_username": session_username,
             "message": message,
+            "dashboard": vec_dashboard,
             "symbols":symbol_list,
         });
         let body = hb.render("dashboard", &data).unwrap();
-        HttpResponse::Ok()
-            .append_header(("Cache-Control", "no-store"))
-            .body(body)
+        HttpResponse::Ok().append_header(("Cache-Control", "no-store")).body(body)
+
     } else {
         redirect_home().await
     }
 }
 
 /// GET /dashboard/{symbol}
-pub async fn get_dashboard_with_symbol(
-    symbol: web::Path<String>,
-    pool: web::Data<PgPool>,
-    hb: web::Data<Handlebars<'_>>,
-    session: Session,
-) -> HttpResponse {
+pub async fn get_dashboard_with_symbol(symbol: web::Path<String>, tx_db: web::Data<Sender<DbMsg>>, hb: web::Data<Handlebars<'_>>, session: Session) -> HttpResponse {
     let symbol = symbol.into_inner();
 
     if let Ok(Some(_session_username)) = session.get::<String>(SESSION_USERNAME) {
         let message = format!("TBD dashboard for symbol: {}", &symbol);
-        match SymbolList::get_all_symbols(&pool).await {
-            Ok(symbol_list) => {
-                render_dashboard(&symbol, &symbol_list, message, pool, hb, session).await
-            }
+        let tx_db = tx_db.into_inner().as_ref().clone();
+        match SymbolList::get_active_symbols(tx_db.clone()).await {
+            Ok(symbol_list) => render_dashboard(&symbol, &symbol_list, message, tx_db.clone(), hb, session).await,
             Err(e) => {
                 tracing::debug!("[get_dashboard_with_symbol] {:?}", &e);
-                render_dashboard(&symbol, &vec![], message, pool, hb, session).await
+                render_dashboard(&symbol, &vec![], message, tx_db.clone(), hb, session).await
             }
         }
     } else {
@@ -72,18 +64,11 @@ pub async fn get_dashboard_with_symbol(
 }
 
 /// render dashboard
-async fn render_dashboard(
-    symbol: &str,
-    symbol_list: &Vec<String>,
-    message: String,
-    pool: web::Data<PgPool>,
-    hb: web::Data<Handlebars<'_>>,
-    session: Session,
-) -> HttpResponse {
-    let activities = Activity::get_activities_from_db_for_symbol(symbol, &pool)
-        .await
-        .unwrap_or(vec![]);
-    // tracing::debug!("[render_dashboard] got activities: {:?}", &activities);
+async fn render_dashboard(symbol: &str, symbol_list: &Vec<String>, message: String, tx_db: Sender<DbMsg>, hb: web::Data<Handlebars<'_>>, session: Session) -> HttpResponse {
+
+    let activities = Activity::get_activities_from_db_for_symbol(symbol, tx_db.clone()).await;
+
+    let vec_dashboard = dashboard::get(tx_db.clone()).await;
 
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
         // pass username if logged in;
@@ -93,6 +78,7 @@ async fn render_dashboard(
             "is_logged_in": true,
             "session_username": session_username,
             "message": message,
+            "dashboard": vec_dashboard,
             "symbols":symbol_list,
             "activities":activities,
         });
@@ -106,9 +92,3 @@ async fn render_dashboard(
     }
 }
 
-// /// POST /dashboard?symbol_select=aapl
-// pub async fn post_dashboard_with_symbol(symbol_form: web::Form<DashboardForm>, _pool: web::Data<PgPool>, _hb: web::Data<Handlebars<'_>>, _session:Session) -> impl Responder {
-//     tracing::debug!("[post_dashboard_with_symbol] symbol: {}", &symbol_form.symbol);
-//     format!("post_dashboard_with_symbol: {}", symbol_form.into_inner().symbol)
-//
-// }

@@ -15,8 +15,9 @@
 use std::fmt;
 use bigdecimal::BigDecimal;
 use chrono::{DateTime, NaiveDateTime, Utc};
+use crossbeam_channel::Sender;
 use serde::{Deserialize, Serialize};
-use sqlx::PgPool;
+use tokio::sync::oneshot;
 use crate::db::DbMsg;
 use crate::error::TradeWebError;
 use crate::settings::Settings;
@@ -105,53 +106,45 @@ impl Activity {
 
     /// get a vec of alpaca trading activities from the postgres database (as a reflection of what's been
     /// synced from the Alpaca API)
-    pub async fn get_activities_from_db(pool: &PgPool) -> Result<Vec<ActivityQuery>, sqlx::Error> {
-        // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
-        sqlx::query_as!(
-            ActivityQuery,
-            r#"
-                select
-                    dtg::timestamp as "dtg_utc!"
-                    ,timezone('US/Pacific', dtg) as "dtg_pacific!"
-                    ,symbol as "symbol!"
-                    ,side as "side!:TradeSide"
-                    ,qty as "qty!"
-                    ,price as "price!"
-                    ,order_id as "client_order_id!"
-                from alpaca_activity
-                order by dtg desc
-            "#
-        )
-            .fetch_all(pool)
-            .await
+    pub async fn get_activities_from_db(tx_db:Sender<DbMsg>) -> Vec<ActivityQuery> {
+        let (tx, rx) = oneshot::channel();
+        match tx_db.send(DbMsg::ActivityGetAll{ sender:tx}){
+            Ok(_)=>{
+                match rx.await{
+                    Ok(vec_activity)=> vec_activity,
+                    Err(e)=>{
+                        tracing::error!("[get_activities_from_db_for_symbol] recv error: {:?}", &e);
+                        vec!()
+                    }
+                }
+            },
+            Err(e)=>{
+                tracing::error!("[get_activities_from_db_for_symbol] send error: {:?}", &e);
+                vec!()
+            }
+        }
     }
 
-    pub async fn get_activities_from_db_for_symbol(
-        symbol: &str,
-        pool: &PgPool,
-    ) -> Result<Vec<ActivityQuery>, sqlx::Error> {
-        // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
+    pub async fn get_activities_from_db_for_symbol(symbol: &str, tx_db:Sender<DbMsg>) -> Vec<ActivityQuery> {
+        let (tx, rx) = oneshot::channel();
+        match tx_db.send(DbMsg::ActivityGetForSymbol{symbol:symbol.to_string(), sender:tx}){
+            Ok(_)=>{
+                match rx.await{
+                    Ok(vec_activity)=> vec_activity,
+                    Err(e)=>{
+                        tracing::error!("[get_activities_from_db_for_symbol] recv error: {:?}", &e);
+                        vec!()
+                    }
+                }
+            },
+            Err(e)=>{
+                tracing::error!("[get_activities_from_db_for_symbol] send error: {:?}", &e);
+                vec!()
+            }
 
-        sqlx::query_as!(
-            ActivityQuery,
-            r#"
-                select
-                    dtg::timestamp as "dtg_utc!"
-                    ,timezone('US/Pacific', dtg) as "dtg_pacific!"
-                    ,symbol as "symbol!"
-                    ,side as "side!:TradeSide"
-                    ,qty as "qty!"
-                    ,price as "price!"
-                    ,order_id as "client_order_id!"
-                from alpaca_activity
-                where symbol = upper($1)
-                order by dtg desc
-            "#,
-            symbol
-        )
-            .fetch_all(pool)
-            .await
+        }
     }
+
 }
 
 /// https://alpaca.markets/docs/api-references/trading-api/account-activities/#properties

@@ -134,13 +134,12 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
     let tx_db1 = tx_db.clone();
 
     // TODO: combine the db call to get the stock symbol with Account::buy_decision_cash_available
-    let start_result = AlpacaTransaction::buy_check(&stock_symbol.symbol, tx_db1);
+    let start_result = AlpacaTransaction::buy_check(&stock_symbol.symbol, tx_db1).await;
     tracing::info!("[buy] ***** buy check: {:?}", &start_result);
     match start_result {
 
-        BuyResult::NotAllowed { error } => {
-            tracing::debug!("[buy] ***** already a position or order: {:?}", &error);
-        }
+        BuyResult::NotAllowed { error } => tracing::debug!("[buy] ***** already a position or order: {:?}", &error),
+
         BuyResult::Allowed => {
 
             let max_buy_result = Account::max_buy_possible(&stock_symbol.symbol, tx_db.clone()).await;
@@ -189,8 +188,6 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
                     false => (None, OrderType::Market),
                     true => (Some(fix_alpaca_price_rounding(limit_price)), OrderType::Limit),
                 };
-
-
 
 
                 // JSON for alpaca API

@@ -18,35 +18,3 @@ pub async fn redirect_home() -> HttpResponse {
         .finish()
 }
 
-// pub async fn parse_http_result_to_vec<'a, T: Deserialize<'a>>(http_result:Result<Response,reqwest::Error>)->Result<Vec<T>,TradeWebError>{
-//     let return_val = match http_result {
-//         Ok(response) => {
-//             match response.text().await{
-//                 Ok(response_text)=>{
-//
-//                     let rt2 = response_text.clone();
-//
-//                     match serde_json::from_str::<Vec<T>>(&rt2){
-//                         Ok(results)=> {
-//                             Ok(results)
-//                         },
-//                         Err(e)=>{
-//                             tracing::debug!("[get_remote] deserialization to json vec failed: {:?}", &e);
-//                             Err(TradeWebError::JsonError)
-//                         }
-//                     }
-//                 },
-//                 Err(e)=>{
-//                     tracing::debug!("[get_remote] deserialization to json text failed: {:?}", &e);
-//                     Err(TradeWebError::JsonError)
-//                 }
-//             }
-//         },
-//         Err(e) => {
-//             tracing::debug!("[get_remote] reqwest error: {:?}", &e);
-//             Err(TradeWebError::ReqwestError)
-//         }
-//     };
-//
-//     return_val
-// }

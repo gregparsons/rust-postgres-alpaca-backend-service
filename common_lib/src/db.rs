@@ -30,7 +30,7 @@ use crate::settings::Settings;
 
 // trade imports
 use crate::account::{Account, AccountWithDate};
-use crate::alpaca_activity::{Activity, ActivityLatest};
+use crate::alpaca_activity::{Activity, ActivityLatest, ActivityQuery};
 use crate::alpaca_api_structs::{AlpacaTradeWs, MinuteBar, Ping};
 use crate::alpaca_order::Order;
 use crate::alpaca_order_log::AlpacaOrderLogEvent;
@@ -40,6 +40,7 @@ use crate::finnhub::{FinnhubPing, FinnhubTrade};
 use crate::symbol_list::QrySymbol;
 use crate::trade_struct::{JsonTrade, OrderType, TimeInForce, TradeSide};
 use crate::alpaca_transaction_status::*;
+use crate::dashboard::Dashboard;
 use crate::diff_calc::DiffCalc;
 use crate::order_log_entry::OrderLogEntry;
 use crate::position_local::PositionLocal;
@@ -70,17 +71,21 @@ pub enum DbMsg {
     AccountGetRemote{ settings:Settings, resp_tx: Sender<Account> },
     AccountSaveToDb{ account:Account},
     AcctCashAvailable { symbol:String, sender_tx: oneshot::Sender<MaxBuyPossible> },
+    AcctDashboardGet{ sender:oneshot::Sender<Vec<Dashboard>>},
 
     TransactionInsertPosition { position:Position },
-    TransactionStartBuy { symbol:String, sender: Sender<BuyResult>},
+    TransactionStartBuy { symbol:String, sender: oneshot::Sender<BuyResult>},
     TransactionStartSell { symbol:String},
 
 
     ActivityLatestDtg{ resp_tx: Sender<DateTime<Utc>> },
     ActivityGetRemote{ since_option:Option<DateTime<Utc>>, settings:Settings, resp_tx: Sender<Vec<Activity>>},
     ActivitySaveToDb { activity:Activity },
+    ActivityGetAll{sender:oneshot::Sender<Vec<ActivityQuery>>},
+    ActivityGetForSymbol { symbol:String, sender:oneshot::Sender<Vec<ActivityQuery>>},
 
-    GetSymbolList{sender_tx: Sender<Vec<String>> },
+    SymbolListGetActive {sender_tx: Sender<Vec<String>> },
+    SymbolListGetAll {sender_tx: Sender<Vec<String>> },
     SymbolLoadOne{symbol:String, sender_tx: Sender<Symbol> },
 
     OrderSave{ order:Order },
@@ -183,6 +188,33 @@ async fn process_message(msg:DbMsg, pool: PgPool){
     // tracing::debug!("[process_message] DbMsg: {:?}", &msg);
 
     match msg {
+        DbMsg::AcctDashboardGet {sender}=>{
+
+            let vec_dashboard = acct_dashboard(pool).await;
+            let _ = sender.send(vec_dashboard);
+
+
+        },
+        DbMsg::ActivityGetAll{ sender}=>{
+            let vec_activity = match activities_from_db(pool).await{
+                Ok(vec)=>vec,
+                Err(e)=>{
+                    tracing::error!("[process_message::ActivityGetAll] error: {:?}", &e);
+                    vec!()
+                }
+            };
+            let _ = sender.send(vec_activity);
+        }
+        DbMsg::ActivityGetForSymbol{symbol, sender}=>{
+            let vec_activity = match activities_from_db_for_symbol(&symbol, pool).await{
+                Ok(vec)=>vec,
+                Err(e)=>{
+                    tracing::error!("[process_message::ActivityGetForSymbol] error: {:?}", &e);
+                    vec!()
+                }
+            };
+            let _ = sender.send(vec_activity);
+        }
 
         // positions for display in the web UI
         DbMsg::PositionLocalGet{sender}=>{
@@ -323,8 +355,15 @@ async fn process_message(msg:DbMsg, pool: PgPool){
         },
 
 
-        DbMsg::GetSymbolList{sender_tx}=>{
-            let result = symbols_get_active(&pool).await;
+        DbMsg::SymbolListGetActive {sender_tx}=>{
+            let result = symbols_get_active(pool).await;
+            if let Ok(symbols) = result {
+                let _ = sender_tx.send(symbols);
+            }
+        },
+
+        DbMsg::SymbolListGetAll {sender_tx}=>{
+            let result = symbols_get_all(pool).await;
             if let Ok(symbols) = result {
                 let _ = sender_tx.send(symbols);
             }
@@ -378,6 +417,8 @@ async fn process_message(msg:DbMsg, pool: PgPool){
         DbMsg::OrderLogEvent(event)=>{
             tracing::debug!("[db] received DbMsg::OrderLogEvent: {:?}", &event);
             let _ = insert_order_log_entry(&event, &pool).await;
+
+            // update the alpaca_transaction_status table when a sale happens
             if event.event=="fill" && event.order.side== TradeSide::Sell {
                 tracing::info!("[DbMsg::OrderLogEvent][Fill][Sell] {}:{:?}", &event.order.symbol, &event.order.filled_qty);
                 if let Some(qty) = event.order.filled_qty{
@@ -641,12 +682,30 @@ async fn account_get(pool:&PgPool) -> Result<AccountWithDate, TradeWebError> {
     }
 }
 
-async fn symbols_get_active(pool:&PgPool) -> Result<Vec<String>, TradeWebError> {
+async fn symbols_get_active(pool:PgPool) -> Result<Vec<String>, TradeWebError> {
 
     let result: Result<Vec<QrySymbol>, sqlx::Error> = sqlx::query_as!(
             QrySymbol,
             r#"select symbol as "symbol!" from t_symbol where active=true"#
-        ).fetch_all(pool).await;
+        ).fetch_all(&pool).await;
+
+    match result {
+        Ok(symbol_list) => {
+            tracing::debug!("[get_symbols] symbol_list: {:?}", &symbol_list);
+            let s = symbol_list.iter().map(|x| x.symbol.clone()).collect();
+            Ok(s)
+        }
+        Err(e) => {
+            tracing::debug!("[get_symbols] error: {:?}", &e);
+            Err(TradeWebError::SqlxError)
+        }
+    }
+}
+
+/// get a vec of stock symbols
+async fn symbols_get_all(pool: PgPool) -> Result<Vec<String>, TradeWebError> {
+
+    let result = sqlx::query_as!(QrySymbol,r#"select symbol as "symbol!" from t_symbol order by symbol"#).fetch_all(&pool).await;
 
     match result {
         Ok(symbol_list) => {
@@ -1141,10 +1200,8 @@ pub async fn transaction_delete_one(symbol:&str, pool:PgPool)->Result<(), TradeW
 pub async fn transaction_start_buy(symbol:&str, pool:PgPool)->BuyResult{
     // if an entry exists then a buy order exists; otherwise create one with default 0 shares
     match sqlx::query!(r#"
-
                 insert into alpaca_transaction_status(dtg, symbol, posn_shares)
                 values(now()::timestamptz, $1, 0.0
-
             )"#, symbol.to_lowercase()).execute(&pool).await{
         Ok(_)=>{
             BuyResult::Allowed
@@ -1504,4 +1561,63 @@ async fn acct_cash_available(symbol:&str, pool: PgPool) ->Result<MaxBuyPossible,
             Err(TradeWebError::SqlxError)
         }
     }
+}
+
+
+
+async fn acct_dashboard(pool:PgPool)->Vec<Dashboard>{
+    match sqlx::query_as!(Dashboard, r#"select k as "k!", v as "v!" from v_dashboard"#).fetch_all(&pool).await{
+        Ok(result)=>result,
+        Err(e)=>{
+            tracing::error!("[acct_dashboard] failed to retrieve dashboard: {:?}", &e);
+            vec!()
+        }
+    }
+}
+
+/// get a vec of alpaca trading activities from the postgres database (as a reflection of what's been
+/// synced from the Alpaca API)
+async fn activities_from_db(pool: PgPool) -> Result<Vec<ActivityQuery>, sqlx::Error> {
+    // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
+    sqlx::query_as!(
+            ActivityQuery,
+            r#"
+                select
+                    dtg::timestamp as "dtg_utc!"
+                    ,timezone('US/Pacific', dtg) as "dtg_pacific!"
+                    ,symbol as "symbol!"
+                    ,side as "side!:TradeSide"
+                    ,qty as "qty!"
+                    ,price as "price!"
+                    ,order_id as "client_order_id!"
+                from alpaca_activity
+                order by dtg desc
+            "#
+        )
+        .fetch_all(&pool)
+        .await
+}
+
+async fn activities_from_db_for_symbol(symbol: &str, pool: PgPool) -> Result<Vec<ActivityQuery>, sqlx::Error> {
+    // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
+
+    sqlx::query_as!(
+            ActivityQuery,
+            r#"
+                select
+                    dtg::timestamp as "dtg_utc!"
+                    ,timezone('US/Pacific', dtg) as "dtg_pacific!"
+                    ,symbol as "symbol!"
+                    ,side as "side!:TradeSide"
+                    ,qty as "qty!"
+                    ,price as "price!"
+                    ,order_id as "client_order_id!"
+                from alpaca_activity
+                where symbol = upper($1)
+                order by dtg desc
+            "#,
+            symbol
+        )
+        .fetch_all(&pool)
+        .await
 }

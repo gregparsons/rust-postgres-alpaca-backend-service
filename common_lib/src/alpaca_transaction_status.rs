@@ -5,6 +5,7 @@ use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use crossbeam_channel::Sender;
 use sqlx::PgPool;
+use tokio::sync::oneshot;
 use crate::alpaca_position::Position;
 use crate::db::DbMsg;
 use crate::error::TradeWebError;
@@ -60,10 +61,10 @@ impl AlpacaTransaction{
 
 
     // TODO: combine this with Account::buy_decision_cash_available
-    pub fn buy_check(symbol:&str, tx_db:Sender<DbMsg>) -> BuyResult {
-        let (tx, rx) = crossbeam_channel::unbounded();
+    pub async fn buy_check(symbol:&str, tx_db:Sender<DbMsg>) -> BuyResult {
+        let (tx, rx) = oneshot::channel();
         tx_db.send(DbMsg::TransactionStartBuy { symbol:symbol.to_string(), sender: tx}).unwrap();
-        match rx.recv() {
+        match rx.await {
             Ok(buy_result) => buy_result,
             Err(_) => BuyResult::NotAllowed { error: TradeWebError::ChannelError },
         }

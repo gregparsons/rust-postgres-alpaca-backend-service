@@ -928,6 +928,18 @@
     },
     "query": "\n                update t_symbol set active = $2, trade_size = $3 where symbol = $1\n            "
   },
+  "7ad39cfb7a1e71f075c35fcb07c66a92e99e2242decf42fc344ed4961cad2fdb": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar"
+        ]
+      }
+    },
+    "query": "\n                insert into alpaca_transaction_status(dtg, symbol, posn_shares)\n                values(now()::timestamptz, $1, 0.0\n            )"
+  },
   "85a249f6c84fe265732afafc3156e4166eb3a117ca447f04471d8bcacfdd3e1d": {
     "describe": {
       "columns": [
@@ -1243,6 +1255,30 @@
     },
     "query": "delete from alpaca_transaction_status where symbol=$1"
   },
+  "9cf38a2528a83ee2ce8d37003b2bfde83b466b42be8f2cc0d72b243c4fb4a6e2": {
+    "describe": {
+      "columns": [
+        {
+          "name": "k!",
+          "ordinal": 0,
+          "type_info": "Text"
+        },
+        {
+          "name": "v!",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "select k as \"k!\", v as \"v!\" from v_dashboard"
+  },
   "a77a469257f0965db9d3ab3f8f2a7230126ad44458d497151e4c7ca7b71f5160": {
     "describe": {
       "columns": [],
@@ -1255,18 +1291,6 @@
       }
     },
     "query": "\n                update alpaca_transaction_status\n                set posn_shares = posn_shares - $1 where symbol=$2\n            "
-  },
-  "b06ee7778b547595f6f447e4bec99eb15fa6cd84acc3e073d20fa2071da34e40": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar"
-        ]
-      }
-    },
-    "query": "\n\n                insert into alpaca_transaction_status(dtg, symbol, posn_shares)\n                values(now()::timestamptz, $1, 0.0\n\n            )"
   },
   "b207043878cb989d7aa6229d8e5ce62d25d53b050d57faee0c2ecab4453d0409": {
     "describe": {

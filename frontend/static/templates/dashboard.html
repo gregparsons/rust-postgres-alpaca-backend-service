@@ -14,6 +14,13 @@
 <!--    <input type="submit" value="Select">-->
 <!--</form>-->
 <p>{{message}}</p>
+<table>
+    {{#each dashboard}}
+    <tr><td>{{this.k}}</td><td>{{this.v}}</td></tr>
+    {{/each}}
+</table>
+
+
 <hr class="rounded">
 <h3>Chart</h3>
 <hr class="rounded">

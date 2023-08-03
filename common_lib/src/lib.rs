@@ -25,3 +25,4 @@ pub mod alpaca_transaction_status;
 pub mod db;
 pub mod symbol;
 pub mod position_local;
+pub mod dashboard;
