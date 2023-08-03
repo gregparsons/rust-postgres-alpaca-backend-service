@@ -103,6 +103,16 @@ pub async fn sell(symbol: &str, qty_to_sell: BigDecimal, limit_price:Option<BigD
 
 }
 
+/// round to two digits if the amount is greater than or equal to one dollar, 4 digits if less.
+fn fix_alpaca_price_rounding(price:BigDecimal) ->BigDecimal{
+    let fixed_price = if price < BigDecimal::from(1) {
+        price.round(4)
+    } else {
+        price.round(2)
+    };
+
+    fixed_price
+}
 
 /// buy
 pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>) {
@@ -177,8 +187,9 @@ pub async fn buy(stock_symbol: &Symbol, settings: &Settings, tx_db:Sender<DbMsg>
 
                 let (limit_price_opt, order_type) = match BUY_EXTENDED_HOURS {
                     false => (None, OrderType::Market),
-                    true => (Some(limit_price), OrderType::Limit),
+                    true => (Some(fix_alpaca_price_rounding(limit_price)), OrderType::Limit),
                 };
+
 
 
 
