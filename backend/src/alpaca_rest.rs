@@ -36,7 +36,7 @@ pub  struct AlpacaRest{}
 impl AlpacaRest {
 
     /// Spawn a new thread to poll the Alpaca REST API
-    pub fn run(tx_db_rest: Sender<DbMsg>, _tokio_handle: Handle) {
+    pub fn run(tx_db_rest: Sender<DbMsg>, rt: Handle) {
 
         tracing::debug!("[rest_client::run] starting alpaca rest client");
 
@@ -56,8 +56,6 @@ impl AlpacaRest {
         // Call the API if the market is open in NYC
 
         loop {
-
-            // let pool3 = pool.clone();
 
             let time_current_ny = Utc::now().with_timezone(&chrono_tz::America::New_York).time();
             alpaca_poll_rate_ms = {
@@ -79,31 +77,35 @@ impl AlpacaRest {
             // refresh settings from the database
             let tx_db_1 = tx_db_rest.clone();
             let tx_db_2 = tx_db_rest.clone();
-            match Settings::load_with_secret(tx_db_1) {
-                Ok(settings) => {
 
-                    tracing::debug!("[run] got settings, running rest API calls");
+            rt.spawn(async move {
+                match Settings::load_with_secret(tx_db_1).await {
+                    Ok(settings) => {
 
-                    if ENABLE_REST_ACTIVITY {
-                        AlpacaRest::load_activities(&settings, tx_db_2.clone());
+                        tracing::debug!("[run] got settings, running rest API calls");
+
+                        if ENABLE_REST_ACTIVITY {
+                            AlpacaRest::load_activities(&settings, tx_db_2.clone());
+                        }
+
+                        if ENABLE_REST_POSITION {
+                            AlpacaRest::load_positions(&settings, tx_db_2.clone());
+                        }
+
+                        // if ENABLE_REST_ORDER {
+                        //     AlpacaRest::load_orders(&pool3, &settings).await;
+                        // }
+                        //
+                        if ENABLE_REST_ACCOUNT{
+                            Account::load_account(&settings, tx_db_2.clone());
+                        }
+                    },
+                    Err(e) => {
+                        tracing::error!("[run] couldn't load settings in loop to update activities/positions: {:?}", &e);
                     }
-
-                    if ENABLE_REST_POSITION {
-                        AlpacaRest::load_positions(&settings, tx_db_2.clone());
-                    }
-
-                    // if ENABLE_REST_ORDER {
-                    //     AlpacaRest::load_orders(&pool3, &settings).await;
-                    // }
-                    //
-                    if ENABLE_REST_ACCOUNT{
-                        Account::load_account(&settings, tx_db_2.clone());
-                    }
-                },
-                Err(e) => {
-                    tracing::error!("[run] couldn't load settings in loop to update activities/positions: {:?}", &e);
                 }
-            }
+            });
+
 
             tracing::debug!("[run] done");
 

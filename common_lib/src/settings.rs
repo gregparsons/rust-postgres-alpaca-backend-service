@@ -7,7 +7,9 @@ use bigdecimal::BigDecimal;
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use tokio::sync::oneshot;
 use crate::db::DbMsg;
+use crate::error::TradeWebError;
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct Settings {
@@ -42,22 +44,44 @@ impl Settings {
     ///
     /// TODO: encrypt alpaca credentials in database and decrypt here using .env
     ///
-    pub fn load_with_secret(tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<Settings, crossbeam_channel::RecvError> {
+    pub async fn load_with_secret(tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<Settings, TradeWebError> {
         tracing::debug!("[load_with_secret]");
-        // response channel
-        let (sender_tx, resp_rx) = crossbeam_channel::unbounded();
-        tx_db.send(DbMsg::SettingsWithSecret { sender_tx }).unwrap();
-        let settings_result = resp_rx.recv();
-        settings_result
+        let (tx, rx) = oneshot::channel();
+        match tx_db.send(DbMsg::SettingsWithSecret { sender: tx }) {
+            Ok(_) => {
+                match rx.await {
+                    Ok(settings) => Ok(settings),
+                    Err(_) => {
+                        tracing::error!("[load_with_secret] send error");
+                        Err(TradeWebError::ChannelError)
+                    },
+                }
+            },
+            Err(_) => {
+                tracing::error!("[load_with_secret] receive error");
+                Err(TradeWebError::ChannelError)
+            }
+        }
     }
 
-    pub fn load_no_secret(tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<Settings, crossbeam_channel::RecvError> {
+    pub async fn load_no_secret(tx_db: crossbeam_channel::Sender<DbMsg>) -> Result<Settings, TradeWebError> {
         tracing::debug!("[load_with_secret]");
-        // response channel
-        let (sender_tx, resp_rx) = crossbeam_channel::unbounded();
-        tx_db.send(DbMsg::SettingsNoSecret { sender_tx }).unwrap();
-        let settings_result = resp_rx.recv();
-        settings_result
+        let (tx, rx) = oneshot::channel();
+        match tx_db.send(DbMsg::SettingsNoSecret { sender: tx }) {
+            Ok(_) => {
+                match rx.await {
+                    Ok(settings) => Ok(settings),
+                    Err(_) => {
+                        tracing::error!("[load_with_secret] send error");
+                        Err(TradeWebError::ChannelError)
+                    },
+                }
+            },
+            Err(_) => {
+                tracing::error!("[load_with_secret] receive error");
+                Err(TradeWebError::ChannelError)
+            }
+        }
     }
 
     /// change the settings and return blank secret for front-end type uses
@@ -93,9 +117,8 @@ impl Settings {
                 from fn_set_trade_settings($1);
             "#,
             &ts
-        )
-        .fetch_one(pool)
-        .await;
+        ).fetch_one(pool).await;
+
         settings_result
     }
 }

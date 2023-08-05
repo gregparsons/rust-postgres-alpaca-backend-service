@@ -27,7 +27,7 @@ async fn get_settings_with_message(tx_db: web::Data<Sender<DbMsg>>, hb: web::Dat
         let tx_db = tx_db.into_inner().as_ref().clone();
         let tx_db1 = tx_db.clone();
 
-        let setting_result = Settings::load_no_secret(tx_db1);
+        let setting_result = Settings::load_no_secret(tx_db1).await;
         match setting_result {
             Ok(settings) => {
                 let data = json!({

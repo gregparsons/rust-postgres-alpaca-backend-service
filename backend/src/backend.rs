@@ -60,7 +60,7 @@ pub async fn run(tokio_handle: Handle) {
     // start the various operational threads
     // get the settings on startup first
     let tx_db_1 = tx_db.clone();
-    let settings_result = Settings::load_with_secret(tx_db_1);
+    let settings_result = Settings::load_with_secret(tx_db_1).await;
     match settings_result{
 
         Ok(settings)=>{
@@ -83,7 +83,6 @@ pub async fn run(tokio_handle: Handle) {
             } else {
                 tracing::debug!("[run] alpaca_rest_on: {}", alpaca_rest_on);
             }
-
 
 
             /****** alpaca websocket ******/

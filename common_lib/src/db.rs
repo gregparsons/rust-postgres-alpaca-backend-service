@@ -61,8 +61,8 @@ pub enum DbMsg {
     RefreshRating,
     OrderLogEvent(AlpacaOrderLogEvent),
 
-    SettingsWithSecret { sender_tx: Sender<Settings> },
-    SettingsNoSecret { sender_tx: Sender<Settings> },
+    SettingsWithSecret { sender: oneshot::Sender<Settings> },
+    SettingsNoSecret { sender: oneshot::Sender<Settings> },
 
     TransactionDeleteOne{ symbol:String },
     TransactionDeleteAll,
@@ -254,18 +254,18 @@ async fn process_message(msg:DbMsg, pool: PgPool){
 
         DbMsg::OrderSave{ order }=>{
             let _ = order_save(order, pool).await;
-        }
+        },
 
-        DbMsg::SettingsWithSecret {sender_tx}=>{
+        DbMsg::SettingsWithSecret { sender: sender_tx }=>{
             match settings_load_with_secret(pool).await {
                 Ok(settings) => { let _ = sender_tx.send(settings); },
                 Err(_e)=> tracing::debug!("[db] received DbMsg::GetSettingsWithSecret error: {:?}", &_e),
             }
         },
 
-        DbMsg::SettingsNoSecret {sender_tx}=>{
+        DbMsg::SettingsNoSecret { sender: sender_tx }=>{
             tracing::debug!("[db] received DbMsg::SettingsNoSecret");
-            match settings_load_with_secret(pool).await {
+            match settings_load_no_secret(pool).await {
                 Ok(settings) => { let _ = sender_tx.send(settings); },
                 Err(_e)=> tracing::debug!("[db] received DbMsg::GetSettingsWithSecret error: {:?}", &_e),
             }
@@ -1430,7 +1430,9 @@ pub async fn order_local(pool:PgPool) -> Result<Vec<Order>, TradeWebError> {
 }
 
 /// return blank secret for front-end type uses
-pub async fn load_no_secret(pool: PgPool) -> Result<Settings, TradeWebError> {
+pub async fn settings_load_no_secret(pool: PgPool) -> Result<Settings, TradeWebError> {
+    tracing::debug!("[settings_load_no_secret]");
+
     let settings_result = sqlx::query_as!(Settings,
         r#"
             SELECT
@@ -1466,6 +1468,8 @@ pub async fn load_no_secret(pool: PgPool) -> Result<Settings, TradeWebError> {
 }
 
 async fn settings_load_with_secret(pool:PgPool) -> Result<Settings, TradeWebError> {
+
+    tracing::debug!("[settings_load_with_secret]");
 
     let settings_result = sqlx::query_as!(
         Settings,

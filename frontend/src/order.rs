@@ -24,7 +24,7 @@ pub async fn get_order(
         let tx_db1 = tx_db.clone();
 
 
-        let setting_result = Settings::load_no_secret(tx_db1);
+        let setting_result = Settings::load_no_secret(tx_db1).await;
 
         match setting_result {
             Ok(settings) => {
