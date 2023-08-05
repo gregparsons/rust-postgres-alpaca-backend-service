@@ -124,13 +124,10 @@ pub struct DbActor {
 impl DbActor {
 
     pub async fn new() -> DbActor{
+        tracing::debug!("[new]");
         let pool = create_sqlx_pg_pool().await;
         let (tx, rx) = crossbeam::channel::unbounded();
-        DbActor{
-            pool,
-            tx,
-            rx,
-        }
+        DbActor{ pool, tx, rx, }
     }
 
     /// DB Listener
@@ -1514,18 +1511,20 @@ async fn position_local_get(pool:PgPool)->Result<Vec<PositionLocal>, TradeWebErr
     let result = sqlx::query_as!(PositionLocal, r#"
         select
             a.symbol as "symbol!"
-            , coalesce(qty,0) as "qty!"
-            , a.basis + b.price*a.qty as "pl!"
-            , (a.basis + b.price*a.qty)/a.qty as "pl_per_share!"
-            , a.basis as "basis!"
-            , b.price*a.qty as "market_value!"
-            , b.price as "price!"
-            , a.dtg as "dtg!"
-            , a.posn_age_sec as "posn_age_sec!"
+            , coalesce(sum(qty),0) as "qty!"
+            -- avg doesn't do anything since fn_transaction already does the average
+            , sum(a.basis) + avg(b.price) * sum(a.qty) as "pl!"
+            , (sum(a.basis) + avg(b.price) * sum(a.qty))/sum(a.qty) as "pl_per_share!"
+            , sum(a.basis) as "basis!"
+            , avg(b.price)*sum(a.qty) as "market_value!"
+            , avg(b.price) as "price!"
+            , min(a.dtg) as "dtg!"
+            , avg(a.posn_age_sec) as "posn_age_sec!"
         from fn_transaction('%') a
         left join trade_alp_latest b on a.symbol = b.symbol
-        where posn_age_sec is not null
-        order by a.symbol, a.dtg desc
+        -- where posn_age_sec is not null
+        group by a.symbol
+        order by a.symbol
     "#).fetch_all(&pool).await;
 
     match result {

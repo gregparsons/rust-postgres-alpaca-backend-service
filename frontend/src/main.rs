@@ -51,7 +51,6 @@ fn main() {
 
         std::thread::spawn(move || {
             tracing::debug!("[backend] db thread");
-
             db_actor.run(rt);
             tracing::debug!("[backend] db thread done");
         });

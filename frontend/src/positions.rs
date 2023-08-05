@@ -13,27 +13,19 @@ use common_lib::db::DbMsg;
 use common_lib::position_local::PositionLocal;
 
 /// GET /positions
-pub async fn get_positions(
-    tx_db: web::Data<Sender<DbMsg>>,
-    hb: web::Data<Handlebars<'_>>,
-    session: Session,
-) -> HttpResponse {
+pub async fn get_positions(tx_db: web::Data<Sender<DbMsg>>, hb: web::Data<Handlebars<'_>>, session: Session) -> HttpResponse {
     get_positions_with_message(tx_db, hb, session, "").await
 }
 
 /// Same as get_positions but displays a message above the list of positions
-async fn get_positions_with_message(
-    tx_db: web::Data<Sender<DbMsg>>,
-    hb: web::Data<Handlebars<'_>>,
-    session: Session,
-    message: &str,
-) -> HttpResponse {
+async fn get_positions_with_message(tx_db: web::Data<Sender<DbMsg>>, hb: web::Data<Handlebars<'_>>, session: Session, message: &str) -> HttpResponse {
 
     // require login
     if let Ok(Some(session_username)) = session.get::<String>(SESSION_USERNAME) {
 
         // get positions from the database (synced from Alpaca by the backend)
         let tx_db = tx_db.into_inner().as_ref().clone();
+
         let position_vec = PositionLocal::get_all(tx_db).await;
 
         // match position_vec_result {
