@@ -1509,22 +1509,7 @@ async fn settings_load_with_secret(pool:PgPool) -> Result<Settings, TradeWebErro
 async fn position_local_get(pool:PgPool)->Result<Vec<PositionLocal>, TradeWebError>{
 
     let result = sqlx::query_as!(PositionLocal, r#"
-        select
-            a.symbol as "symbol!"
-            , coalesce(sum(qty),0) as "qty!"
-            -- avg doesn't do anything since fn_transaction already does the average
-            , sum(a.basis) + avg(b.price) * sum(a.qty) as "pl!"
-            , (sum(a.basis) + avg(b.price) * sum(a.qty))/sum(a.qty) as "pl_per_share!"
-            , sum(a.basis) as "basis!"
-            , avg(b.price)*sum(a.qty) as "market_value!"
-            , avg(b.price) as "price!"
-            , min(a.dtg) as "dtg!"
-            , avg(a.posn_age_sec) as "posn_age_sec!"
-        from fn_transaction('%') a
-        left join trade_alp_latest b on a.symbol = b.symbol
-        -- where posn_age_sec is not null
-        group by a.symbol
-        order by a.symbol
+        select * from v_positions_from_activity
     "#).fetch_all(&pool).await;
 
     match result {

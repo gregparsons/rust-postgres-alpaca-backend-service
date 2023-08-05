@@ -465,6 +465,72 @@
     },
     "query": "\n            with rows as (\n                insert into users (\n                    user_id, username, password\n                )\n                values (gen_random_uuid(), $1, $2)\n                returning user_id\n            ) select user_id from rows\n        "
   },
+  "2e684fce3f0f587a81337c9a86adecf338e41921b60d3ba17795a3abdec58d13": {
+    "describe": {
+      "columns": [
+        {
+          "name": "symbol!",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "qty!",
+          "ordinal": 1,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "pl!",
+          "ordinal": 2,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "pl_per_share!",
+          "ordinal": 3,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "basis!",
+          "ordinal": 4,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "market_value!",
+          "ordinal": 5,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price!",
+          "ordinal": 6,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "dtg!",
+          "ordinal": 7,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "posn_age_sec!",
+          "ordinal": 8,
+          "type_info": "Numeric"
+        }
+      ],
+      "nullable": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n        select * from v_positions_from_activity\n    "
+  },
   "2f8936d3543db55cc50dcb2c09d29bb2e43bb6fbaaced1b57d3df6553960f68b": {
     "describe": {
       "columns": [],
@@ -1322,72 +1388,6 @@
       }
     },
     "query": "delete from alpaca_position"
-  },
-  "b421b59deed394366fa5aab28e618c13cd3ff697218c18de28c81de18fb1d73b": {
-    "describe": {
-      "columns": [
-        {
-          "name": "symbol!",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "qty!",
-          "ordinal": 1,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "pl!",
-          "ordinal": 2,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "pl_per_share!",
-          "ordinal": 3,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "basis!",
-          "ordinal": 4,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "market_value!",
-          "ordinal": 5,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price!",
-          "ordinal": 6,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "dtg!",
-          "ordinal": 7,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "posn_age_sec!",
-          "ordinal": 8,
-          "type_info": "Numeric"
-        }
-      ],
-      "nullable": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n        select\n            a.symbol as \"symbol!\"\n            , coalesce(sum(qty),0) as \"qty!\"\n            -- avg doesn't do anything since fn_transaction already does the average\n            , sum(a.basis) + avg(b.price) * sum(a.qty) as \"pl!\"\n            , (sum(a.basis) + avg(b.price) * sum(a.qty))/sum(a.qty) as \"pl_per_share!\"\n            , sum(a.basis) as \"basis!\"\n            , avg(b.price)*sum(a.qty) as \"market_value!\"\n            , avg(b.price) as \"price!\"\n            , min(a.dtg) as \"dtg!\"\n            , avg(a.posn_age_sec) as \"posn_age_sec!\"\n        from fn_transaction('%') a\n        left join trade_alp_latest b on a.symbol = b.symbol\n        -- where posn_age_sec is not null\n        group by a.symbol\n        order by a.symbol\n    "
   },
   "b719258d9bd3bb870db33a104cdc03fa10028f855bc41cec26485330816dd0a6": {
     "describe": {
