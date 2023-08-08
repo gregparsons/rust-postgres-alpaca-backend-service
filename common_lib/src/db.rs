@@ -1252,8 +1252,8 @@ async fn diffcalc_get(pool:PgPool)->Result<Vec<DiffCalc>, PollerError>{
              , price_5m as "price_5m!"
              , dtg_last::timestamptz as "dtg_last!"
              , dtg_last_pacific::timestamptz as "dtg_last_pacific!"
-        from v_finnhub_diff
-        -- from v_alpaca_diff
+        -- from v_finnhub_diff
+        from v_alpaca_diff
         "#
     ).fetch_all(&pool).await;
 
@@ -1537,10 +1537,9 @@ async fn acct_cash_available(symbol:&str, pool: PgPool) ->Result<MaxBuyPossible,
             select
                 price
                 ,size
-                ,(select (select acct_max_position_market_value from v_settings) - (select coalesce(sum(b.price*a.qty),0.0) as market_value from fn_transaction('%') a left join trade_alp_latest b on a.symbol = b.symbol where posn_age_sec is not null))
-                as cash_available_before
-                from trade_alp_latest
-                where lower(symbol) = lower($1)
+                ,(select v from v_dashboard where k='acct_cash_available (market)')::numeric as cash_available_before
+            from trade_alp_latest
+            where lower(symbol) = lower($1)
         ) a;
     "#, symbol).fetch_one(&pool).await {
         Ok(result_struct)=> Ok(result_struct),

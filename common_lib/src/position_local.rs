@@ -8,14 +8,18 @@ use crate::db::DbMsg;
 #[derive(Debug, Serialize)]
 pub struct PositionLocal{
     pub symbol: String,
-    pub qty: BigDecimal,
-    pub pl: BigDecimal,
-    pub pl_per_share: BigDecimal,
+    pub profit_closed: BigDecimal,
+    pub pl_posn: BigDecimal,
+    pub pl_posn_share: BigDecimal,
+    pub elapsed_sec:BigDecimal,
+    pub posn_age_sec: BigDecimal,
+    pub qty_posn: BigDecimal,
+    pub price_posn_entry: BigDecimal,
     pub basis: BigDecimal,
+    pub price_market: BigDecimal,
     pub market_value: BigDecimal,
-    pub price: BigDecimal,
     pub dtg: DateTime<Utc>,
-    pub posn_age_sec: BigDecimal
+
 
 }
 

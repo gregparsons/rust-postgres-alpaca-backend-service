@@ -474,47 +474,65 @@
           "type_info": "Varchar"
         },
         {
-          "name": "qty!",
+          "name": "profit_closed!",
           "ordinal": 1,
           "type_info": "Numeric"
         },
         {
-          "name": "pl!",
+          "name": "pl_posn!",
           "ordinal": 2,
           "type_info": "Numeric"
         },
         {
-          "name": "pl_per_share!",
+          "name": "pl_posn_share!",
           "ordinal": 3,
           "type_info": "Numeric"
         },
         {
-          "name": "basis!",
+          "name": "elapsed_sec!",
           "ordinal": 4,
           "type_info": "Numeric"
         },
         {
-          "name": "market_value!",
+          "name": "posn_age_sec!",
           "ordinal": 5,
           "type_info": "Numeric"
         },
         {
-          "name": "price!",
+          "name": "qty_posn!",
           "ordinal": 6,
           "type_info": "Numeric"
         },
         {
-          "name": "dtg!",
+          "name": "price_posn_entry!",
           "ordinal": 7,
-          "type_info": "Timestamptz"
+          "type_info": "Numeric"
         },
         {
-          "name": "posn_age_sec!",
+          "name": "basis!",
           "ordinal": 8,
           "type_info": "Numeric"
+        },
+        {
+          "name": "price_market!",
+          "ordinal": 9,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "market_value!",
+          "ordinal": 10,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "dtg!",
+          "ordinal": 11,
+          "type_info": "Timestamptz"
         }
       ],
       "nullable": [
+        true,
+        true,
+        true,
         true,
         true,
         true,
@@ -605,44 +623,6 @@
       }
     },
     "query": "select symbol as \"symbol!\" from t_symbol where active=true"
-  },
-  "470e3d9dceab14f41ff38db411f0c71b4048278d58caef2c3bab1218ac1c7cb5": {
-    "describe": {
-      "columns": [
-        {
-          "name": "price!",
-          "ordinal": 0,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "size!",
-          "ordinal": 1,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "cash_available!",
-          "ordinal": 2,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "qty_possible!",
-          "ordinal": 3,
-          "type_info": "Numeric"
-        }
-      ],
-      "nullable": [
-        true,
-        true,
-        null,
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Text"
-        ]
-      }
-    },
-    "query": "\n        select\n            a.price as \"price!\"\n            , size as \"size!\"\n            , cash_available_before as \"cash_available!\"\n            , coalesce(case when cash_available_before > 0 then floor(cash_available_before / a.price) end, 0.0)::numeric as \"qty_possible!\"\n        from (\n            select\n                price\n                ,size\n                ,(select (select acct_max_position_market_value from v_settings) - (select coalesce(sum(b.price*a.qty),0.0) as market_value from fn_transaction('%') a left join trade_alp_latest b on a.symbol = b.symbol where posn_age_sec is not null))\n                as cash_available_before\n                from trade_alp_latest\n                where lower(symbol) = lower($1)\n        ) a;\n    "
   },
   "4b04d431e8ecd7c2bb516e1d62fe547b01193aacf53f19234546d83e2a1f4fd9": {
     "describe": {
@@ -930,6 +910,96 @@
       }
     },
     "query": "\n            select\n                symbol as \"symbol!\"\n                ,active as \"active!\"\n                ,coalesce(trade_size,0.0) as \"trade_size!\"\n            from t_symbol where active=true"
+  },
+  "642e17beaf095d3fc4692e24bfebd87c4642523f8f712f521486bd9d4bc2ec87": {
+    "describe": {
+      "columns": [
+        {
+          "name": "dtg!",
+          "ordinal": 0,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "dtg_pacific!",
+          "ordinal": 1,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "symbol!:String",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "diff_30s_1!",
+          "ordinal": 3,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "diff_30s_3!",
+          "ordinal": 4,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "diff_30s_5!",
+          "ordinal": 5,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_last!",
+          "ordinal": 6,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_30s!",
+          "ordinal": 7,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_1m!",
+          "ordinal": 8,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_3m!",
+          "ordinal": 9,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_5m!",
+          "ordinal": 10,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "dtg_last!",
+          "ordinal": 11,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "dtg_last_pacific!",
+          "ordinal": 12,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        null,
+        null,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        null,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n        select\n            now()::timestamptz as \"dtg!\"\n             , timezone('US/Pacific',now())::timestamptz as \"dtg_pacific!\"\n             , symbol as \"symbol!:String\"\n             , diff_30s_1 as \"diff_30s_1!\"\n             , diff_30s_3 as \"diff_30s_3!\"\n             , diff_30s_5 as \"diff_30s_5!\"\n             , price_last as \"price_last!\"\n             , price_30s as \"price_30s!\"\n             , price_1m as \"price_1m!\"\n             , price_3m as \"price_3m!\"\n             , price_5m as \"price_5m!\"\n             , dtg_last::timestamptz as \"dtg_last!\"\n             , dtg_last_pacific::timestamptz as \"dtg_last_pacific!\"\n        -- from v_finnhub_diff\n        from v_alpaca_diff\n        "
   },
   "6890a7efe2764ef09fd174c44d2a9a0fa78fdfbb741528f1778e80d53acd9adc": {
     "describe": {
@@ -1665,96 +1735,6 @@
     },
     "query": "\n            select\n                user_id, username, password\n            from users\n            where username = $1\n        "
   },
-  "cb82cdbc9871e71feb0c7629e107134c02d120a15dfeb47a3635bde9a333c693": {
-    "describe": {
-      "columns": [
-        {
-          "name": "dtg!",
-          "ordinal": 0,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "dtg_pacific!",
-          "ordinal": 1,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "symbol!:String",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "diff_30s_1!",
-          "ordinal": 3,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "diff_30s_3!",
-          "ordinal": 4,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "diff_30s_5!",
-          "ordinal": 5,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price_last!",
-          "ordinal": 6,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price_30s!",
-          "ordinal": 7,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price_1m!",
-          "ordinal": 8,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price_3m!",
-          "ordinal": 9,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price_5m!",
-          "ordinal": 10,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "dtg_last!",
-          "ordinal": 11,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "dtg_last_pacific!",
-          "ordinal": 12,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        null,
-        null,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        null,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n        select\n            now()::timestamptz as \"dtg!\"\n             , timezone('US/Pacific',now())::timestamptz as \"dtg_pacific!\"\n             , symbol as \"symbol!:String\"\n             , diff_30s_1 as \"diff_30s_1!\"\n             , diff_30s_3 as \"diff_30s_3!\"\n             , diff_30s_5 as \"diff_30s_5!\"\n             , price_last as \"price_last!\"\n             , price_30s as \"price_30s!\"\n             , price_1m as \"price_1m!\"\n             , price_3m as \"price_3m!\"\n             , price_5m as \"price_5m!\"\n             , dtg_last::timestamptz as \"dtg_last!\"\n             , dtg_last_pacific::timestamptz as \"dtg_last_pacific!\"\n        from v_finnhub_diff\n        -- from v_alpaca_diff\n        "
-  },
   "cbbf8ab72f26935d3fed0b0706bfe4ca8395ed2efe3bf48e5ef45135d11c896a": {
     "describe": {
       "columns": [],
@@ -1845,6 +1825,44 @@
       }
     },
     "query": "\n                select\n                    dtg::timestamp as \"dtg_utc!\"\n                    ,timezone('US/Pacific', dtg) as \"dtg_pacific!\"\n                    ,symbol as \"symbol!\"\n                    ,side as \"side!:TradeSide\"\n                    ,qty as \"qty!\"\n                    ,price as \"price!\"\n                    ,order_id as \"client_order_id!\"\n                from alpaca_activity\n                order by dtg desc\n            "
+  },
+  "df3a6c44e694341700cef20e4cf768eb22eded30b56ade326cba30489e6b2dde": {
+    "describe": {
+      "columns": [
+        {
+          "name": "price!",
+          "ordinal": 0,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "size!",
+          "ordinal": 1,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "cash_available!",
+          "ordinal": 2,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty_possible!",
+          "ordinal": 3,
+          "type_info": "Numeric"
+        }
+      ],
+      "nullable": [
+        true,
+        true,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Text"
+        ]
+      }
+    },
+    "query": "\n        select\n            a.price as \"price!\"\n            , size as \"size!\"\n            , cash_available_before as \"cash_available!\"\n            , coalesce(case when cash_available_before > 0 then floor(cash_available_before / a.price) end, 0.0)::numeric as \"qty_possible!\"\n        from (\n            select\n                price\n                ,size\n                ,(select v from v_dashboard where k='acct_cash_available (market)')::numeric as cash_available_before\n            from trade_alp_latest\n            where lower(symbol) = lower($1)\n        ) a;\n    "
   },
   "ee7c5fc84618ea4a17d5e39cd829520fd7f6eac73140bdf27012e5aec0a42239": {
     "describe": {

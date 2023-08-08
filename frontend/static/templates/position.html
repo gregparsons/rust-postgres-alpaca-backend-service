@@ -22,26 +22,29 @@
 <table>
     <tr>
         <td>symbol</td>
-        <td>qty</td>
-        <td>pl</td>
-        <td>pl_per_share</td>
+        <td>qty_posn</td>
+        <td>pl_posn</td>
+        <td>pl_posn_share</td>
         <td>basis</td>
         <td>market_value</td>
-        <td>price</td>
-        <td>dtg</td>
+        <td>price_posn_entry</td>
+        <td>price_market</td>
         <td>posn_age_sec</td>
+        <td>dtg</td>
     <tr>
     {{#each data}}
     <tr>
         <td><a href="https://finance.yahoo.com/chart/{{this.symbol}}">{{this.symbol}}</a></td>
-        <td>{{this.qty}}</td>
-        <td>{{this.pl}}</td>
-        <td>{{this.pl_per_share}}</td>
+        <td>{{this.qty_posn}}</td>
+        <td>{{this.pl_posn}}</td>
+        <td>{{this.pl_posn_share}}</td>
         <td>{{this.basis}}</td>
         <td>{{this.market_value}}</td>
-        <td>{{this.price}}</td>
-        <td>{{this.dtg}}</td>
+        <td>{{this.price_posn_entry}}</td>
+        <td>{{this.price_market}}</td>
         <td>{{this.posn_age_sec}}</td>
+        <td>{{this.dtg}}</td>
+
     </tr>
     {{/each}}
 </table>
