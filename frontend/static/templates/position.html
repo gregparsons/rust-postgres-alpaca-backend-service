@@ -22,6 +22,7 @@
 <table>
     <tr>
         <td>symbol</td>
+        <td>pl_closed</td>
         <td>qty_posn</td>
         <td>pl_posn</td>
         <td>pl_posn_share</td>
@@ -35,6 +36,7 @@
     {{#each data}}
     <tr>
         <td><a href="https://finance.yahoo.com/chart/{{this.symbol}}">{{this.symbol}}</a></td>
+        <td>{{this.profit_closed}}</td>
         <td>{{this.qty_posn}}</td>
         <td>{{this.pl_posn}}</td>
         <td>{{this.pl_posn_share}}</td>
