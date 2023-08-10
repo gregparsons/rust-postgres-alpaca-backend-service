@@ -235,10 +235,15 @@ async fn process_message(msg:DbMsg, pool: PgPool){
         },
 
         DbMsg::DiffCalcGet {sender} => {
-
             let result = diffcalc_get(pool).await;
-            sender.send(result).unwrap();
-
+            match sender.send(result){
+                Ok(_)=>{
+                    // sent reply okay
+                },
+                Err(e)=>{
+                    tracing::error!("[process_message][DbMsg::DiffCalcGet] send error: {:?}", &e);
+                }
+            }
         }
 
         DbMsg::OrderLogEntrySave{entry}=>{
@@ -1262,7 +1267,7 @@ async fn diffcalc_get(pool:PgPool)->Result<Vec<DiffCalc>, PollerError>{
     match result {
         Ok(vec) => Ok(vec),
         Err(e) => {
-            tracing::debug!("[DiffCalc::get] sqlx error: {:?}", &e);
+            tracing::error!("[DiffCalc::get] sqlx error: {:?}", &e);
             Err(PollerError::Sqlx)
         }
     }

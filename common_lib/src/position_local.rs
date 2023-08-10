@@ -11,7 +11,7 @@ pub struct PositionLocal{
     pub profit_closed: BigDecimal,
     pub pl_posn: BigDecimal,
     pub pl_posn_share: BigDecimal,
-    pub elapsed_sec:BigDecimal,
+    // pub elapsed_sec:BigDecimal,
     pub posn_age_sec: BigDecimal,
     pub qty_posn: BigDecimal,
     pub price_posn_entry: BigDecimal,

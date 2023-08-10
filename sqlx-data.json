@@ -489,48 +489,42 @@
           "type_info": "Numeric"
         },
         {
-          "name": "elapsed_sec!",
+          "name": "posn_age_sec!",
           "ordinal": 4,
           "type_info": "Numeric"
         },
         {
-          "name": "posn_age_sec!",
+          "name": "qty_posn!",
           "ordinal": 5,
           "type_info": "Numeric"
         },
         {
-          "name": "qty_posn!",
+          "name": "price_posn_entry!",
           "ordinal": 6,
           "type_info": "Numeric"
         },
         {
-          "name": "price_posn_entry!",
+          "name": "basis!",
           "ordinal": 7,
           "type_info": "Numeric"
         },
         {
-          "name": "basis!",
+          "name": "price_market!",
           "ordinal": 8,
           "type_info": "Numeric"
         },
         {
-          "name": "price_market!",
+          "name": "market_value!",
           "ordinal": 9,
           "type_info": "Numeric"
         },
         {
-          "name": "market_value!",
-          "ordinal": 10,
-          "type_info": "Numeric"
-        },
-        {
           "name": "dtg!",
-          "ordinal": 11,
+          "ordinal": 10,
           "type_info": "Timestamptz"
         }
       ],
       "nullable": [
-        true,
         true,
         true,
         true,
