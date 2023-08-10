@@ -3,7 +3,7 @@
 use chrono::{NaiveTime, Utc};
 use once_cell::sync::Lazy;
 
-pub const OPERATE_API_AFTER_HOURS: bool = true;
+// pub const OPERATE_API_AFTER_HOURS: bool = true;
 pub const BUY_EXTENDED_HOURS: bool = true;
 pub const SELL_EXTENDED_HOURS: bool = true;
 
@@ -23,13 +23,14 @@ impl MarketHours{
 
         let time_current_ny = Utc::now().with_timezone(&chrono_tz::America::New_York).time();
 
+        let operate_after_hours = std::env::var("OPERATE_API_AFTER_HOURS").unwrap_or_else(|_| "false".to_string()).parse().unwrap_or_else(|_| false);
 
         let open_for_testing = std::env::var("PRETEND_TO_BE_OPEN").unwrap_or_else(|_| "false".to_string()).parse().unwrap_or_else(|_| false);
         if open_for_testing{
             return true;
         }
 
-        let are_we_open = match OPERATE_API_AFTER_HOURS {
+        let are_we_open = match operate_after_hours {
             false => {
                 if time_current_ny > *MARKET_OPEN_TIME /* *MARKET_NORMAL_OPEN_TIME */ &&
                     time_current_ny < *MARKET_CLOSE_TIME /* *MARKET_NORMAL_CLOSE_TIME */ {
