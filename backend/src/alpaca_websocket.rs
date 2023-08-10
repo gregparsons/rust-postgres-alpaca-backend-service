@@ -103,7 +103,7 @@ impl AlpacaWebsocket {
                                                 AuthAction::Authenticate=>{
                                                     match auth.status {
                                                         AuthStatus::Authorized=>{
-                                                            tracing::debug!("[ws_connect][binary] authorized, sending listen request");
+                                                            tracing::info!("[ws_connect][binary] authorized, sending listen request");
 
                                                             // SEND trade_updates request
                                                             let listen_msg = generate_ws_listen_message(vec![RequestAction::TradeUpdates, RequestAction::AccountUpdates]);
@@ -112,7 +112,7 @@ impl AlpacaWebsocket {
 
                                                         },
                                                         AuthStatus::Unauthorized=>{
-                                                            tracing::debug!("[ws_connect][binary] unauthorized");
+                                                            tracing::error!("[ws_connect][binary] unauthorized");
                                                         },
                                                     }
                                                 },
@@ -124,7 +124,7 @@ impl AlpacaWebsocket {
                                         },
 
                                         Ok(WebsocketMessage::Listening(listen_list))=>{
-                                            tracing::debug!("[ws_connect][binary] listening to: {:?}", listen_list.streams);
+                                            tracing::info!("[ws_connect][binary] listening to: {:?}", listen_list.streams);
                                         },
 
                                         // decrement the alpaca_transaction_status entry's posn_shares when a sell/fill is received
@@ -203,7 +203,7 @@ impl AlpacaWebsocket {
                                                                 });
                                                                 tracing::debug!("[ws_connect] sending subscription request...\n{}", &json);
                                                                 let result = ws.write_message(Message::Text(json.to_string()));
-                                                                tracing::debug!("[ws_connect] subscription request sent: {:?}", &result);
+                                                                tracing::info!("[ws_connect] subscription request sent: {:?}", &result);
 
                                                             },
                                                         }
@@ -220,10 +220,10 @@ impl AlpacaWebsocket {
                                                     DataMessage::Status=>{},
 
                                                     DataMessage::Subscription(list)=>{
-                                                        tracing::debug!("[ws_connect][text][subscription] {:?}", &list);
+                                                        tracing::info!("[ws_connect][text][subscription] {:?}", &list);
                                                     },
                                                     DataMessage::Error=>{
-                                                        tracing::debug!("[ws_connect][text][error] error: {:?}", &data);
+                                                        tracing::error!("[ws_connect][text][error] error: {:?}", &data);
                                                         // &json["msg"].as_str().unwrap(),
                                                         // &json["code"].as_u64().unwrap());
                                                     },
