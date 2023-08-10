@@ -551,10 +551,10 @@ async fn refresh_rating(pool:&PgPool){
 async fn insert_finnhub_trade(trade: &FinnhubTrade, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
     sqlx::query!(
         r#"
-            insert into trade_fh (dtg,symbol, price, volume) values ($1, $2, $3, $4)
+            insert into trade_fh (dtg,symbol, price, volume) values ($1, lower($2), $3, $4)
         "#,
         trade.dtg.naive_utc(),
-        trade.symbol,
+        trade.symbol.to_lowercase(),
         trade.price,
         trade.volume
     )
@@ -570,7 +570,7 @@ async fn insert_finnhub_trade_latest(
     sqlx::query!(
         r#"
             insert into trade_fh_latest (dtg, symbol, price, volume)
-            values ($1, $2, $3, $4)
+            values ($1, lower($2), $3, $4)
             on conflict (symbol) do update set dtg=$1, price=$3, volume=$4;
         "#,
         trade.dtg.naive_utc(),
@@ -587,7 +587,7 @@ async fn insert_alpaca_trade(t: &AlpacaTradeWs, pool: &PgPool) -> Result<PgQuery
     sqlx::query!(
         r#"
             insert into trade_alp (dtg, symbol, price, size)
-            values ($1, $2, $3, $4)
+            values ($1, lower($2), $3, $4)
         "#,
         t.dtg.naive_utc(),t.symbol,t.price,t.size
     ).execute(pool).await
@@ -597,7 +597,7 @@ async fn insert_alpaca_trade(t: &AlpacaTradeWs, pool: &PgPool) -> Result<PgQuery
 async fn insert_alpaca_trade_latest(trade: &AlpacaTradeWs, pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
     sqlx::query!(
         r#"insert into trade_alp_latest(dtg,symbol,price,size)
-            values ($1, $2, $3, $4)
+            values ($1, lower($2), $3, $4)
             on conflict (symbol) do update set dtg=$1, price=$3, size=$4;
         "#,
         trade.dtg.naive_utc(),
@@ -946,7 +946,7 @@ async fn position_save_to_db(position:&Position, pool:&PgPool) -> Result<PgQuery
                     , cost_basis, unrealized_pl, unrealized_plpc, current_price, lastday_price, change_today, asset_id)
                 values
                     (
-                        now(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, $12, $13, $14, $15
+                        now(),lower($1),$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, $12, $13, $14, $15
                     )"#,
             position.symbol, position.exchange, position.asset_class, position.avg_entry_price, position.qty, position.qty_available,
             position.side.to_string(), position.market_value, position.cost_basis, position.unrealized_pl, position.unrealized_plpc, position.current_price,
@@ -1069,7 +1069,7 @@ async fn activity_save_to_db(activity: &Activity, pool: PgPool) -> Result<PgQuer
             activity.activity_type.to_string(),
             activity.activity_subtype.to_string(),
             activity.dtg,
-            activity.symbol,
+            activity.symbol.to_lowercase(),
             activity.side.to_string(),
             activity.qty,
             activity.price,
@@ -1145,7 +1145,7 @@ pub async fn order_save(order:Order, pool:PgPool) {
             "#,
             order.id, order.client_order_id, order.created_at, order.updated_at, order.submitted_at,
             order.filled_at, // $7
-            order.symbol,
+            order.symbol.to_lowercase(),
             order.qty, order.filled_qty, order.filled_avg_price,
             order.order_type_v2.to_string(), // $11
             order.side.to_string(),          // $12
@@ -1187,7 +1187,7 @@ pub async fn order_log_entry_save(entry: OrderLogEntry, pool:PgPool) -> Result<P
     sqlx::query!(
             r#"insert into log_orders(id, id_group, id_client, dtg, symbol, side, qty)
             values($1, $2, $3, $4, $5, $6, $7)"#,
-            entry.id, entry.id_group, entry.id_client(), entry.dtg, entry.symbol, entry.side.to_string(), entry.qty
+            entry.id, entry.id_group, entry.id_client(), entry.dtg, entry.symbol.to_lowercase(), entry.side.to_string(), entry.qty
         ).execute(&pool).await
 }
 
@@ -1204,7 +1204,8 @@ pub async fn transaction_start_buy(symbol:&str, pool:PgPool)->BuyResult{
     match sqlx::query!(r#"
                 insert into alpaca_transaction_status(dtg, symbol, posn_shares)
                 values(now()::timestamptz, $1, 0.0
-            )"#, symbol.to_lowercase()).execute(&pool).await{
+            )"#, symbol.to_lowercase()
+    ).execute(&pool).await{
         Ok(_)=>{
             BuyResult::Allowed
         },
@@ -1244,19 +1245,7 @@ async fn diffcalc_get(pool:PgPool)->Result<Vec<DiffCalc>, PollerError>{
         DiffCalc,
         r#"
         select
-            now()::timestamptz as "dtg!"
-             , timezone('US/Pacific',now())::timestamptz as "dtg_pacific!"
-             , symbol as "symbol!:String"
-             , diff_30s_1 as "diff_30s_1!"
-             , diff_30s_3 as "diff_30s_3!"
-             , diff_30s_5 as "diff_30s_5!"
-             , price_last as "price_last!"
-             , price_30s as "price_30s!"
-             , price_1m as "price_1m!"
-             , price_3m as "price_3m!"
-             , price_5m as "price_5m!"
-             , dtg_last::timestamptz as "dtg_last!"
-             , dtg_last_pacific::timestamptz as "dtg_last_pacific!"
+            *
         -- from v_finnhub_diff
         from v_alpaca_diff
         "#

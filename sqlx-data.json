@@ -1,5 +1,71 @@
 {
   "db": "PostgreSQL",
+  "065fb3a9a39f40d0b8c5733223ad363b737ef3c1185192d78d1653673e4dc601": {
+    "describe": {
+      "columns": [
+        {
+          "name": "dtg!",
+          "ordinal": 0,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "dtg_pacific!",
+          "ordinal": 1,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "symbol!:String",
+          "ordinal": 2,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "diff_30s_1!",
+          "ordinal": 3,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_last!",
+          "ordinal": 4,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_30s!",
+          "ordinal": 5,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_1m!",
+          "ordinal": 6,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "dtg_last!",
+          "ordinal": 7,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "dtg_last_pacific!",
+          "ordinal": 8,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n        select\n            *\n        -- from v_finnhub_diff\n        from v_alpaca_diff\n        "
+  },
   "0711fdd10ec35581d2e378742b78c9f8335600e58a3467a72c8d40a792d123b6": {
     "describe": {
       "columns": [
@@ -444,6 +510,36 @@
     },
     "query": "\n                    select\n                        *\n                    from v_stats\n                "
   },
+  "1d7182f9259ba7fff8c4e207a2ee18b3c3a957bd4e808978d22007f8979c11f8": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamp",
+          "Text",
+          "Numeric",
+          "Numeric"
+        ]
+      }
+    },
+    "query": "\n            insert into trade_fh (dtg,symbol, price, volume) values ($1, lower($2), $3, $4)\n        "
+  },
+  "1dfd44c538035911271e5e4bd6cd718177230446e920478bb1bee6f9b306bb3b": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamp",
+          "Text",
+          "Numeric",
+          "Numeric"
+        ]
+      }
+    },
+    "query": "\n            insert into trade_fh_latest (dtg, symbol, price, volume)\n            values ($1, lower($2), $3, $4)\n            on conflict (symbol) do update set dtg=$1, price=$3, volume=$4;\n        "
+  },
   "2648629765c1a4b1a4f8e579999f86cf5cdfd96812213f81a7e46f3d940afdfa": {
     "describe": {
       "columns": [
@@ -542,32 +638,6 @@
       }
     },
     "query": "\n        select * from v_positions_from_activity\n    "
-  },
-  "2f8936d3543db55cc50dcb2c09d29bb2e43bb6fbaaced1b57d3df6553960f68b": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Varchar",
-          "Varchar",
-          "Numeric",
-          "Numeric",
-          "Numeric",
-          "Varchar",
-          "Numeric",
-          "Numeric",
-          "Numeric",
-          "Numeric",
-          "Numeric",
-          "Numeric",
-          "Numeric",
-          "Varchar"
-        ]
-      }
-    },
-    "query": "\n                insert into alpaca_position(dtg, symbol, exchange, asset_class, avg_entry_price, qty, qty_available, side, market_value\n                    , cost_basis, unrealized_pl, unrealized_plpc, current_price, lastday_price, change_today, asset_id)\n                values\n                    (\n                        now(),$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, $12, $13, $14, $15\n                    )"
   },
   "30f255854809dabc1008f3e29350fef9db68cbd1a7bf935d60c99c0b1e267339": {
     "describe": {
@@ -792,21 +862,6 @@
     },
     "query": "insert into ping_finnhub (ping) values ($1)"
   },
-  "5289517c19ee0f73d3cfed9f849e68cb70e1346573d4944d5686fbae96039202": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Timestamp",
-          "Varchar",
-          "Numeric",
-          "Numeric"
-        ]
-      }
-    },
-    "query": "insert into trade_alp_latest(dtg,symbol,price,size)\n            values ($1, $2, $3, $4)\n            on conflict (symbol) do update set dtg=$1, price=$3, size=$4;\n        "
-  },
   "6096eaf4c31d8d64ead6916f40056f96102b199a58eb36c502118e4a5617be0d": {
     "describe": {
       "columns": [
@@ -904,96 +959,6 @@
       }
     },
     "query": "\n            select\n                symbol as \"symbol!\"\n                ,active as \"active!\"\n                ,coalesce(trade_size,0.0) as \"trade_size!\"\n            from t_symbol where active=true"
-  },
-  "642e17beaf095d3fc4692e24bfebd87c4642523f8f712f521486bd9d4bc2ec87": {
-    "describe": {
-      "columns": [
-        {
-          "name": "dtg!",
-          "ordinal": 0,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "dtg_pacific!",
-          "ordinal": 1,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "symbol!:String",
-          "ordinal": 2,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "diff_30s_1!",
-          "ordinal": 3,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "diff_30s_3!",
-          "ordinal": 4,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "diff_30s_5!",
-          "ordinal": 5,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price_last!",
-          "ordinal": 6,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price_30s!",
-          "ordinal": 7,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price_1m!",
-          "ordinal": 8,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price_3m!",
-          "ordinal": 9,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price_5m!",
-          "ordinal": 10,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "dtg_last!",
-          "ordinal": 11,
-          "type_info": "Timestamptz"
-        },
-        {
-          "name": "dtg_last_pacific!",
-          "ordinal": 12,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        null,
-        null,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        null,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n        select\n            now()::timestamptz as \"dtg!\"\n             , timezone('US/Pacific',now())::timestamptz as \"dtg_pacific!\"\n             , symbol as \"symbol!:String\"\n             , diff_30s_1 as \"diff_30s_1!\"\n             , diff_30s_3 as \"diff_30s_3!\"\n             , diff_30s_5 as \"diff_30s_5!\"\n             , price_last as \"price_last!\"\n             , price_30s as \"price_30s!\"\n             , price_1m as \"price_1m!\"\n             , price_3m as \"price_3m!\"\n             , price_5m as \"price_5m!\"\n             , dtg_last::timestamptz as \"dtg_last!\"\n             , dtg_last_pacific::timestamptz as \"dtg_last_pacific!\"\n        -- from v_finnhub_diff\n        from v_alpaca_diff\n        "
   },
   "6890a7efe2764ef09fd174c44d2a9a0fa78fdfbb741528f1778e80d53acd9adc": {
     "describe": {
@@ -1165,21 +1130,6 @@
       }
     },
     "query": "delete from alpaca_order"
-  },
-  "8b8ea83a8ddb8fb72d80ff90957c1083e15472e2d583a687099c52dad2bf3844": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Timestamp",
-          "Varchar",
-          "Numeric",
-          "Numeric"
-        ]
-      }
-    },
-    "query": "\n            insert into trade_alp (dtg, symbol, price, size)\n            values ($1, $2, $3, $4)\n        "
   },
   "9321c48e63b3aa63c9a199651abb950eb7afb6e6c8376b33f10e2228ed996aff": {
     "describe": {
@@ -1385,6 +1335,32 @@
     },
     "query": "delete from alpaca_transaction_status where symbol=$1"
   },
+  "9c379535983a35d2727e688b24ccbc94981961d962a361b57bf8c62a74f0a926": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Text",
+          "Varchar",
+          "Varchar",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Varchar",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Numeric",
+          "Varchar"
+        ]
+      }
+    },
+    "query": "\n                insert into alpaca_position(dtg, symbol, exchange, asset_class, avg_entry_price, qty, qty_available, side, market_value\n                    , cost_basis, unrealized_pl, unrealized_plpc, current_price, lastday_price, change_today, asset_id)\n                values\n                    (\n                        now(),lower($1),$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, $12, $13, $14, $15\n                    )"
+  },
   "9cf38a2528a83ee2ce8d37003b2bfde83b466b42be8f2cc0d72b243c4fb4a6e2": {
     "describe": {
       "columns": [
@@ -1421,6 +1397,21 @@
       }
     },
     "query": "\n                update alpaca_transaction_status\n                set posn_shares = posn_shares - $1 where symbol=$2\n            "
+  },
+  "b1675a5819d0afe4907269b0dcaf93e8f4826f951770c400b85c7038bf0b8ce9": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Timestamp",
+          "Text",
+          "Numeric",
+          "Numeric"
+        ]
+      }
+    },
+    "query": "insert into trade_alp_latest(dtg,symbol,price,size)\n            values ($1, lower($2), $3, $4)\n            on conflict (symbol) do update set dtg=$1, price=$3, size=$4;\n        "
   },
   "b207043878cb989d7aa6229d8e5ce62d25d53b050d57faee0c2ecab4453d0409": {
     "describe": {
@@ -1751,21 +1742,6 @@
     },
     "query": "insert into ping_alpaca (ping) values ($1)"
   },
-  "d62927ad711a177a4e10c0413f2cfd253bc552b3839ab5a309a512ddb3e76f4e": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Timestamp",
-          "Varchar",
-          "Numeric",
-          "Numeric"
-        ]
-      }
-    },
-    "query": "\n            insert into trade_fh_latest (dtg, symbol, price, volume)\n            values ($1, $2, $3, $4)\n            on conflict (symbol) do update set dtg=$1, price=$3, volume=$4;\n        "
-  },
   "d8d8bb0e432ec4628f6a65e74ec2160e6377ba6a0dbad63b32ef9c139aacb1b2": {
     "describe": {
       "columns": [
@@ -2063,20 +2039,20 @@
     },
     "query": "\n                insert into alpaca_account(\n                    dtg,\n                    cash,\n                    position_market_value,\n                    equity,\n                    last_equity,\n                    daytrade_count,\n                    balance_asof,\n                    pattern_day_trader,\n                    id,\n                    account_number,\n                    status,\n                    -- crypto_status,\n                    currency,\n                    buying_power,\n                    regt_buying_power,\n                    daytrading_buying_power,\n                    effective_buying_power,\n                    non_marginable_buying_power,\n                    bod_dtbp,\n                    accrued_fees,\n                    pending_transfer_in,\n                    -- portfolio_value,    -- deprecated (same as equity)\n                    trading_blocked,\n                    transfers_blocked,\n                    account_blocked,\n                    created_at,\n                    trade_suspended_by_user,\n                    multiplier,\n                    shorting_enabled,\n                    long_market_value,\n                    short_market_value,\n                    initial_margin,\n                    maintenance_margin,\n                    last_maintenance_margin,\n                    sma\n                    -- crypto_tier: usize,\n\n                ) values(now()::timestamptz, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32)\n\n            "
   },
-  "f46f0fffbdb0541edf45d7d8290f82fcaff502f2d63882686dc153f6e086b5e9": {
+  "f3219ded5b50f094ed0ee3fac890231300d0fd14e672cd53f9d99d89f7c8d157": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
         "Left": [
           "Timestamp",
-          "Varchar",
+          "Text",
           "Numeric",
           "Numeric"
         ]
       }
     },
-    "query": "\n            insert into trade_fh (dtg,symbol, price, volume) values ($1, $2, $3, $4)\n        "
+    "query": "\n            insert into trade_alp (dtg, symbol, price, size)\n            values ($1, lower($2), $3, $4)\n        "
   },
   "fbfc0b526921304ce8178d592d2005c1c8d12cec1a148b8b5ad2cfe5d4bd5cbb": {
     "describe": {
