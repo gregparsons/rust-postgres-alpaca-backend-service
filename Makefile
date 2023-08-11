@@ -10,6 +10,9 @@ sqlx:
 	# https://lib.rs/crates/sqlx-cli (is out of date about --workspace)
 	# 0.6.3
 	cargo sqlx prepare --merged
+	git add .
+	git commit -am "sqlx"
+	git push origin dev
 	# 0.7.0
 	#cargo sqlx prepare --workspace
 maintenance:
