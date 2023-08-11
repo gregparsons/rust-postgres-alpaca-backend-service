@@ -1181,6 +1181,28 @@ pub async fn position_list_showing_profit(pl_filter:BigDecimal, pool: PgPool) ->
     }
 }
 
+/// positions to sell with age beyond limits
+pub async fn position_list_showing_age(pool: PgPool) ->Result<Vec<SellPosition>,PollerError>{
+    let result = sqlx::query_as!(SellPosition, r#"
+            select
+                a.symbol as "symbol!"
+                ,price_posn_entry as "avg_entry_price!"
+                ,qty_posn as "qty!"
+                ,pl_posn_share as "unrealized_pl_per_share!"
+                ,basis as "cost_basis!"
+                ,pl_posn as "unrealized_pl_total!"
+                ,coalesce(trade_size,0.0) as "trade_size!"
+                ,coalesce(posn_age_sec / 60.0,0.0) as "age_minute!"
+            from v_positions_aging_sell_at_loss a
+            left join t_symbol b on a.symbol = b.symbol;
+        "#).fetch_all(&pool).await;
+    match result {
+        Ok(positions)=>Ok(positions),
+        Err(_e)=> Err(PollerError::Sqlx)
+    }
+}
+
+
 /// save a new order before it's submitted
 pub async fn order_log_entry_save(entry: OrderLogEntry, pool:PgPool) -> Result<PgQueryResult, Error> {
     tracing::debug!("[order_log_entry_save]: {:?}", &entry);
