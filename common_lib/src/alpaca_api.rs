@@ -34,10 +34,10 @@ const QTY_SIZE_SAFETY_LIMIT:usize=1001;
 /// to determine how many we can sell now. "Held for orders" could be a reason?
 ///
 /// Limit Price: if the Option is None then this is intended to be a Market-priced sale
-pub async fn sell(symbol: &str, qty_to_sell: BigDecimal, limit_price:Option<BigDecimal>,
-                  settings: &Settings, tx_db:Sender<DbMsg>) -> Option<String> {
+pub async fn sell(symbol: &str, qty_to_sell: BigDecimal, limit_price:Option<BigDecimal>, settings: &Settings, tx_db:Sender<DbMsg>) -> Option<String> {
 
-    tracing::info!("[alpaca_api::sell] ************** SELL ************** {}, {} shares for {:?}", symbol, qty_to_sell, limit_price);
+    tracing::info!("[sell] ******************************************************** SELL ********************************************************");
+    tracing::info!("[alpaca_api::sell] **** {}, {} shares for {:?} *****", symbol, qty_to_sell, limit_price);
 
     // generate a new order and save to the order log
     // not the TransactionLog (which prevents duplicates)
@@ -45,6 +45,9 @@ pub async fn sell(symbol: &str, qty_to_sell: BigDecimal, limit_price:Option<BigD
     let order_log_entry = OrderLogEntry::new(symbol.to_string().to_uppercase(), TradeSide::Sell, qty_to_sell.clone());
     let tx_db1 = tx_db.clone();
     let _result = order_log_entry.save(tx_db1);
+
+    // TODO: check alpaca_transaction_status before attempting to sell (avoid multiple attempts to sell
+    // and to not rely on Alpaca to prevent shorting)
 
     let (json_trade, id) = match limit_price{
         Some(limit_price) => {
@@ -99,12 +102,14 @@ pub async fn sell(symbol: &str, qty_to_sell: BigDecimal, limit_price:Option<BigD
         Err(e) => tracing::error!("[sell] sale error: {:?}", &e)
     }
 
+    tracing::info!("[sell] ******************************************************** END SELL ********************************************************");
+
     id
 
 }
 
 /// round to two digits if the amount is greater than or equal to one dollar, 4 digits if less.
-fn fix_alpaca_price_rounding(price:BigDecimal) ->BigDecimal{
+pub fn fix_alpaca_price_rounding(price:BigDecimal) ->BigDecimal{
     let fixed_price = if price < BigDecimal::from(1) {
         price.round(4)
     } else {

@@ -561,7 +561,38 @@
     },
     "query": "\n            with rows as (\n                insert into users (\n                    user_id, username, password\n                )\n                values (gen_random_uuid(), $1, $2)\n                returning user_id\n            ) select user_id from rows\n        "
   },
-  "2e684fce3f0f587a81337c9a86adecf338e41921b60d3ba17795a3abdec58d13": {
+  "30f255854809dabc1008f3e29350fef9db68cbd1a7bf935d60c99c0b1e267339": {
+    "describe": {
+      "columns": [
+        {
+          "name": "symbol!",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        }
+      ],
+      "nullable": [
+        false
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "select symbol as \"symbol!\" from t_symbol order by symbol"
+  },
+  "33d366b1a50612823f96303da32e21e4a81f1efb966ab9ca602b55cebf682cde": {
+    "describe": {
+      "columns": [],
+      "nullable": [],
+      "parameters": {
+        "Left": [
+          "Varchar",
+          "Numeric"
+        ]
+      }
+    },
+    "query": "\n            insert into alpaca_transaction_status(dtg, symbol, posn_shares)\n            values(now()::timestamptz, $1, $2)\n            ON CONFLICT (symbol) DO UPDATE\n                SET posn_shares = $2, dtg=now()::timestamptz;\n        "
+  },
+  "3e9006ee871aa1b5c7afb50d1189766cc8bd087b9422ace24d040b1251e155c9": {
     "describe": {
       "columns": [
         {
@@ -637,38 +668,7 @@
         "Left": []
       }
     },
-    "query": "\n        select * from v_positions_from_activity\n    "
-  },
-  "30f255854809dabc1008f3e29350fef9db68cbd1a7bf935d60c99c0b1e267339": {
-    "describe": {
-      "columns": [
-        {
-          "name": "symbol!",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        }
-      ],
-      "nullable": [
-        false
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "select symbol as \"symbol!\" from t_symbol order by symbol"
-  },
-  "33d366b1a50612823f96303da32e21e4a81f1efb966ab9ca602b55cebf682cde": {
-    "describe": {
-      "columns": [],
-      "nullable": [],
-      "parameters": {
-        "Left": [
-          "Varchar",
-          "Numeric"
-        ]
-      }
-    },
-    "query": "\n            insert into alpaca_transaction_status(dtg, symbol, posn_shares)\n            values(now()::timestamptz, $1, $2)\n            ON CONFLICT (symbol) DO UPDATE\n                SET posn_shares = $2, dtg=now()::timestamptz;\n        "
+    "query": "\n        select\n            symbol as \"symbol!\", profit_closed as \"profit_closed!\", pl_posn as \"pl_posn!\", pl_posn_share as \"pl_posn_share!\", posn_age_sec as \"posn_age_sec!\", qty_posn as \"qty_posn!\", price_posn_entry as \"price_posn_entry!\",\n            basis as \"basis!\", price_market as \"price_market!\", market_value as \"market_value!\", dtg as \"dtg!\"\n        from v_positions_from_activity\n    "
   },
   "41e310b7a132e9b1fe68c9c9549392df44f6206231105591f371d00e75d6342b": {
     "describe": {
@@ -687,6 +687,68 @@
       }
     },
     "query": "select symbol as \"symbol!\" from t_symbol where active=true"
+  },
+  "495c380fddd03d5d789831077e7346e1b6d2707ae24ab44541095040b0626628": {
+    "describe": {
+      "columns": [
+        {
+          "name": "symbol!",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "avg_entry_price!",
+          "ordinal": 1,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty!",
+          "ordinal": 2,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_pl_per_share!",
+          "ordinal": 3,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "cost_basis!",
+          "ordinal": 4,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_pl_total!",
+          "ordinal": 5,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "trade_size!",
+          "ordinal": 6,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "age_minute!",
+          "ordinal": 7,
+          "type_info": "Numeric"
+        }
+      ],
+      "nullable": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Numeric"
+        ]
+      }
+    },
+    "query": "\n            select\n                stock_symbol as \"symbol!\"\n                , price as \"avg_entry_price!\"\n                , sell_qty as \"qty!\"\n                --, sell_qty_available as \"qty_available!\"\n                , unrealized_pl_per_share as \"unrealized_pl_per_share!\"\n                , cost as \"cost_basis!\"\n                , unrealized_pl_total as \"unrealized_pl_total!\"\n                , coalesce(trade_size,0.0) as \"trade_size!\"\n                , coalesce(age_min,0.0) as \"age_minute!\"\n            from fn_positions_to_sell_high($1) a\n            left join t_symbol b on upper(a.stock_symbol) = upper(b.symbol)\n        "
   },
   "4b04d431e8ecd7c2bb516e1d62fe547b01193aacf53f19234546d83e2a1f4fd9": {
     "describe": {
@@ -862,74 +924,6 @@
     },
     "query": "insert into ping_finnhub (ping) values ($1)"
   },
-  "6096eaf4c31d8d64ead6916f40056f96102b199a58eb36c502118e4a5617be0d": {
-    "describe": {
-      "columns": [
-        {
-          "name": "symbol!",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "avg_entry_price!",
-          "ordinal": 1,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "qty!",
-          "ordinal": 2,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "qty_available!",
-          "ordinal": 3,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "unrealized_pl_per_share!",
-          "ordinal": 4,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "cost_basis!",
-          "ordinal": 5,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "unrealized_pl_total!",
-          "ordinal": 6,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "trade_size!",
-          "ordinal": 7,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "age_minute!",
-          "ordinal": 8,
-          "type_info": "Numeric"
-        }
-      ],
-      "nullable": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Numeric"
-        ]
-      }
-    },
-    "query": "\n            select\n                stock_symbol as \"symbol!\"\n                , price as \"avg_entry_price!\"\n                , sell_qty as \"qty!\"\n                , sell_qty_available as \"qty_available!\"\n                , unrealized_pl_per_share as \"unrealized_pl_per_share!\"\n                , cost as \"cost_basis!\"\n                , unrealized_pl_total as \"unrealized_pl_total!\"\n                , coalesce(trade_size,0.0) as \"trade_size!\"\n                , coalesce(age_min,0.0) as \"age_minute!\"\n            from fn_positions_to_sell_old($1) a\n            left join t_symbol b on upper(a.stock_symbol) = upper(b.symbol)\n        "
-  },
   "641eb9dd1c480ccc423b35def138d576f22b37d947087f4f1276f1034c40dd8b": {
     "describe": {
       "columns": [
@@ -1052,74 +1046,6 @@
       }
     },
     "query": "select max(dtg)::timestamptz as \"dtg!\" from alpaca_activity"
-  },
-  "867c42b4a9320c7c2a1591f696ecc73c33276b97de4465d97d0c5177875600f6": {
-    "describe": {
-      "columns": [
-        {
-          "name": "symbol!",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "avg_entry_price!",
-          "ordinal": 1,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "qty!",
-          "ordinal": 2,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "qty_available!",
-          "ordinal": 3,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "unrealized_pl_per_share!",
-          "ordinal": 4,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "cost_basis!",
-          "ordinal": 5,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "unrealized_pl_total!",
-          "ordinal": 6,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "trade_size!",
-          "ordinal": 7,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "age_minute!",
-          "ordinal": 8,
-          "type_info": "Numeric"
-        }
-      ],
-      "nullable": [
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null,
-        null
-      ],
-      "parameters": {
-        "Left": [
-          "Numeric"
-        ]
-      }
-    },
-    "query": "\n            select\n                stock_symbol as \"symbol!\"\n                , price as \"avg_entry_price!\"\n                , sell_qty as \"qty!\"\n                , sell_qty_available as \"qty_available!\"\n                , unrealized_pl_per_share as \"unrealized_pl_per_share!\"\n                , cost as \"cost_basis!\"\n                , unrealized_pl_total as \"unrealized_pl_total!\"\n                , coalesce(trade_size,0.0) as \"trade_size!\"\n                , coalesce(age_min,0.0) as \"age_minute!\"\n            from fn_positions_to_sell_high($1) a\n            left join t_symbol b on upper(a.stock_symbol) = upper(b.symbol)\n        "
   },
   "884ca4bfd2aaadf5a8429b50cc543000263f123dbe4c96f678a3fc9203793484": {
     "describe": {

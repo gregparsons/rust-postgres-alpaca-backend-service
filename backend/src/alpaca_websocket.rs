@@ -61,7 +61,11 @@ impl AlpacaWebsocket {
 
             // commence websocket connection
             match tungstenite::connect(request) {
-                Err(e) => tracing::debug!("websocket connect error: {:?}", e),
+                Err(e) => {
+                    tracing::error!("websocket connect error: {:?}", e);
+                    std::thread::sleep(Duration::from_secs(2));
+                    // fall out to loop and try again
+                },
 
                 Ok((mut ws, _response)) => {
                     tracing::debug!("[ws_connect] successful websocket connection; response: {:?}",_response);

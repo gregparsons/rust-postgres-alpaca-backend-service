@@ -1166,7 +1166,7 @@ pub async fn position_list_showing_profit(pl_filter:BigDecimal, pool: PgPool) ->
                 stock_symbol as "symbol!"
                 , price as "avg_entry_price!"
                 , sell_qty as "qty!"
-                , sell_qty_available as "qty_available!"
+                --, sell_qty_available as "qty_available!"
                 , unrealized_pl_per_share as "unrealized_pl_per_share!"
                 , cost as "cost_basis!"
                 , unrealized_pl_total as "unrealized_pl_total!"
@@ -1503,7 +1503,10 @@ async fn settings_load_with_secret(pool:PgPool) -> Result<Settings, TradeWebErro
 async fn position_local_get(pool:PgPool)->Result<Vec<PositionLocal>, TradeWebError>{
 
     let result = sqlx::query_as!(PositionLocal, r#"
-        select * from v_positions_from_activity
+        select
+            symbol as "symbol!", profit_closed as "profit_closed!", pl_posn as "pl_posn!", pl_posn_share as "pl_posn_share!", posn_age_sec as "posn_age_sec!", qty_posn as "qty_posn!", price_posn_entry as "price_posn_entry!",
+            basis as "basis!", price_market as "price_market!", market_value as "market_value!", dtg as "dtg!"
+        from v_positions_from_activity
     "#).fetch_all(&pool).await;
 
     match result {

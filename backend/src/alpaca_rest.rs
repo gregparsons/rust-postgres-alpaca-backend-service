@@ -158,7 +158,10 @@ impl AlpacaRest {
 
                 for position in positions.iter() {
 
+                    // save to the position table
                     let _ = position.save_to_db(tx_db.clone());
+
+                    // save to the alpaca_transaction_status table
                     AlpacaTransaction::insert_existing_position(&position, tx_db.clone());
 
                 }

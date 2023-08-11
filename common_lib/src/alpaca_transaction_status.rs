@@ -68,7 +68,6 @@ impl AlpacaTransaction{
             Ok(buy_result) => buy_result,
             Err(_) => BuyResult::NotAllowed { error: TradeWebError::ChannelError },
         }
-
     }
 
     // /// sell if a buy order previously created an entry in this table and subsequently the count of shares is greater than zero
