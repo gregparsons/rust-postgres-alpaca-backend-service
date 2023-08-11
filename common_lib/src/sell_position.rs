@@ -39,6 +39,7 @@ impl SellPosition {
 
     /// old positions
     pub async fn list_showing_age(sender_tx:Sender<DbMsg>) -> Result<Vec<SellPosition>, TradeWebError> {
+        tracing::debug!("[list_showing_age]");
         let (resp_tx, resp_rx) = crossbeam_channel::unbounded();
         sender_tx.send(DbMsg::PositionListShowingAge {sender_tx: resp_tx}).unwrap();
         match resp_rx.recv(){

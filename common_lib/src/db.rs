@@ -330,11 +330,25 @@ async fn process_message(msg:DbMsg, pool: PgPool){
 
         DbMsg::PositionListShowingProfit{ pl_filter, sender_tx} => {
             if let Ok(position_list_showing_profit) = position_list_showing_profit(pl_filter, pool).await {
-                sender_tx.send(position_list_showing_profit).unwrap();
+                match sender_tx.send(position_list_showing_profit){
+                    Ok(_)=>{},
+                    Err(e)=>{
+                        tracing::error!("[db][PositionListShowingProfit] reply send error: {:?}", &e);
+                    }
+                };
             }
         }
 
-
+        DbMsg::PositionListShowingAge{ sender_tx} => {
+            if let Ok(position_list_showing_age) = position_list_showing_age(pool).await {
+                match sender_tx.send(position_list_showing_age){
+                    Ok(_)=>{},
+                    Err(e)=>{
+                        tracing::error!("[db][PositionListShowingAge] reply send error: {:?}", &e);
+                    }
+                };
+            }
+        }
 
         DbMsg::TransactionInsertPosition{ position }=>{
             let _ = transaction_insert_position(&position, &pool).await;
@@ -377,10 +391,7 @@ async fn process_message(msg:DbMsg, pool: PgPool){
             if let Ok(symbol) = symbol_load_one(symbol.as_str(), pool).await{
                 let _ = sender_tx.send(symbol);
             }
-
-
         },
-
 
         DbMsg::TransactionDeleteAll=>{
             let _ = transaction_delete_all(&pool).await;
@@ -461,7 +472,10 @@ async fn process_message(msg:DbMsg, pool: PgPool){
             let _ = insert_alpaca_ping(&ping, &pool).await;
         },
 
-        _ => { }
+        _ => {
+            tracing::error!("[db] received unrecognized DbMsg");
+
+        }
     }
 }
 
