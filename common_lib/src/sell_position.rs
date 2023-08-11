@@ -37,25 +37,14 @@ impl SellPosition {
         }
     }
 
-    // /// positions exceeding the age specified in the parameter filter
-    // pub async fn list_showing_age(age_filter_minutes:BigDecimal, pool:&PgPool) ->Result<Vec<SellPosition>,PollerError>{
-    //     let result = sqlx::query_as!(SellPosition,r#"
-    //         select
-    //             stock_symbol as "symbol!"
-    //             , price as "avg_entry_price!"
-    //             , sell_qty as "qty!"
-    //             // , sell_qty_available as "qty_available!"
-    //             , unrealized_pl_per_share as "unrealized_pl_per_share!"
-    //             , cost as "cost_basis!"
-    //             , unrealized_pl_total as "unrealized_pl_total!"
-    //             , coalesce(trade_size,0.0) as "trade_size!"
-    //             , coalesce(age_min,0.0) as "age_minute!"
-    //         from fn_positions_to_sell_old($1) a
-    //         left join t_symbol b on upper(a.stock_symbol) = upper(b.symbol)
-    //     "#, age_filter_minutes).fetch_all(pool).await;
-    //     match result {
-    //         Ok(positions)=>Ok(positions),
-    //         Err(_e)=> Err(PollerError::Sqlx)
-    //     }
-    // }
+    /// old positions
+    pub async fn list_showing_age(sender_tx:Sender<DbMsg>) -> Result<Vec<SellPosition>, TradeWebError> {
+        let (resp_tx, resp_rx) = crossbeam_channel::unbounded();
+        sender_tx.send(DbMsg::PositionListShowingAge {sender_tx: resp_tx}).unwrap();
+        match resp_rx.recv(){
+            Ok(sell_list)=>Ok(sell_list),
+            Err(_e)=>Err(TradeWebError::ChannelError),
+        }
+    }
+
 }

@@ -95,6 +95,7 @@ pub enum DbMsg {
     PositionDeleteAll,
     PositionSaveToDb { position:Position },
     PositionListShowingProfit{ pl_filter: BigDecimal, sender_tx: Sender<Vec<SellPosition>>},
+    PositionListShowingAge{sender_tx: Sender<Vec<SellPosition>>},
 
     OrderLogEntrySave{entry: OrderLogEntry},
 
