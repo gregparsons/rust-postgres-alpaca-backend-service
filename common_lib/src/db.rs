@@ -1531,7 +1531,10 @@ async fn settings_load_with_secret(pool:PgPool) -> Result<Settings, TradeWebErro
 
     match settings_result{
         Ok(result)=>Ok(result),
-        Err(_e)=>Err(TradeWebError::SqlxError),
+        Err(_e)=>{
+            tracing::error!("[settings_load_with_secret] sqlx error: {:?}", &_e);
+            Err(TradeWebError::SqlxError)
+        },
     }
 
 }
