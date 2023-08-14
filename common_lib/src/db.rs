@@ -1620,13 +1620,16 @@ async fn position_local_get(pool:PgPool)->Result<Vec<PositionLocal>, TradeWebErr
     let result = sqlx::query_as!(PositionLocal, r#"
         select
             symbol as "symbol!"
-            , profit_closed as "profit_closed!"
-            , pl_posn as "pl_posn!"
-            , pl_posn_share as "pl_posn_share!"
-            , coalesce(posn_age_sec, 0.0) as "posn_age_sec!"
-            , qty_posn as "qty_posn!"
-            , price_posn_entry as "price_posn_entry!",
-            basis as "basis!", price_market as "price_market!", market_value as "market_value!", dtg as "dtg!"
+            ,profit_closed as "profit_closed!"
+            ,coalesce(pl_posn,0.0) as "pl_posn!"
+            ,coalesce(pl_posn_share,0.0) as "pl_posn_share!"
+            ,coalesce(posn_age_sec, 0.0) as "posn_age_sec!"
+            ,qty_posn as "qty_posn!"
+            ,price_posn_entry as "price_posn_entry!"
+            ,coalesce(basis,0.0) as "basis!"
+            ,coalesce(price_market,0.0) as "price_market!"
+            ,coalesce(market_value,0.0) as "market_value!"
+            ,dtg as "dtg!"
         from v_positions_from_activity
     "#).fetch_all(&pool).await;
 
