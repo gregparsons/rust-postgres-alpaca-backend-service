@@ -920,81 +920,141 @@ async fn account_save_to_db(account:&Account, pool:&PgPool) -> Result<(), TradeW
 
 }
 
-async fn position_get_remote(settings: &Settings) -> Result<Vec<Position>, reqwest::Error> {
 
-    let mut headers = reqwest::header::HeaderMap::new();
-    let api_key_id = settings.alpaca_paper_id.clone();
-    let api_secret = settings.alpaca_paper_secret.clone();
-    headers.insert("APCA-API-KEY-ID", api_key_id.parse().unwrap());
-    headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
 
-    let client = reqwest::Client::new();
-    let remote_positions: Vec<TempPosition> = client
-        .get("https://paper-api.alpaca.markets/v2/positions")
-        .headers(headers)
-        .send()
-        .await?
-        .json()
-        .await?;
 
-    let now = Utc::now();
-    let remote_positions:Vec<Position> = remote_positions
-        .iter()
-        .map(move |x| Position::from_temp(now, x.clone()))
-        .collect();
-
-    tracing::debug!("[get_remote] got {} positions", &remote_positions.len());
-    Ok(remote_positions)
+/// the amount of unused funds above the minimum day trade balance
+/// option 1: select ((select acct_min_cash_dollars from t_settings) - (select position_market_value from alpaca_account order by dtg limit 1)) as "cash_available!"
+/// option 2 (using own calculations and transactions): select coalesce(cash_available,0.0) as "cash_available!" from v_cash_available
+/// option 3: below
+async fn acct_cash_available(symbol:&str, pool: PgPool) ->Result<MaxBuyPossible, TradeWebError>{
+    match sqlx::query_as!(MaxBuyPossible, r#"
+        select
+            a.price as "price!"
+            , size as "size!"
+            , cash_available_before as "cash_available!"
+            , coalesce(case when cash_available_before > 0 then floor(cash_available_before / a.price) end, 0.0)::numeric as "qty_possible!"
+        from (
+            select
+                price
+                ,size
+                ,(select v from v_dashboard where k='acct_cash_available (market)')::numeric as cash_available_before
+            from trade_alp_latest
+            where lower(symbol) = lower($1)
+        ) a;
+    "#, symbol).fetch_one(&pool).await {
+        Ok(result_struct)=> Ok(result_struct),
+        Err(_e)=>{
+            tracing::error!("[acct_cash_available] sqlx error: {:?}", &_e);
+            Err(TradeWebError::SqlxError)
+        }
+    }
 }
 
-async fn position_delete_all(pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
-    sqlx::query!(r#"delete from alpaca_position"#)
-        .execute(pool)
+async fn acct_dashboard(pool:PgPool)->Vec<Dashboard>{
+    match sqlx::query_as!(Dashboard, r#"select k as "k!", v as "v!" from v_dashboard"#).fetch_all(&pool).await{
+        Ok(result)=>result,
+        Err(e)=>{
+            tracing::error!("[acct_dashboard] failed to retrieve dashboard: {:?}", &e);
+            vec!()
+        }
+    }
+}
+
+/// get a vec of alpaca trading activities from the postgres database (as a reflection of what's been
+/// synced from the Alpaca API)
+async fn activities_from_db(pool: PgPool) -> Result<Vec<ActivityQuery>, sqlx::Error> {
+    // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
+    sqlx::query_as!(
+            ActivityQuery,
+            r#"
+                select
+                    dtg::timestamp as "dtg_utc!"
+                    ,timezone('US/Pacific', dtg) as "dtg_pacific!"
+                    ,symbol as "symbol!"
+                    ,side as "side!:TradeSide"
+                    ,qty as "qty!"
+                    ,price as "price!"
+                    ,order_id as "client_order_id!"
+                from alpaca_activity
+                order by dtg desc
+            "#
+        )
+        .fetch_all(&pool)
         .await
 }
 
-async fn position_save_to_db(position:&Position, pool:&PgPool) -> Result<PgQueryResult, sqlx::Error> {
+async fn activities_from_db_for_symbol(symbol: &str, pool: PgPool) -> Result<Vec<ActivityQuery>, sqlx::Error> {
+    // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
 
+    sqlx::query_as!(
+            ActivityQuery,
+            r#"
+                select
+                    dtg::timestamp as "dtg_utc!"
+                    ,timezone('US/Pacific', dtg) as "dtg_pacific!"
+                    ,symbol as "symbol!"
+                    ,side as "side!:TradeSide"
+                    ,qty as "qty!"
+                    ,price as "price!"
+                    ,order_id as "client_order_id!"
+                from alpaca_activity
+                where symbol = upper($1)
+                order by dtg desc
+            "#,
+            symbol
+        )
+        .fetch_all(&pool)
+        .await
+}
+
+async fn activity_save_to_db(activity: &Activity, pool: PgPool) -> Result<PgQueryResult, sqlx::Error> {
     let result = sqlx::query!(
             r#"
-                insert into alpaca_position(dtg, symbol, exchange, asset_class, avg_entry_price, qty, qty_available, side, market_value
-                    , cost_basis, unrealized_pl, unrealized_plpc, current_price, lastday_price, change_today, asset_id)
-                values
-                    (
-                        now(),lower($1),$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, $12, $13, $14, $15
+            insert into alpaca_activity
+                (
+                id
+                , activity_type
+                , activity_subtype
+                , dtg
+                , symbol
+                , side
+                , qty
+                , price
+                , cum_qty
+                , leaves_qty
+                , order_id
+                )
+                values (
+                    $1
+                    ,$2
+                    ,$3
+                    ,$4
+                    ,$5
+                    ,lower($6)
+                    ,$7
+                    ,$8
+                    ,$9
+                    ,$10
+                    ,$11
                     )"#,
-            position.symbol, position.exchange, position.asset_class, position.avg_entry_price, position.qty, position.qty_available,
-            position.side.to_string(), position.market_value, position.cost_basis, position.unrealized_pl, position.unrealized_plpc, position.current_price,
-            position.lastday_price, position.change_today, position.asset_id
-        ).execute(pool).await;
+            activity.id,
+            activity.activity_type.to_string(),
+            activity.activity_subtype.to_string(),
+            activity.dtg,
+            activity.symbol.to_lowercase(),
+            activity.side.to_string(),
+            activity.qty,
+            activity.price,
+            activity.cum_qty,
+            activity.leaves_qty,
+            activity.order_id
+        ).execute(&pool).await;
 
-    // tracing::info!("[activity::save_to_db] position insert result: {:?}", &result);
+    tracing::info!("[save_to_db] activity insert result: {:?}", &result);
     result
 }
 
-/// create a new entry or update the position's shares with the current timestamp
-async fn transaction_insert_position(position:&Position, pool:&PgPool) ->Result<(), TradeWebError>{
-
-    match sqlx::query!(
-        r#"
-            insert into alpaca_transaction_status(dtg, symbol, posn_shares)
-            values(now()::timestamptz, $1, $2)
-            ON CONFLICT (symbol) DO UPDATE
-                SET posn_shares = $2, dtg=now()::timestamptz;
-        "#,
-        position.symbol.to_lowercase(),
-        position.qty
-    ).execute(pool).await{
-        Ok(_)=>{
-            tracing::debug!("[transaction_insert_position] successful insert");
-            Ok(())
-        },
-        Err(e)=>{
-            tracing::error!("[transaction_insert_position] unsuccessful insert: {:?}", &e);
-            Err(TradeWebError::DeleteFailed)
-        } // or db error
-    }
-}
 
 /// latest_dtg: get the date of the most recent activity; used to filter the activity API
 async fn activity_latest_dtg(pool:PgPool)->Result<DateTime<Utc>, TradeWebError>{
@@ -1050,67 +1110,45 @@ async fn activity_get_remote(since_filter:Option<DateTime<Utc>>, settings: Setti
     return_val
 }
 
-async fn activity_save_to_db(activity: &Activity, pool: PgPool) -> Result<PgQueryResult, sqlx::Error> {
-    let result = sqlx::query!(
-            r#"
-            insert into alpaca_activity
-                (
-                id
-                , activity_type
-                , activity_subtype
-                , dtg
-                , symbol
-                , side
-                , qty
-                , price
-                , cum_qty
-                , leaves_qty
-                , order_id
-                )
-                values (
-                    $1
-                    ,$2
-                    ,$3
-                    ,$4
-                    ,$5
-                    ,lower($6)
-                    ,$7
-                    ,$8
-                    ,$9
-                    ,$10
-                    ,$11
-                    )"#,
-            activity.id,
-            activity.activity_type.to_string(),
-            activity.activity_subtype.to_string(),
-            activity.dtg,
-            activity.symbol.to_lowercase(),
-            activity.side.to_string(),
-            activity.qty,
-            activity.price,
-            activity.cum_qty,
-            activity.leaves_qty,
-            activity.order_id
-        ).execute(&pool).await;
 
-    tracing::info!("[save_to_db] activity insert result: {:?}", &result);
-    result
+
+/// Get the grid provided by v_alpaca_diff
+async fn diffcalc_get(pool:PgPool)->Result<Vec<DiffCalc>, PollerError>{
+
+    /*
+
+    -- if this number is positive the crossover is rising; a less negative number minus a more negative number
+    -- price_8 = -20 (slower to rise)
+    -- price_5 = -5  (faster to rise)
+    -- price_5_8 = -5 - -20 = +15 (rising!)
+    -- Or, if peaking and falling...
+    -- price_8 = 20 (slower to rise)
+    -- price_5 = 15  (faster to rise)
+    -- price_5_8 = 15 - 20 = -5 (negative, so falling, crossover has occurred and we're headed down)
+
+     */
+    let time_start = std::time::SystemTime::now();
+
+    let result = sqlx::query_as!(
+        DiffCalc,
+        r#"
+        select
+            *
+        -- from v_finnhub_diff
+        from v_alpaca_diff
+        "#
+    ).fetch_all(&pool).await;
+
+    if let Ok(elapsed) = time_start.elapsed(){ tracing::debug!("[Poller::get] elapsed: {:?}", &elapsed); }
+
+    match result {
+        Ok(vec) => Ok(vec),
+        Err(e) => {
+            tracing::error!("[DiffCalc::get] sqlx error: {:?}", &e);
+            Err(PollerError::Sqlx)
+        }
+    }
 }
-
-
-
-// /// insert a new transaction if one doesn't currently exist, otherwise error
-// /// TODO: not currently used; used by trade_poller
-// async fn start_buy(symbol:&str, pool:&PgPool)->Result<(), TransactionError>{
-//     // if an entry exists then a buy order exists; otherwise create one with default 0 shares
-//     match sqlx::query!(r#"
-//             insert into alpaca_transaction_status(dtg, symbol, posn_shares)
-//             values(now()::timestamptz, $1, 0.0)"#, symbol
-//         ).execute(pool).await{
-//         Ok(_)=>Ok(()),
-//         Err(_e)=>Err(TradeWebError::PositionExists), // or db error
-//     }
-// }
 
 /// Save a single order to the database
 pub async fn order_save(order:Order, pool:PgPool) {
@@ -1171,155 +1209,6 @@ pub async fn order_save(order:Order, pool:PgPool) {
         ).execute(&pool).await;
 
     tracing::debug!("[save_to_db] result: {:?}", result);
-}
-
-
-/// positions with a market value per share higher than their purchase price per share.
-pub async fn position_list_showing_profit(pl_filter:BigDecimal, pool: PgPool) ->Result<Vec<SellPosition>,PollerError>{
-    let result = sqlx::query_as!(SellPosition,r#"
-            select
-                stock_symbol as "symbol!"
-                , price as "avg_entry_price!"
-                , sell_qty as "qty!"
-                --, sell_qty_available as "qty_available!"
-                , unrealized_pl_per_share as "unrealized_pl_per_share!"
-                , cost as "cost_basis!"
-                , unrealized_pl_total as "unrealized_pl_total!"
-                , coalesce(trade_size,0.0) as "trade_size!"
-                , coalesce(age_min,0.0) as "age_minute!"
-            from fn_positions_to_sell_high($1) a
-            left join t_symbol b on upper(a.stock_symbol) = upper(b.symbol)
-        "#, pl_filter).fetch_all(&pool).await;
-    match result {
-        Ok(positions)=>Ok(positions),
-        Err(_e)=> Err(PollerError::Sqlx)
-    }
-}
-
-/// positions to sell with age beyond limits
-pub async fn position_list_showing_age(pool: PgPool) ->Result<Vec<SellPosition>,PollerError>{
-    let result = sqlx::query_as!(SellPosition, r#"
-            select
-                a.symbol as "symbol!"
-                ,price_posn_entry as "avg_entry_price!"
-                ,qty_posn as "qty!"
-                ,pl_posn_share as "unrealized_pl_per_share!"
-                ,basis as "cost_basis!"
-                ,pl_posn as "unrealized_pl_total!"
-                ,coalesce(trade_size,0.0) as "trade_size!"
-                ,coalesce(posn_age_sec / 60.0,0.0) as "age_minute!"
-            from v_positions_aging_sell_at_loss a
-            left join t_symbol b on a.symbol = b.symbol;
-        "#).fetch_all(&pool).await;
-    match result {
-        Ok(positions)=>Ok(positions),
-        Err(_e)=> Err(PollerError::Sqlx)
-    }
-}
-
-
-/// save a new order before it's submitted
-pub async fn order_log_entry_save(entry: OrderLogEntry, pool:PgPool) -> Result<PgQueryResult, Error> {
-    tracing::debug!("[order_log_entry_save]: {:?}", &entry);
-    sqlx::query!(
-            r#"insert into log_orders(id, id_group, id_client, dtg, symbol, side, qty)
-            values($1, $2, $3, $4, $5, $6, $7)"#,
-            entry.id, entry.id_group, entry.id_client(), entry.dtg, entry.symbol.to_lowercase(), entry.side.to_string(), entry.qty
-        ).execute(&pool).await
-}
-
-pub async fn transaction_delete_one(symbol:&str, pool:PgPool)->Result<(), TradeWebError>{
-    match sqlx::query!(r#"delete from alpaca_transaction_status where symbol=$1"#, symbol.to_lowercase()).execute(&pool).await{
-        Ok(_)=>Ok(()),
-        Err(_e)=>Err(TradeWebError::DeleteFailed), // or db error
-    }
-}
-
-/// insert a new transaction if one doesn't currently exist, otherwise error
-pub async fn transaction_start_buy(symbol:&str, pool:PgPool)->BuyResult{
-    // if an entry exists then a buy order exists; otherwise create one with default 0 shares
-    match sqlx::query!(r#"
-                insert into alpaca_transaction_status(dtg, symbol, posn_shares)
-                values(now()::timestamptz, $1, 0.0
-            )"#, symbol.to_lowercase()
-    ).execute(&pool).await{
-        Ok(_)=>{
-            BuyResult::Allowed
-        },
-        Err(_e)=>BuyResult::NotAllowed{error:TradeWebError::PositionExists}, // or db error
-    }
-}
-
-// /// sell if a buy order previously created an entry in this table and subsequently the count of shares is greater than zero
-// /// TODO: not currently used
-// pub async fn transaction_start_sell(symbol:&str, pool:PgPool)->Result<BigDecimal, TransactionError>{
-//     match sqlx::query_as!(AlpacaTransaction, r#"select dtg as "dtg!", symbol as "symbol!", posn_shares as "posn_shares!" from alpaca_transaction_status where symbol=$1 and posn_shares > 0.0"#, symbol.to_lowercase())
-//         .fetch_one(&pool).await{
-//             Ok(transaction)=> Ok(transaction.posn_shares),
-//             Err(_e)=>Err(TradeWebError::NoSharesFound), // or db error
-//         }
-// }
-
-
-/// Get the grid provided by v_alpaca_diff
-async fn diffcalc_get(pool:PgPool)->Result<Vec<DiffCalc>, PollerError>{
-
-    /*
-
-    -- if this number is positive the crossover is rising; a less negative number minus a more negative number
-    -- price_8 = -20 (slower to rise)
-    -- price_5 = -5  (faster to rise)
-    -- price_5_8 = -5 - -20 = +15 (rising!)
-    -- Or, if peaking and falling...
-    -- price_8 = 20 (slower to rise)
-    -- price_5 = 15  (faster to rise)
-    -- price_5_8 = 15 - 20 = -5 (negative, so falling, crossover has occurred and we're headed down)
-
-     */
-    let time_start = std::time::SystemTime::now();
-
-    let result = sqlx::query_as!(
-        DiffCalc,
-        r#"
-        select
-            *
-        -- from v_finnhub_diff
-        from v_alpaca_diff
-        "#
-    ).fetch_all(&pool).await;
-
-    if let Ok(elapsed) = time_start.elapsed(){ tracing::debug!("[Poller::get] elapsed: {:?}", &elapsed); }
-
-    match result {
-        Ok(vec) => Ok(vec),
-        Err(e) => {
-            tracing::error!("[DiffCalc::get] sqlx error: {:?}", &e);
-            Err(PollerError::Sqlx)
-        }
-    }
-}
-
-pub async fn symbol_load_one(symbol: &str, pool: PgPool) -> Result<Symbol, TradeWebError> {
-    match sqlx::query_as!(Symbol,
-        r#"
-            select
-                symbol as "symbol!"
-                ,active as "active!"
-                ,coalesce(trade_size,0.0) as "trade_size!"
-            from t_symbol where upper(symbol)=upper($1)
-        "#,
-        symbol
-    ).fetch_one(&pool).await {
-        Ok(symbol_list) => {
-            // tracing::debug!("[get_symbols] symbol_list: {:?}", &symbol_list);
-            // let s = symbol_list.iter().map(|x| { x.symbol.clone() }).collect();
-            Ok(symbol_list)
-        },
-        Err(e) => {
-            tracing::debug!("[get_symbols] error: {:?}", &e);
-            Err(TradeWebError::SqlxError)
-        }
-    }
 }
 
 /// do the REST part of the orders POST API
@@ -1457,6 +1346,120 @@ pub async fn order_local(pool:PgPool) -> Result<Vec<Order>, TradeWebError> {
 
 }
 
+
+/// save a new order before it's submitted
+pub async fn order_log_entry_save(entry: OrderLogEntry, pool:PgPool) -> Result<PgQueryResult, Error> {
+    tracing::debug!("[order_log_entry_save]: {:?}", &entry);
+    sqlx::query!(
+            r#"insert into log_orders(id, id_group, id_client, dtg, symbol, side, qty)
+            values($1, $2, $3, $4, $5, $6, $7)"#,
+            entry.id, entry.id_group, entry.id_client(), entry.dtg, entry.symbol.to_lowercase(), entry.side.to_string(), entry.qty
+        ).execute(&pool).await
+}
+
+async fn position_get_remote(settings: &Settings) -> Result<Vec<Position>, reqwest::Error> {
+
+    let mut headers = reqwest::header::HeaderMap::new();
+    let api_key_id = settings.alpaca_paper_id.clone();
+    let api_secret = settings.alpaca_paper_secret.clone();
+    headers.insert("APCA-API-KEY-ID", api_key_id.parse().unwrap());
+    headers.insert("APCA-API-SECRET-KEY", api_secret.parse().unwrap());
+
+    let client = reqwest::Client::new();
+    let remote_positions: Vec<TempPosition> = client
+        .get("https://paper-api.alpaca.markets/v2/positions")
+        .headers(headers)
+        .send()
+        .await?
+        .json()
+        .await?;
+
+    let now = Utc::now();
+    let remote_positions:Vec<Position> = remote_positions
+        .iter()
+        .map(move |x| Position::from_temp(now, x.clone()))
+        .collect();
+
+    tracing::debug!("[get_remote] got {} positions", &remote_positions.len());
+    Ok(remote_positions)
+}
+
+async fn position_delete_all(pool: &PgPool) -> Result<PgQueryResult, sqlx::Error> {
+    sqlx::query!(r#"delete from alpaca_position"#)
+        .execute(pool)
+        .await
+}
+
+async fn position_save_to_db(position:&Position, pool:&PgPool) -> Result<PgQueryResult, sqlx::Error> {
+
+    let result = sqlx::query!(
+            r#"
+                insert into alpaca_position(dtg, symbol, exchange, asset_class, avg_entry_price, qty, qty_available, side, market_value
+                    , cost_basis, unrealized_pl, unrealized_plpc, current_price, lastday_price, change_today, asset_id)
+                values
+                    (
+                        now(),lower($1),$2,$3,$4,$5,$6,$7,$8,$9,$10,$11, $12, $13, $14, $15
+                    )"#,
+            position.symbol, position.exchange, position.asset_class, position.avg_entry_price, position.qty, position.qty_available,
+            position.side.to_string(), position.market_value, position.cost_basis, position.unrealized_pl, position.unrealized_plpc, position.current_price,
+            position.lastday_price, position.change_today, position.asset_id
+        ).execute(pool).await;
+
+    // tracing::info!("[activity::save_to_db] position insert result: {:?}", &result);
+    result
+}
+
+
+/// positions with a market value per share higher than their purchase price per share.
+pub async fn position_list_showing_profit(pl_filter:BigDecimal, pool: PgPool) ->Result<Vec<SellPosition>,PollerError>{
+    let result = sqlx::query_as!(SellPosition,r#"
+            select
+                stock_symbol as "symbol!"
+                , price as "avg_entry_price!"
+                , sell_qty as "qty!"
+                --, sell_qty_available as "qty_available!"
+                , unrealized_pl_per_share as "unrealized_pl_per_share!"
+                , cost as "cost_basis!"
+                , unrealized_pl_total as "unrealized_pl_total!"
+                , coalesce(trade_size,0.0) as "trade_size!"
+                , coalesce(age_min,0.0) as "age_minute!"
+            from fn_positions_to_sell_high($1) a
+            left join t_symbol b on upper(a.stock_symbol) = upper(b.symbol)
+        "#, pl_filter).fetch_all(&pool).await;
+    match result {
+        Ok(positions)=>Ok(positions),
+        Err(_e)=> Err(PollerError::Sqlx)
+    }
+}
+
+/// positions to sell with age beyond limits
+pub async fn position_list_showing_age(pool: PgPool) ->Result<Vec<SellPosition>,PollerError>{
+    let result = sqlx::query_as!(SellPosition, r#"
+            select
+                a.symbol as "symbol!"
+                ,price_posn_entry as "avg_entry_price!"
+                ,qty_posn as "qty!"
+                ,pl_posn_share as "unrealized_pl_per_share!"
+                ,basis as "cost_basis!"
+                ,pl_posn as "unrealized_pl_total!"
+                ,coalesce(trade_size,0.0) as "trade_size!"
+                ,coalesce(posn_age_sec / 60.0,0.0) as "age_minute!"
+            from v_positions_aging_sell_at_loss a
+            left join t_symbol b on a.symbol = b.symbol;
+        "#).fetch_all(&pool).await;
+    match result {
+        Ok(positions)=>Ok(positions),
+        Err(_e)=> Err(PollerError::Sqlx)
+    }
+}
+
+pub async fn transaction_delete_one(symbol:&str, pool:PgPool)->Result<(), TradeWebError>{
+    match sqlx::query!(r#"delete from alpaca_transaction_status where symbol=$1"#, symbol.to_lowercase()).execute(&pool).await{
+        Ok(_)=>Ok(()),
+        Err(_e)=>Err(TradeWebError::DeleteFailed), // or db error
+    }
+}
+
 /// return blank secret for front-end type uses
 pub async fn settings_load_no_secret(pool: PgPool) -> Result<Settings, TradeWebError> {
     tracing::debug!("[settings_load_no_secret]");
@@ -1539,12 +1542,90 @@ async fn settings_load_with_secret(pool:PgPool) -> Result<Settings, TradeWebErro
 
 }
 
+pub async fn symbol_load_one(symbol: &str, pool: PgPool) -> Result<Symbol, TradeWebError> {
+    match sqlx::query_as!(Symbol,
+        r#"
+            select
+                symbol as "symbol!"
+                ,active as "active!"
+                ,coalesce(trade_size,0.0) as "trade_size!"
+            from t_symbol where upper(symbol)=upper($1)
+        "#,
+        symbol
+    ).fetch_one(&pool).await {
+        Ok(symbol_list) => {
+            // tracing::debug!("[get_symbols] symbol_list: {:?}", &symbol_list);
+            // let s = symbol_list.iter().map(|x| { x.symbol.clone() }).collect();
+            Ok(symbol_list)
+        },
+        Err(e) => {
+            tracing::debug!("[get_symbols] error: {:?}", &e);
+            Err(TradeWebError::SqlxError)
+        }
+    }
+}
+
+/// create a new entry or update the position's shares with the current timestamp
+async fn transaction_insert_position(position:&Position, pool:&PgPool) ->Result<(), TradeWebError>{
+
+    match sqlx::query!(
+        r#"
+            insert into alpaca_transaction_status(dtg, symbol, posn_shares)
+            values(now()::timestamptz, $1, $2)
+            ON CONFLICT (symbol) DO UPDATE
+                SET posn_shares = $2, dtg=now()::timestamptz;
+        "#,
+        position.symbol.to_lowercase(),
+        position.qty
+    ).execute(pool).await{
+        Ok(_)=>{
+            tracing::debug!("[transaction_insert_position] successful insert");
+            Ok(())
+        },
+        Err(e)=>{
+            tracing::error!("[transaction_insert_position] unsuccessful insert: {:?}", &e);
+            Err(TradeWebError::DeleteFailed)
+        } // or db error
+    }
+}
+
+/// insert a new transaction if one doesn't currently exist, otherwise error
+pub async fn transaction_start_buy(symbol:&str, pool:PgPool)->BuyResult{
+    // if an entry exists then a buy order exists; otherwise create one with default 0 shares
+    match sqlx::query!(r#"
+                insert into alpaca_transaction_status(dtg, symbol, posn_shares)
+                values(now()::timestamptz, $1, 0.0
+            )"#, symbol.to_lowercase()
+    ).execute(&pool).await{
+        Ok(_)=>{
+            BuyResult::Allowed
+        },
+        Err(_e)=>BuyResult::NotAllowed{error:TradeWebError::PositionExists}, // or db error
+    }
+}
+
+// /// sell if a buy order previously created an entry in this table and subsequently the count of shares is greater than zero
+// /// TODO: not currently used
+// pub async fn transaction_start_sell(symbol:&str, pool:PgPool)->Result<BigDecimal, TransactionError>{
+//     match sqlx::query_as!(AlpacaTransaction, r#"select dtg as "dtg!", symbol as "symbol!", posn_shares as "posn_shares!" from alpaca_transaction_status where symbol=$1 and posn_shares > 0.0"#, symbol.to_lowercase())
+//         .fetch_one(&pool).await{
+//             Ok(transaction)=> Ok(transaction.posn_shares),
+//             Err(_e)=>Err(TradeWebError::NoSharesFound), // or db error
+//         }
+// }
+
 /// get the positions from the local database, filtered and P/L computed to display on the web frontend
 async fn position_local_get(pool:PgPool)->Result<Vec<PositionLocal>, TradeWebError>{
 
     let result = sqlx::query_as!(PositionLocal, r#"
         select
-            symbol as "symbol!", profit_closed as "profit_closed!", pl_posn as "pl_posn!", pl_posn_share as "pl_posn_share!", posn_age_sec as "posn_age_sec!", qty_posn as "qty_posn!", price_posn_entry as "price_posn_entry!",
+            symbol as "symbol!"
+            , profit_closed as "profit_closed!"
+            , pl_posn as "pl_posn!"
+            , pl_posn_share as "pl_posn_share!"
+            , coalesce(posn_age_sec, 0.0) as "posn_age_sec!"
+            , qty_posn as "qty_posn!"
+            , price_posn_entry as "price_posn_entry!",
             basis as "basis!", price_market as "price_market!", market_value as "market_value!", dtg as "dtg!"
         from v_positions_from_activity
     "#).fetch_all(&pool).await;
@@ -1559,89 +1640,3 @@ async fn position_local_get(pool:PgPool)->Result<Vec<PositionLocal>, TradeWebErr
 
 }
 
-/// the amount of unused funds above the minimum day trade balance
-/// option 1: select ((select acct_min_cash_dollars from t_settings) - (select position_market_value from alpaca_account order by dtg limit 1)) as "cash_available!"
-/// option 2 (using own calculations and transactions): select coalesce(cash_available,0.0) as "cash_available!" from v_cash_available
-/// option 3: below
-async fn acct_cash_available(symbol:&str, pool: PgPool) ->Result<MaxBuyPossible, TradeWebError>{
-    match sqlx::query_as!(MaxBuyPossible, r#"
-        select
-            a.price as "price!"
-            , size as "size!"
-            , cash_available_before as "cash_available!"
-            , coalesce(case when cash_available_before > 0 then floor(cash_available_before / a.price) end, 0.0)::numeric as "qty_possible!"
-        from (
-            select
-                price
-                ,size
-                ,(select v from v_dashboard where k='acct_cash_available (market)')::numeric as cash_available_before
-            from trade_alp_latest
-            where lower(symbol) = lower($1)
-        ) a;
-    "#, symbol).fetch_one(&pool).await {
-        Ok(result_struct)=> Ok(result_struct),
-        Err(_e)=>{
-            tracing::error!("[acct_cash_available] sqlx error: {:?}", &_e);
-            Err(TradeWebError::SqlxError)
-        }
-    }
-}
-
-
-
-async fn acct_dashboard(pool:PgPool)->Vec<Dashboard>{
-    match sqlx::query_as!(Dashboard, r#"select k as "k!", v as "v!" from v_dashboard"#).fetch_all(&pool).await{
-        Ok(result)=>result,
-        Err(e)=>{
-            tracing::error!("[acct_dashboard] failed to retrieve dashboard: {:?}", &e);
-            vec!()
-        }
-    }
-}
-
-/// get a vec of alpaca trading activities from the postgres database (as a reflection of what's been
-/// synced from the Alpaca API)
-async fn activities_from_db(pool: PgPool) -> Result<Vec<ActivityQuery>, sqlx::Error> {
-    // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
-    sqlx::query_as!(
-            ActivityQuery,
-            r#"
-                select
-                    dtg::timestamp as "dtg_utc!"
-                    ,timezone('US/Pacific', dtg) as "dtg_pacific!"
-                    ,symbol as "symbol!"
-                    ,side as "side!:TradeSide"
-                    ,qty as "qty!"
-                    ,price as "price!"
-                    ,order_id as "client_order_id!"
-                from alpaca_activity
-                order by dtg desc
-            "#
-        )
-        .fetch_all(&pool)
-        .await
-}
-
-async fn activities_from_db_for_symbol(symbol: &str, pool: PgPool) -> Result<Vec<ActivityQuery>, sqlx::Error> {
-    // https://docs.rs/sqlx/0.4.2/sqlx/macro.query.html#type-overrides-bind-parameters-postgres-only
-
-    sqlx::query_as!(
-            ActivityQuery,
-            r#"
-                select
-                    dtg::timestamp as "dtg_utc!"
-                    ,timezone('US/Pacific', dtg) as "dtg_pacific!"
-                    ,symbol as "symbol!"
-                    ,side as "side!:TradeSide"
-                    ,qty as "qty!"
-                    ,price as "price!"
-                    ,order_id as "client_order_id!"
-                from alpaca_activity
-                where symbol = upper($1)
-                order by dtg desc
-            "#,
-            symbol
-        )
-        .fetch_all(&pool)
-        .await
-}
