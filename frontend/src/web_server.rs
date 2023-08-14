@@ -137,10 +137,7 @@ impl WebServer {
                 .route("/activity/{symbol}", web::get().to(get_activity_for_symbol))
                 .route("/settings", web::get().to(get_settings))
                 .route("/positions", web::get().to(get_positions))
-                .route(
-                    "/settings/button/{name}",
-                    web::get().to(get_settings_button),
-                )
+                .route("/settings/button/{name}", web::get().to(get_settings_button))
                 .route("/dashboard", web::get().to(get_dashboard))
                 .route(
                     "/dashboard/{symbol}",

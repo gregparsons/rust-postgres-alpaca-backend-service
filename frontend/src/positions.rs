@@ -28,28 +28,18 @@ async fn get_positions_with_message(tx_db: web::Data<Sender<DbMsg>>, hb: web::Da
 
         let position_vec = PositionLocal::get_all(tx_db).await;
 
-        // match position_vec_result {
-        //     Ok(position_vec) => {
-                let data = json!({
-                    "title": "Positions",
-                    "parent": "base0",
-                    "is_logged_in": true,
-                    "session_username": &session_username,
-                    "data": &position_vec,
-                    "message": message,
-                });
+        let data = json!({
+            "title": "Positions",
+            "parent": "base0",
+            "is_logged_in": true,
+            "session_username": &session_username,
+            "data": &position_vec,
+            "message": message,
+        });
 
-                let body = hb.render("position", &data).unwrap();
-                HttpResponse::Ok()
-                    .append_header(("cache-control", "no-store"))
-                    .body(body)
-            // }
-            // Err(e) => {
-            //     // TODO: redirect to error message
-            //     tracing::debug!("[get_positions] error getting symbols: {:?}", &e);
-            //     redirect_home().await
-            // }
-        // }
+        let body = hb.render("position", &data).unwrap();
+        HttpResponse::Ok().append_header(("cache-control", "no-store")).body(body)
+
     } else {
         redirect_home().await
     }

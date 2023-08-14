@@ -116,7 +116,7 @@ impl UiSymbol {
                     , active as "active!"
                     ,coalesce(trade_size, 0.0) as "trade_size!"
                     ,coalesce(b.price,0.0) as "price_last!"
-                from t_symbol a left join trade_alp_latest b on upper(a.symbol)=upper(b.symbol)
+                from t_symbol a left join trade_alp_latest b on lower(a.symbol)=lower(b.symbol)
                 order by a.symbol
             "#
         ).fetch_all(pool).await

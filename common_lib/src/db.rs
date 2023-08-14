@@ -999,7 +999,7 @@ async fn activities_from_db_for_symbol(symbol: &str, pool: PgPool) -> Result<Vec
                     ,price as "price!"
                     ,order_id as "client_order_id!"
                 from alpaca_activity
-                where symbol = upper($1)
+                where symbol = lower($1)
                 order by dtg desc
             "#,
             symbol
@@ -1424,7 +1424,7 @@ pub async fn position_list_showing_profit(pl_filter:BigDecimal, pool: PgPool) ->
                 , coalesce(trade_size,0.0) as "trade_size!"
                 , coalesce(age_min,0.0) as "age_minute!"
             from fn_positions_to_sell_high($1) a
-            left join t_symbol b on upper(a.stock_symbol) = upper(b.symbol)
+            left join t_symbol b on lower(a.stock_symbol) = lower(b.symbol)
         "#, pl_filter).fetch_all(&pool).await;
     match result {
         Ok(positions)=>Ok(positions),
@@ -1549,7 +1549,7 @@ pub async fn symbol_load_one(symbol: &str, pool: PgPool) -> Result<Symbol, Trade
                 symbol as "symbol!"
                 ,active as "active!"
                 ,coalesce(trade_size,0.0) as "trade_size!"
-            from t_symbol where upper(symbol)=upper($1)
+            from t_symbol where lower(symbol)=lower($1)
         "#,
         symbol
     ).fetch_one(&pool).await {

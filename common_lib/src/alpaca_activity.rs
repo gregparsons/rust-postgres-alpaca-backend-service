@@ -141,7 +141,6 @@ impl Activity {
                 tracing::error!("[get_activities_from_db_for_symbol] send error: {:?}", &e);
                 vec!()
             }
-
         }
     }
 

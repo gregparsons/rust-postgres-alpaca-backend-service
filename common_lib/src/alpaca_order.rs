@@ -196,7 +196,7 @@ impl Order {
         match sqlx::query_as!(OrderCount,
             r#"
                 select count(*) as "order_count!:i64"
-                from alpaca_order where upper(symbol)=upper($1) and side=$2
+                from alpaca_order where lower(symbol)=lower($1) and side=$2
             "#,
             symbol,
             &trade_side.to_string()
