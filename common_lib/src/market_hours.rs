@@ -1,7 +1,10 @@
 //! market_hours.rs
 
 use chrono::{NaiveTime, Utc};
+use crossbeam_channel::Sender;
 use once_cell::sync::Lazy;
+use tokio::sync::oneshot;
+use crate::db::DbMsg;
 
 // pub const OPERATE_API_AFTER_HOURS: bool = false;
 // side effect of BUY_EXTENDED_HOURS is causing buy limit orders, which can cause orders to hang, not immediately accepted
@@ -52,7 +55,28 @@ impl MarketHours{
             tracing::info!("[are_we_open][{}] Time in NYC: {:?}; OPERATE_API_AFTER_HOURS: {}; are_we_open: {}:{}", &are_we_open.0, &time_current_ny, &operate_after_hours, &are_we_open.0, &are_we_open.1);
             are_we_open.0
         }
-
-
     }
+
+    /// Is the latest Alpaca websocket ping older than 60 seconds? If so the websocket is down.
+    pub async fn alpaca_websocket_alive(db_tx: Sender<DbMsg>) -> bool {
+        let (tx, rx) = oneshot::channel();
+        match db_tx.send(DbMsg::WebsocketAlpacaAlive {sender:tx}) {
+            Ok(_)=>{
+                match rx.await{
+                    Ok(result)=>{
+                        result
+                    },
+                    Err(e)=> {
+                        tracing::error!("[alpaca_websocket_alive] receive error: {:?}", &e);
+                        false
+                    },
+                }
+            },
+            Err(e)=> {
+                tracing::error!("[alpaca_websocket_alive] send error: {:?}", &e);
+                false
+            },
+        }
+    }
+
 }

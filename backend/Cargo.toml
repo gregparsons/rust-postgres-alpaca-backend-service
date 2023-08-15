@@ -23,8 +23,8 @@ tokio = { version = "1.24.1", features = ["rt-multi-thread"] }
 crossbeam = "0.8.2"
 crossbeam-channel = "0.5.6"
 # https://github.com/sdroege/async-tungstenite/blob/master/Cargo.toml
-#tungstenite = {version = "0.18.0", features = ["native-tls"]}
-tungstenite = {version = "0.18.0", features = ["rustls-tls-webpki-roots"]}
+# tungstenite = {version = "0.18.0", features = ["rustls-tls-webpki-roots"]}
+tungstenite = {version = "0.20.0", features = ["rustls-tls-webpki-roots"]}
 futures-util = { version = "0.3.28", default-features = false, features = ["sink", "std"] }
 url = "2.2.2"
 

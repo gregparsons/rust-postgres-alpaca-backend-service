@@ -1787,17 +1787,15 @@
     },
     "query": "\n                delete from alpaca_transaction_status\n                where posn_shares <= 0.0\n            "
   },
-  "cc27b0861e395c6fc0bec92cd0d3cbc3f9389ee9f1c73bf858d813c38ccc985f": {
+  "d65fb26b1c74760e25207ef830b56c597aee490b8c9e647066e8609aa9952cb0": {
     "describe": {
       "columns": [],
       "nullable": [],
       "parameters": {
-        "Left": [
-          "Timestamp"
-        ]
+        "Left": []
       }
     },
-    "query": "insert into ping_alpaca (ping) values ($1)"
+    "query": "insert into ping_alpaca (ping) values (now())"
   },
   "d8d8bb0e432ec4628f6a65e74ec2160e6377ba6a0dbad63b32ef9c139aacb1b2": {
     "describe": {
@@ -1943,6 +1941,24 @@
       }
     },
     "query": "\n            select\n                symbol as \"symbol!\"\n                ,active as \"active!\"\n                ,coalesce(trade_size,0.0) as \"trade_size!\"\n            from t_symbol where lower(symbol)=lower($1)\n        "
+  },
+  "e8b30540c24a7fa882b618dd57fcab2a03abe8aa6508135fba38ea9a1a74ef73": {
+    "describe": {
+      "columns": [
+        {
+          "name": "result_big_decimal!",
+          "ordinal": 0,
+          "type_info": "Numeric"
+        }
+      ],
+      "nullable": [
+        null
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n        select\n            extract(epoch from (current_timestamp - max(ping))::interval)::numeric as \"result_big_decimal!\"\n        from ping_alpaca"
   },
   "ee7c5fc84618ea4a17d5e39cd829520fd7f6eac73140bdf27012e5aec0a42239": {
     "describe": {

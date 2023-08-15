@@ -37,6 +37,7 @@ pub enum RequestAction {
     AccountUpdates,
     // {"action":"subscribe","bars":["TSLA","ARNC","BBAI","FFIE","ARVL","SKLZ","LYG","AMZN","AAPL","T","SOFI","PLUG","WBD","NIO","BRDS","PACW","MULN","AMD"],"trades":["TSLA","ARNC","BBAI","FFIE","ARVL","SKLZ","LYG","AMZN","AAPL","T","SOFI","PLUG","WBD","NIO","BRDS","PACW","MULN","AMD"]}
     Subscribe,
+    Ping,
 }
 
 /// enable to_string(); print enum in lowercase

@@ -63,12 +63,19 @@ impl FinnhubWebsocket {
                             symbol
                         });
                         tracing::debug!("[WsFinnhub] subscribe: {}", &subscribe.to_string());
-                        let _ = ws.write_message(Message::Text(subscribe.to_string()));
+                        let _ = ws.send(Message::Text(subscribe.to_string()));
                     }
+
+
+
+
+
+
+
 
                     loop {
                         // tracing::debug!("[ws_connect] reading websocket...");
-                        match ws.read_message() {
+                        match ws.read() {
                             Ok(msg) => {
                                 // tracing::debug!("[WsFinnhub::connect] read websocket...");
 

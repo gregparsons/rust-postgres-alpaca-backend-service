@@ -33,13 +33,9 @@ use crate::stock_rating;
 
 pub async fn run(tokio_handle: Handle) {
 
-    // let mut handles = vec![];
-
-    /****** database actor thread ******/
-    // let tx_db = db_actor.run().await;
-
     tracing::debug!("[run]");
 
+    /****** database actor thread ******/
 
     let db_actor = DbActor::new().await;
     let tx_db = db_actor.tx.clone();
@@ -52,13 +48,7 @@ pub async fn run(tokio_handle: Handle) {
     });
     tracing::debug!("[backend] db thread spawned");
 
-
-    // std::thread::sleep(Duration::from_secs(3));
-
-
-
-    // start the various operational threads
-    // get the settings on startup first
+    // start threads for rest polling, alpaca websocket, and finnhub websocket
     let tx_db_1 = tx_db.clone();
     let settings_result = Settings::load_with_secret(tx_db_1).await;
     match settings_result{
@@ -73,15 +63,13 @@ pub async fn run(tokio_handle: Handle) {
             tracing::info!("ALPACA_REST_ON is: {}", alpaca_rest_on);
             let tx_db_rest = tx_db.clone();
 
-            if alpaca_rest_on {
-                tracing::debug!("[run] alpaca_rest_on: {}", alpaca_rest_on);
-                std::thread::spawn(||{
-                    tracing::debug!("[run] inside spawned rest thread");
-                    AlpacaRest::run(tx_db_rest, tokio_handle);
+            tracing::debug!("[run] alpaca_rest_on: {}", alpaca_rest_on);
 
+            if alpaca_rest_on {
+                std::thread::spawn(||{
+                    tracing::debug!("[run] REST API thread started...");
+                    AlpacaRest::run(tx_db_rest, tokio_handle);
                 });
-            } else {
-                tracing::debug!("[run] alpaca_rest_on: {}", alpaca_rest_on);
             }
 
 
@@ -103,22 +91,20 @@ pub async fn run(tokio_handle: Handle) {
                         let settings3 = settings.clone();
                         let tx_db_3 = tx_db.clone();
 
-                        // stock data websocket thread
-                        let _join_handle = std::thread::spawn(|| {
+
+
+                        // alpaca market data websocket
+                        let _join_handle_1 = std::thread::spawn(|| {
                             tracing::debug!("[run] starting text data websocket");
                             AlpacaWebsocket::run(tx_db_3, &WebsocketMessageFormat::TextData, symbols, settings3);
-                            // AlpacaWebsocket::run(tx_db_ws.clone(), &AlpacaData::BinaryUpdates, symbols.clone(), settings2.clone());
                         });
-                        // handles.push(join_handle);
 
-                        // account and order update websocket thread
+                        // alpaca account data websocket
                         let tx_db_4 = tx_db.clone();
-                        let _join_handle = std::thread::spawn(|| {
+                        let _join_handle_1 = std::thread::spawn(|| {
                             tracing::debug!("[run] starting binary data for 'trade_updates'");
-                            // AlpacaWebsocket::run(tx_db_ws, &AlpacaData::TextData, symbols, settings2);
                             AlpacaWebsocket::run(tx_db_4, &WebsocketMessageFormat::BinaryUpdates, symbols2, settings2);
                         });
-                        // handles.push(join_handle);
                     },
                     Err(e) => tracing::debug!("[start] error getting symbols for websocket: {:?}", &e),
                 }

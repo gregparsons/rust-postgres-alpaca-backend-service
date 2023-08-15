@@ -62,24 +62,25 @@ impl AlpacaWebsocket {
             // commence websocket connection
             match tungstenite::connect(request) {
                 Err(e) => {
-                    tracing::error!("websocket connect error: {:?}", e);
+                    tracing::error!("[run] websocket connect error: {:?}", e);
                     std::thread::sleep(Duration::from_secs(2));
                     // fall out to loop and try again
                 },
 
                 Ok((mut ws, _response)) => {
-                    tracing::debug!("[ws_connect] successful websocket connection; response: {:?}",_response);
+                    tracing::debug!("[run][ws_connect] successful websocket connection; response: {:?}",_response);
 
                     // todo: check if websocket connected; it won't if there's one already connected elsewhere; Alpaca sends an error
                     let auth_json = generate_ws_authentication_message(&settings);
 
                     // send authentication message
-                    ws.write_message(Message::Text(auth_json)).unwrap();
+                    ws.send(Message::Text(auth_json)).unwrap();
 
                     loop {
 
                         // non-async tungstenite
-                        if let Ok(msg) = ws.read_message() {
+                        if let Ok(msg) = ws.read() {
+
                             // tracing::debug!("[ws_connect] read websocket...");
 
                             match msg {
@@ -112,7 +113,7 @@ impl AlpacaWebsocket {
                                                             // SEND trade_updates request
                                                             let listen_msg = generate_ws_listen_message(vec![RequestAction::TradeUpdates, RequestAction::AccountUpdates]);
                                                             tracing::debug!("[ws_connect][binary] outgoing listen msg: {}", &listen_msg);
-                                                            let _ = ws.write_message(Message::Text(listen_msg));
+                                                            let _ = ws.send(Message::Text(listen_msg));
 
                                                         },
                                                         AuthStatus::Unauthorized=>{
@@ -206,7 +207,7 @@ impl AlpacaWebsocket {
                                                                     "bars": stock_list_to_uppercase(&symbols),
                                                                 });
                                                                 tracing::debug!("[ws_connect] sending subscription request...\n{}", &json);
-                                                                let result = ws.write_message(Message::Text(json.to_string()));
+                                                                let result = ws.send(Message::Text(json.to_string()));
                                                                 tracing::info!("[ws_connect] subscription request sent: {:?}", &result);
 
                                                             },
@@ -241,122 +242,11 @@ impl AlpacaWebsocket {
 
                                     }
 
-
-
-
-                                /*
-                                   for json in json_vec {
-
-
-                                        // https://alpaca.markets/docs/api-references/market-data-api/stock-pricing-data/realtime/
-                                        // [{"T":"success","msg":"connected"}]
-                                        // https://alpaca.markets/docs/api-references/market-data-api/stock-pricing-data/realtime/#minute-bar-schema
-
-                                        // Parse "T"
-                                        if let Some(alpaca_msg_type) = json["T"].as_str() {
-                                            match alpaca_msg_type {
-                                                "error" => {
-                                                    if let Some(_msg) = &json["msg"].as_str() {
-                                                        tracing::debug!("[ws_connect][text] msg: {}({})",
-                                                            &json["msg"].as_str().unwrap(),
-                                                            &json["code"].as_u64().unwrap());
-                                                    }
-                                                }
-                                                "success" => {
-                                                    // T:success messages "msg" can be "connected", "authenticated"
-                                                    // [{"T":"success","msg":"connected"}]
-                                                    // [{"T":"success","msg":"authenticated"}]
-
-                                                    // Step 1, connect
-                                                    if let Some(_msg) = &json["msg"].as_str() {
-                                                        tracing::debug!("[ws_connect][text][success] msg: {:?}",&json["msg"].as_str().unwrap());
-                                                        match json["msg"].as_str() {
-                                                            Some(msg) => {
-                                                                // Step 2, authenticate
-                                                                if msg == "authenticated" {
-                                                                    // subscribe to stock feeds
-                                                                    // https://alpaca.markets/docs/api-references/market-data-api/stock-pricing-data/realtime/#subscribe
-
-
-                                                                    let json = json!({
-                                                                        "action": "subscribe",
-                                                                        "trades":  stock_list_to_uppercase(&symbols),
-                                                                        // "quotes": STOCK_LIST_CAPS,
-                                                                        "bars": stock_list_to_uppercase(&symbols),
-                                                                    });
-                                                                    tracing::debug!("[ws_connect] sending subscription request...\n{}", &json);
-                                                                    let result = ws.write_message(Message::Text(json.to_string()));
-                                                                    tracing::debug!("[ws_connect] subscription request sent: {:?}", &result);
-
-
-
-                                                                }
-                                                            }
-                                                            None => tracing::debug!("[ws_connect][text][success] no message, needed 'authenticated'"),
-                                                        }
-                                                    }
-                                                }
-                                                "subscription" => {
-                                                    // subscription confirmation
-                                                    // [{"T":"subscription","trades":["AAPL"],"quotes":["AMD","CLDR"],"bars":["IBM","AAPL","VOO"]}]
-                                                    tracing::debug!("[ws_connect][subscription] {:?}",&json);
-
-                                                    // subscription confirmed; get the latest; change the state machine to accepting updates
-                                                    // (though not really necessary, can take them if they come)
-                                                }
-                                                "t" => {
-                                                    // trade
-                                                    match serde_json::from_value::<AlpWsTrade>(json)
-                                                    {
-                                                        Ok(trade) => {
-                                                            tracing::debug!("[ws_connect][text] trade: {:?}",&trade);
-                                                            let _ = tx_db.send(DbMsg::WsTrade(trade.to_owned()));
-                                                        }
-                                                        Err(e) => {
-                                                            tracing::debug!("[ws_connect][text] trade parse failed: {:?}", &e);
-                                                        }
-                                                    }
-                                                }
-                                                "b" => {
-                                                    // minute bar schema
-                                                    // https://alpaca.markets/docs/api-references/market-data-api/stock-pricing-data/realtime/#minute-bar-schema
-                                                    /*
-                                                            {
-                                                              "T": "b",
-                                                              "S": "SPY",
-                                                              "o": 388.985,
-                                                              "h": 389.13,
-                                                              "l": 388.975,
-                                                              "c": 389.12,
-                                                              "v": 49378,
-                                                              "t": "2021-02-22T19:15:00Z"
-                                                            }
-                                                    */
-                                                    tracing::debug!("[ws_connect][text] minute bar: {:?}",&json);
-                                                    let minute_bar_result = serde_json::from_value::<MinuteBar>(json);
-                                                    match minute_bar_result {
-                                                        Ok(minute_bar) => {
-                                                            tracing::debug!("[ws_connect][text] minute_bar parsed: {:?}", &minute_bar);
-                                                            let _ = tx_db.send(DbMsg::MinuteBar(minute_bar.to_owned()));
-                                                        }
-                                                        Err(e) => tracing::debug!("[ws_connect][text] minute_bar parse failed: {:?}", &e),
-                                                    }
-                                                }
-                                                "q" | "d" | "s" => {
-                                                    // quote, daily, status
-                                                    tracing::debug!("[ws_connect][text][ quote, daily, status] {:?}", &json);
-                                                }
-                                                _ => {
-                                                    // tracing::debug!("[ws_connect][other] {:?}", &t_msg);
-                                                }
-                                            }
-                                        }
-                                    }*/
                                 }
 
                                 _ => {
                                     tracing::debug!("[run] tungstenite close or frame received on websocket: {:?}",&msg);
-                                    // restart the websocket
+                                    // restart the websocket; break out of this read loop, out to the connect loop
                                     break;
                                 }
                             }
@@ -403,8 +293,7 @@ fn generate_ws_authentication_message(settings: &Settings) -> String {
         secret: api_secret,
     };
 
-    let j: serde_json::Value =
-        serde_json::to_value(&json_obj).expect("[gen_subscribe_json] json serialize failed");
+    let j: serde_json::Value = serde_json::to_value(&json_obj).expect("[gen_subscribe_json] json serialize failed");
     j.to_string()
 }
 
@@ -426,9 +315,18 @@ fn generate_ws_listen_message(streams: Vec<RequestAction>) -> String {
     };
 
     tracing::debug!("[gen_listen_json] listen_message: {:?}", &listen_message);
-    serde_json::to_value(&listen_message)
-        .expect("[gen_listen_json] json serialize failed")
-        .to_string()
+    serde_json::to_value(&listen_message).expect("[gen_listen_json] json serialize failed").to_string()
+}
+
+fn generate_ping(streams: Vec<RequestAction>) -> String {
+    let streams:Vec<String> = streams.iter().map(|x| x.to_string()).collect();
+    let listen_message = RequestListen {
+        action: RequestAction::Ping,
+        data: RequestListenData { streams },
+    };
+
+    tracing::debug!("[gen_listen_json] listen_message: {:?}", &listen_message);
+    serde_json::to_value(&listen_message).expect("[gen_listen_json] json serialize failed").to_string()
 }
 
 fn stock_list_to_uppercase(lower_stock: &Vec<String>) -> Vec<String> {

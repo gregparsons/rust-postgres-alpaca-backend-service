@@ -105,6 +105,8 @@ pub enum DbMsg {
 
     PositionLocalGet{sender: oneshot::Sender<Vec<PositionLocal>>},
 
+    WebsocketAlpacaAlive{sender: oneshot::Sender<bool>},
+
 }
 
 #[derive(Debug)]
@@ -186,12 +188,22 @@ async fn process_message(msg:DbMsg, pool: PgPool){
     // tracing::debug!("[process_message] DbMsg: {:?}", &msg);
 
     match msg {
-        DbMsg::AcctDashboardGet {sender}=>{
 
+        DbMsg::WebsocketAlpacaAlive{sender}=>{
+            match websocket_alpaca_alive(pool).await{
+                Ok(alpaca_alive)=>{
+                    match sender.send(alpaca_alive){
+                        Ok(_)=>{},
+                        Err(e)=> tracing::error!("[WebsocketAlpacaAlive] send error: {:?}", &e),
+                    }
+                },
+                Err(e) => tracing::error!("[WebsocketAlpacaAlive] {:?}", &e),
+            }
+        },
+
+        DbMsg::AcctDashboardGet {sender}=>{
             let vec_dashboard = acct_dashboard(pool).await;
             let _ = sender.send(vec_dashboard);
-
-
         },
         DbMsg::ActivityGetAll{ sender}=>{
             let vec_activity = match activities_from_db(pool).await{
@@ -633,8 +645,9 @@ async fn insert_finnhub_ping(ping: &FinnhubPing, pool: &PgPool) -> Result<PgQuer
 /// Append a timestamp to the ping table whenever the Finnhub websocket pings. Use it to determine if the websocket goes down.
 async fn insert_alpaca_ping(ping: &Ping, pool: &PgPool, ) -> Result<PgQueryResult, sqlx::Error> {
     sqlx::query!(
-        r#"insert into ping_alpaca (ping) values ($1)"#,
-        ping.dtg.naive_utc()
+        r#"insert into ping_alpaca (ping) values (now())"#,
+        // r#"insert into ping_alpaca (ping) values ($1)"#,
+        // ping.dtg.naive_utc()
     ).execute(pool).await
 }
 
@@ -1639,6 +1652,37 @@ async fn position_local_get(pool:PgPool)->Result<Vec<PositionLocal>, TradeWebErr
             tracing::error!("[position_get_local] error: {:?}", &e);
             Err(TradeWebError::SqlxError)
         }
+    }
+
+}
+
+struct DbBigDecimal{
+    result_big_decimal:BigDecimal
+}
+
+async fn websocket_alpaca_alive(pool:PgPool)->Result<bool,TradeWebError>{
+
+    let result:Result<DbBigDecimal, sqlx::Error> = sqlx::query_as!(DbBigDecimal, r#"
+        select
+            extract(epoch from (current_timestamp - max(ping))::interval)::numeric as "result_big_decimal!"
+        from ping_alpaca"#
+    ).fetch_one(&pool).await;
+
+    match result {
+        Ok(ping_alive) => {
+            if ping_alive.result_big_decimal > BigDecimal::from(60) {
+                Ok(false)
+            }
+            else {
+                Ok(true)
+            }
+        },
+        Err(e) => {
+            tracing::error!("[websocket_alpaca_alive] {:?}", &e);
+            Err(TradeWebError::SqlxError)
+        }
+
+
     }
 
 }
