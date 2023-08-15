@@ -140,7 +140,7 @@ impl Account {
                 tracing::debug!("[load_account] got remote account, saving to db...");
                 match account.save_to_db(tx_db.clone()){
                     Ok(_)=>{
-                        tracing::debug!("[load_account] save to db ok");
+                        tracing::info!("[load_account] account updated");
                     },
                     Err(e) =>{
                         tracing::error!("[load_account] save to db failed: {:?}", &e);

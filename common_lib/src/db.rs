@@ -1579,7 +1579,7 @@ async fn transaction_insert_position(position:&Position, pool:&PgPool) ->Result<
         position.qty
     ).execute(pool).await{
         Ok(_)=>{
-            tracing::debug!("[transaction_insert_position] successful insert");
+            // tracing::debug!("[transaction_insert_position] successful insert");
             Ok(())
         },
         Err(e)=>{

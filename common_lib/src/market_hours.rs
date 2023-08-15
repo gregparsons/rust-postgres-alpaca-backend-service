@@ -3,7 +3,7 @@
 use chrono::{NaiveTime, Utc};
 use once_cell::sync::Lazy;
 
-pub const OPERATE_API_AFTER_HOURS: bool = false;
+// pub const OPERATE_API_AFTER_HOURS: bool = false;
 // side effect of BUY_EXTENDED_HOURS is causing buy limit orders, which can cause orders to hang, not immediately accepted
 pub const BUY_EXTENDED_HOURS: bool = false;
 pub const SELL_EXTENDED_HOURS: bool = false;
@@ -23,13 +23,8 @@ impl MarketHours{
     pub fn is_open() -> bool{
 
         let time_current_ny = Utc::now().with_timezone(&chrono_tz::America::New_York).time();
-
         let operate_after_hours = std::env::var("OPERATE_API_AFTER_HOURS").unwrap_or_else(|_| "false".to_string()).parse().unwrap_or_else(|_| false);
-
         let open_for_testing = std::env::var("PRETEND_TO_BE_OPEN").unwrap_or_else(|_| "false".to_string()).parse().unwrap_or_else(|_| false);
-        if open_for_testing{
-            return true;
-        }
 
         let are_we_open = match operate_after_hours {
             false => {
@@ -49,7 +44,15 @@ impl MarketHours{
                 }
             }
         };
-        tracing::debug!("[are_we_open] Time in NYC: {:?}; OPERATE_API_AFTER_HOURS: {}; are_we_open: {}:{}", &time_current_ny, OPERATE_API_AFTER_HOURS, &are_we_open.0, &are_we_open.1);
-        are_we_open.0
+
+        if open_for_testing{
+            tracing::error!("[are_we_open][PRETEND_TO_BE_OPEN] Time in NYC: {:?}; OPERATE_API_AFTER_HOURS: {}; are_we_open: {}:{}", &time_current_ny, &operate_after_hours, &are_we_open.0, &are_we_open.1);
+            true
+        }else {
+            tracing::info!("[are_we_open][{}] Time in NYC: {:?}; OPERATE_API_AFTER_HOURS: {}; are_we_open: {}:{}", &are_we_open.0, &time_current_ny, &operate_after_hours, &are_we_open.0, &are_we_open.1);
+            are_we_open.0
+        }
+
+
     }
 }

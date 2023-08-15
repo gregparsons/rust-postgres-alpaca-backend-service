@@ -182,9 +182,7 @@ pub async fn run(tokio_handle: Handle) {
 
     loop {
         std::thread::sleep(Duration::from_secs(3));
-
-        tracing::debug!("[main] ping send result: {:?}", tx_db.send(DbMsg::PingDb));
-
+        tracing::info!("[run] database ping: {:?}", tx_db.send(DbMsg::PingDb));
         println!("[backend]");
     }
 }

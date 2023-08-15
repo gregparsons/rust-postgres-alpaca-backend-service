@@ -2,11 +2,10 @@
 //!
 //! Restful Alpaca Poller
 
-use chrono::Utc;
 use crossbeam_channel::Sender;
 use common_lib::alpaca_activity::Activity;
 use common_lib::alpaca_position::Position;
-use common_lib::market_hours::{MARKET_CLOSE_EXT, MARKET_OPEN_EXT};
+use common_lib::market_hours::{MarketHours};
 use common_lib::settings::Settings;
 use tokio::runtime::Handle;
 use common_lib::account::Account;
@@ -51,24 +50,26 @@ impl AlpacaRest {
         let mut alpaca_poll_rate_ms: u64;
 
         // this is set in all.sh via docker run
-        let time_open_ny = MARKET_OPEN_EXT.clone();
-        let time_close_ny = MARKET_CLOSE_EXT.clone();
+        // let time_open_ny = MARKET_OPEN_EXT.clone();
+        // let time_close_ny = MARKET_CLOSE_EXT.clone();
         // Call the API if the market is open in NYC
 
         loop {
 
-            let time_current_ny = Utc::now().with_timezone(&chrono_tz::America::New_York).time();
+            // let time_current_ny = Utc::now().with_timezone(&chrono_tz::America::New_York).time();
             alpaca_poll_rate_ms = {
                 // if market is open, set the poll rate to the desired open rate
 
                 // TODO: use new is_open() function
-                if time_current_ny >= time_open_ny && time_current_ny <= time_close_ny {
-                    tracing::info!("[rest_service:loop] NY time: {:?}, open: {:?}, close: {:?}",&time_current_ny,&time_open_ny,&time_close_ny);
+                if MarketHours::is_open(){
+                //
+                // time_current_ny >= time_open_ny && time_current_ny <= time_close_ny {
+                //     tracing::info!("[rest_service:loop] NY time: {:?}, open: {:?}, close: {:?}",&time_current_ny,&time_open_ny,&time_close_ny);
                     std::env::var("API_INTERVAL_MILLIS").unwrap_or_else(|_| REST_POLL_RATE_OPEN_MILLIS_STR.to_string()).parse().unwrap_or(REST_POLL_RATE_OPEN_MILLIS)
 
                 } else {
                     // back off to a slower poll rate.
-                    tracing::debug!("[run] market is closed. NY time: {:?}, open: {:?}, close: {:?}", &time_current_ny, &time_open_ny, &time_close_ny);
+                    // tracing::debug!("[run] market is closed. NY time: {:?}, open: {:?}, close: {:?}", &time_current_ny, &time_open_ny, &time_close_ny);
                     // 30 seconds
                     REST_POLL_RATE_CLOSED_MILLIS
                 }
@@ -165,7 +166,7 @@ impl AlpacaRest {
                     AlpacaTransaction::insert_existing_position(&position, tx_db.clone());
 
                 }
-                tracing::debug!("[alpaca_position] updated positions");
+                tracing::info!("[alpaca_position] positions updated");
             },
             Err(e) => tracing::error!("[alpaca_position] could not load positions from Alpaca web API: {:?}", &e),
         }
