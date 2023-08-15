@@ -3,7 +3,7 @@
 use chrono::{NaiveTime, Utc};
 use once_cell::sync::Lazy;
 
-// pub const OPERATE_API_AFTER_HOURS: bool = true;
+pub const OPERATE_API_AFTER_HOURS: bool = false;
 // side effect of BUY_EXTENDED_HOURS is causing buy limit orders, which can cause orders to hang, not immediately accepted
 pub const BUY_EXTENDED_HOURS: bool = false;
 pub const SELL_EXTENDED_HOURS: bool = false;
@@ -33,23 +33,23 @@ impl MarketHours{
 
         let are_we_open = match operate_after_hours {
             false => {
-                if time_current_ny > *MARKET_OPEN_TIME /* *MARKET_NORMAL_OPEN_TIME */ &&
-                    time_current_ny < *MARKET_CLOSE_TIME /* *MARKET_NORMAL_CLOSE_TIME */ {
+                if time_current_ny > *MARKET_OPEN_TIME &&
+                    time_current_ny < *MARKET_CLOSE_TIME {
                     (true, "Operating inside normal hours (0930-1600)")
                 } else {
                     (false, "Outside normal hours (0930-1600)")
                 }
             },
             true =>{
-                if time_current_ny > *MARKET_OPEN_EXT /* *MARKET_EXTENDED_OPEN_TIME */ &&
-                    time_current_ny < *MARKET_CLOSE_EXT /* *MARKET_EXTENDED_CLOSE_TIME */ {
+                if time_current_ny > *MARKET_OPEN_EXT &&
+                    time_current_ny < *MARKET_CLOSE_EXT {
                     (true, "Operating inside extended hours (0400-2000)")
                 } else {
                     (false, "Outside extended hours (0400-2000)")
                 }
             }
         };
-        // tracing::debug!("[are_we_open] Time in NYC: {:?}; OPERATE_API_AFTER_HOURS: {}; are_we_open: {}:{}", &time_current_ny, OPERATE_API_AFTER_HOURS, &are_we_open.0, &are_we_open.1);
+        tracing::debug!("[are_we_open] Time in NYC: {:?}; OPERATE_API_AFTER_HOURS: {}; are_we_open: {}:{}", &time_current_ny, OPERATE_API_AFTER_HOURS, &are_we_open.0, &are_we_open.1);
         are_we_open.0
     }
 }
