@@ -85,13 +85,10 @@ pub async fn run(tokio_handle: Handle) {
 
                 match SymbolList::get_active_symbols(tx_db_2).await {
                     Ok(symbols) => {
-
                         let symbols2 = symbols.clone();
                         let settings2 = settings.clone();
                         let settings3 = settings.clone();
                         let tx_db_3 = tx_db.clone();
-
-
 
                         // alpaca market data websocket
                         let _join_handle_1 = std::thread::spawn(|| {
@@ -168,7 +165,7 @@ pub async fn run(tokio_handle: Handle) {
 
     loop {
         std::thread::sleep(Duration::from_secs(3));
-        tracing::info!("[run] database ping: {:?}", tx_db.send(DbMsg::PingDb));
+        tracing::info!("[run] database: {:?}", tx_db.send(DbMsg::PingDb));
         println!("[backend]");
     }
 }

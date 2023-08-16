@@ -643,7 +643,7 @@ async fn insert_finnhub_ping(ping: &FinnhubPing, pool: &PgPool) -> Result<PgQuer
 }
 
 /// Append a timestamp to the ping table whenever the Finnhub websocket pings. Use it to determine if the websocket goes down.
-async fn insert_alpaca_ping(ping: &Ping, pool: &PgPool, ) -> Result<PgQueryResult, sqlx::Error> {
+async fn insert_alpaca_ping(_ping: &Ping, pool: &PgPool, ) -> Result<PgQueryResult, sqlx::Error> {
     sqlx::query!(
         r#"insert into ping_alpaca (ping) values (now())"#,
         // r#"insert into ping_alpaca (ping) values ($1)"#,
