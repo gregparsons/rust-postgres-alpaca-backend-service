@@ -15,13 +15,14 @@ mod signup;
 mod symbols;
 mod utils;
 mod web_server;
+mod transactions;
 
 use common_lib::init::init;
 
 use crate::web_server::WebServer;
 use chrono::NaiveTime;
 use once_cell::sync::Lazy;
-use common_lib::db::{DbActor};
+use common_lib::db::DbActor;
 
 // https://alpaca.markets/learn/investing-basics/what-is-extended-hours-trading/
 pub static MARKET_OPEN: Lazy<NaiveTime> = Lazy::new(|| NaiveTime::from_hms_opt(9, 30, 0).unwrap()); // 4am Eastern

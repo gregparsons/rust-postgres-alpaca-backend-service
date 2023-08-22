@@ -1787,6 +1787,98 @@
     },
     "query": "\n                delete from alpaca_transaction_status\n                where posn_shares <= 0.0\n            "
   },
+  "cf59051cebeef965aab572d7be81295360d4e809e2fe1d8b4ce9e1e509663a61": {
+    "describe": {
+      "columns": [
+        {
+          "name": "symbol!",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "side!:TradeSide",
+          "ordinal": 1,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "profit",
+          "ordinal": 2,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "elapsed_sec",
+          "ordinal": 3,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "posn_age_sec",
+          "ordinal": 4,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty_transaction!",
+          "ordinal": 5,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_transaction!",
+          "ordinal": 6,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "amt_transaction!",
+          "ordinal": 7,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty_posn!",
+          "ordinal": 8,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_posn_entry!",
+          "ordinal": 9,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "posn_basis!",
+          "ordinal": 10,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "dtg!",
+          "ordinal": 11,
+          "type_info": "Timestamptz"
+        },
+        {
+          "name": "dtg_pacific!",
+          "ordinal": 12,
+          "type_info": "Timestamp"
+        }
+      ],
+      "nullable": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": [
+          "Varchar"
+        ]
+      }
+    },
+    "query": "\n            select\n                symbol as \"symbol!\",\n                side as \"side!:TradeSide\",\n                profit,\n                elapsed_sec,\n                posn_age_sec,\n                qty_transaction as \"qty_transaction!\",\n                round(price_transaction,4) as \"price_transaction!\",\n                round(amt_transaction,4) as \"amt_transaction!\",\n                qty_posn as \"qty_posn!\",\n                round(price_posn_entry,4) as \"price_posn_entry!\",\n                posn_basis as \"posn_basis!\",\n                dtg as \"dtg!\",\n                Timezone('US/Pacific', dtg)::timestamp as \"dtg_pacific!\"\n            from\n                fn_transaction($1)\n        "
+  },
   "d65fb26b1c74760e25207ef830b56c597aee490b8c9e647066e8609aa9952cb0": {
     "describe": {
       "columns": [],

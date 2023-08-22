@@ -7,6 +7,7 @@
 
 use bigdecimal::BigDecimal;
 use crossbeam_channel::Sender;
+use tokio::sync::oneshot;
 use crate::db::DbMsg;
 use crate::error::{TradeWebError};
 
@@ -29,9 +30,9 @@ impl SellPosition {
 
     /// positions with a market value per share higher than their purchase price per share.
     pub async fn list_showing_profit(pl_filter:BigDecimal, sender_tx:Sender<DbMsg>) -> Result<Vec<SellPosition>, TradeWebError> {
-        let (resp_tx, resp_rx) = crossbeam_channel::unbounded();
+        let (resp_tx, resp_rx) = oneshot::channel();
         sender_tx.send(DbMsg::PositionListShowingProfit { pl_filter, sender_tx: resp_tx}).unwrap();
-        match resp_rx.recv(){
+        match resp_rx.await{
             Ok(sell_list)=>Ok(sell_list),
             Err(_e)=>Err(TradeWebError::ChannelError),
         }

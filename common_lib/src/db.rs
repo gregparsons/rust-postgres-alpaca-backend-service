@@ -15,20 +15,6 @@ use tokio::sync::oneshot;
 use crate::settings::Settings;
 
 // trade imports
-// use crate::account::{Account, AccountWithDate};
-// use crate::alpaca_activity::{Activity, ActivityLatest};
-// use crate::alpaca_api_structs::{AlpacaTradeWs, MinuteBar, Ping};
-// use crate::alpaca_order::Order;
-// use crate::alpaca_order_log::AlpacaOrderLogEvent;
-// use crate::alpaca_position::{Position, TempPosition};
-// use crate::error::TradeWebError;
-// use crate::finnhub::{FinnhubPing, FinnhubTrade};
-// use crate::symbol_list::QrySymbol;
-// use crate::trade_struct::TradeSide;
-// use crate::alpaca_transaction_status::*;
-// use crate::sqlx_pool::create_sqlx_pg_pool;
-
-// trade imports
 use crate::account::{Account, AccountWithDate};
 use crate::alpaca_activity::{Activity, ActivityLatest, ActivityQuery};
 use crate::alpaca_api_structs::{AlpacaTradeWs, MinuteBar, Ping};
@@ -47,6 +33,7 @@ use crate::position_local::PositionLocal;
 use crate::sell_position::SellPosition;
 use crate::sqlx_pool::create_sqlx_pg_pool;
 use crate::symbol::Symbol;
+use crate::transaction::Transaction;
 
 #[derive(Debug)]
 pub enum DbMsg {
@@ -64,8 +51,6 @@ pub enum DbMsg {
     SettingsWithSecret { sender: oneshot::Sender<Settings> },
     SettingsNoSecret { sender: oneshot::Sender<Settings> },
 
-    TransactionDeleteOne{ symbol:String },
-    TransactionDeleteAll,
     AccountGet{ resp_tx: Sender<AccountWithDate> },
     // TODO: pass settings to others that'd need updated settings while running
     AccountGetRemote{ settings:Settings, resp_tx: Sender<Account> },
@@ -73,9 +58,6 @@ pub enum DbMsg {
     AcctCashAvailable { symbol:String, sender_tx: oneshot::Sender<MaxBuyPossible> },
     AcctDashboardGet{ sender:oneshot::Sender<Vec<Dashboard>>},
 
-    TransactionInsertPosition { position:Position },
-    TransactionStartBuy { symbol:String, sender: oneshot::Sender<BuyResult>},
-    TransactionStartSell { symbol:String},
 
 
     ActivityLatestDtg{ resp_tx: Sender<DateTime<Utc>> },
@@ -93,18 +75,23 @@ pub enum DbMsg {
 
     PositionGetRemote{ settings:Settings, resp_tx: Sender<Vec<Position>> },
     PositionDeleteAll,
+    PositionLocalGet{sender: oneshot::Sender<Vec<PositionLocal>>},
     PositionSaveToDb { position:Position },
-    PositionListShowingProfit{ pl_filter: BigDecimal, sender_tx: Sender<Vec<SellPosition>>},
+    PositionListShowingProfit{ pl_filter: BigDecimal, sender_tx: oneshot::Sender<Vec<SellPosition>>},
     PositionListShowingAge{sender_tx: Sender<Vec<SellPosition>>},
 
     OrderLogEntrySave{entry: OrderLogEntry},
 
+    TransactionGet {symbol:Option<String>, sender: oneshot::Sender<Vec<Transaction>>},
+    TransactionDeleteOne{ symbol:String },
+    TransactionDeleteAll,
+    TransactionInsertPosition { position:Position },
+    TransactionStartBuy { symbol:String, sender: oneshot::Sender<BuyResult>},
+    TransactionStartSell { symbol:String},
+
+
     DiffCalcGet{ sender: Sender<Result<Vec<DiffCalc>, PollerError>> },
-
     RestPostOrder{ json_trade:JsonTrade, settings:Settings, sender: Sender<Order> },
-
-    PositionLocalGet{sender: oneshot::Sender<Vec<PositionLocal>>},
-
     WebsocketAlpacaAlive{sender: oneshot::Sender<bool>},
 
 }
@@ -451,6 +438,18 @@ async fn process_message(msg:DbMsg, pool: PgPool){
                     let _ = AlpacaTransaction::decrement(&event.order.symbol.clone(), qty, &pool).await;
                     let _ = AlpacaTransaction::clean(&pool).await;
                 }
+            }
+        },
+
+        DbMsg::TransactionGet{symbol, sender}=>{
+            match transaction_get(symbol, pool).await {
+                Ok(transactions) => {
+                    match sender.send(transactions) {
+                        Ok(_) => {},
+                        Err(e) => tracing::error!("[DbMsg::TransactionGet] send error: {:?}", e),
+                    }
+                },
+                Err(e) => tracing::error!("[DbMsg::TransactionGet] error: {:?}", &e),
             }
         },
 
@@ -1685,5 +1684,59 @@ async fn websocket_alpaca_alive(pool:PgPool)->Result<bool,TradeWebError>{
 
     }
 
+}
+
+/// get a vector of Transaction from the database for display in the frontend web site
+/// send None as the filter to get all
+async fn transaction_get(symbol:Option<String>, pool:PgPool)->Result<Vec<Transaction>, TradeWebError>{
+
+    let filter_symbol = match symbol{
+        Some(s)=>{
+            // prevent sql injection
+            if let Ok(possible_symbols) = symbols_get_all(pool.clone()).await{
+                let s = s.to_lowercase();
+                if possible_symbols.contains(&s){
+                    tracing::debug!("[transaction_get] symbol filter ({}) found among possible symbols", &s);
+                    // okay, return the filter
+                    s
+                } else {
+                    return Err(TradeWebError::SqlInjectionRisk)
+                }
+            } else {
+                tracing::error!("[transaction_get] couldn't get symbol list so can't validate desired filter");
+                return Err(TradeWebError::SqlxError)
+            }
+        },
+        None => "%".to_string(),
+    };
+
+
+    match sqlx::query_as!(Transaction,
+        r#"
+            select
+                symbol as "symbol!",
+                side as "side!:TradeSide",
+                profit,
+                elapsed_sec,
+                posn_age_sec,
+                qty_transaction as "qty_transaction!",
+                round(price_transaction,4) as "price_transaction!",
+                round(amt_transaction,4) as "amt_transaction!",
+                qty_posn as "qty_posn!",
+                round(price_posn_entry,4) as "price_posn_entry!",
+                posn_basis as "posn_basis!",
+                dtg as "dtg!",
+                Timezone('US/Pacific', dtg)::timestamp as "dtg_pacific!"
+            from
+                fn_transaction($1)
+        "#,
+        filter_symbol
+    ).fetch_all(&pool).await{
+        Ok(transactions)=>Ok(transactions),
+        Err(e) => {
+            tracing::error!("[transaction_get] couldn't transactions from db: {:?}", &e);
+            Err(TradeWebError::SqlxError)
+        }
+    }
 }
 

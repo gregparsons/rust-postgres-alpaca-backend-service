@@ -1,0 +1,56 @@
+{{#*inline "page"}}
+<h2><p>{{title}}</p></h2>
+<p>{{message}}</p>
+<h4>
+    {{#each symbols}}
+    <a href="/transaction/{{this}}">{{this}}</a>&nbsp
+    {{/each}}
+</h4>
+<style>
+    table {
+        font-family: arial, sans-serif;
+        border-collapse: collapse;
+        width: 100%;
+    }
+    td, th {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+    }
+    tr:nth-child(even) {
+        background-color: #dddddd;
+    }
+</style>
+<br>
+<table>
+    <tr>
+        <td>Symbol</td>
+        <td>Side</td>
+        <td>Profit</td>
+        <td>Qty</td>
+        <td>Share Price</td>
+        <td>Transaction Total</td>
+        <td>Entry Share Price</td>
+        <td>Outstanding Posn</td>
+        <td>dtg_pacific</td>
+        <td>dtg</td>
+    <tr>
+    {{#each data}}
+    <tr>
+        <td><a href="transaction/{{this.symbol}}">{{this.symbol}}</a>
+            <a target="_blank" href="https://finance.yahoo.com/chart/{{this.symbol}}">__</a>
+        </td>
+        <td>{{this.side}}</td>
+        <td>${{this.profit}}</td>
+        <td>{{this.qty_transaction}}</td>
+        <td>${{this.price_transaction}}</td>
+        <td>${{this.amt_transaction}}</td>
+        <td>${{this.price_posn_entry}}</td>
+        <td>{{this.qty_posn}}</td>
+        <td>{{this.dtg_pacific}}</td>
+        <td>{{this.dtg}}</td>
+    </tr>
+    {{/each}}
+</table>
+{{/inline}}
+{{> (lookup this "parent")}}

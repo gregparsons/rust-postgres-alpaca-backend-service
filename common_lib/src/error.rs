@@ -17,6 +17,7 @@ pub enum TradeWebError {
     PositionExists,
     DeleteFailed,
     NoSharesFound,
+    SqlInjectionRisk,
 }
 
 #[derive(Debug, Clone)]

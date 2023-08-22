@@ -20,6 +20,7 @@ use crate::order::get_order;
 use crate::positions::get_positions;
 use crate::profit::{get_profit, get_profit_summary};
 use crate::symbols::{get_symbols, post_symbols};
+use crate::transactions::{get_transaction_for_symbol, get_transactions};
 use crate::utils::*;
 
 // this corresponds to the Dockerfile "COPY static /app/frontend/static"
@@ -135,6 +136,8 @@ impl WebServer {
                 .route("/symbols", web::post().to(post_symbols))
                 .route("/activity", web::get().to(get_activities))
                 .route("/activity/{symbol}", web::get().to(get_activity_for_symbol))
+                .route("/transaction", web::get().to(get_transactions))
+                .route("/transaction/{symbol}", web::get().to(get_transaction_for_symbol))
                 .route("/settings", web::get().to(get_settings))
                 .route("/positions", web::get().to(get_positions))
                 .route("/settings/button/{name}", web::get().to(get_settings_button))

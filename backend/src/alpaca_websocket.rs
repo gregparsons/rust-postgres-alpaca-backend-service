@@ -318,16 +318,16 @@ fn generate_ws_listen_message(streams: Vec<RequestAction>) -> String {
     serde_json::to_value(&listen_message).expect("[gen_listen_json] json serialize failed").to_string()
 }
 
-fn generate_ping(streams: Vec<RequestAction>) -> String {
-    let streams:Vec<String> = streams.iter().map(|x| x.to_string()).collect();
-    let listen_message = RequestListen {
-        action: RequestAction::Ping,
-        data: RequestListenData { streams },
-    };
-
-    tracing::debug!("[gen_listen_json] listen_message: {:?}", &listen_message);
-    serde_json::to_value(&listen_message).expect("[gen_listen_json] json serialize failed").to_string()
-}
+// fn generate_ping(streams: Vec<RequestAction>) -> String {
+//     let streams:Vec<String> = streams.iter().map(|x| x.to_string()).collect();
+//     let listen_message = RequestListen {
+//         action: RequestAction::Ping,
+//         data: RequestListenData { streams },
+//     };
+//
+//     tracing::debug!("[gen_listen_json] listen_message: {:?}", &listen_message);
+//     serde_json::to_value(&listen_message).expect("[gen_listen_json] json serialize failed").to_string()
+// }
 
 fn stock_list_to_uppercase(lower_stock: &Vec<String>) -> Vec<String> {
     lower_stock.iter().map(|x| x.to_uppercase()).collect()
