@@ -20,18 +20,19 @@ pub struct SellPosition {
     // pub qty_available:BigDecimal,
     pub unrealized_pl_per_share:BigDecimal,
     pub cost_basis:BigDecimal,
-    pub unrealized_pl_total:BigDecimal,
-    pub trade_size:BigDecimal,
-    pub age_minute:BigDecimal,
+    pub unrealized_pl_total: BigDecimal,
+    pub trade_size: BigDecimal,
+    pub age_minute: BigDecimal,
+    pub sell_high_share_cents: BigDecimal,
 
 }
 
 impl SellPosition {
 
     /// positions with a market value per share higher than their purchase price per share.
-    pub async fn list_showing_profit(pl_filter:BigDecimal, sender_tx:Sender<DbMsg>) -> Result<Vec<SellPosition>, TradeWebError> {
+    pub async fn list_showing_profit(/*pl_filter:BigDecimal, */sender_tx:Sender<DbMsg>) -> Result<Vec<SellPosition>, TradeWebError> {
         let (resp_tx, resp_rx) = oneshot::channel();
-        sender_tx.send(DbMsg::PositionListShowingProfit { pl_filter, sender_tx: resp_tx}).unwrap();
+        sender_tx.send(DbMsg::PositionListShowingProfit { /*pl_filter, */sender_tx: resp_tx}).unwrap();
         match resp_rx.await{
             Ok(sell_list)=>Ok(sell_list),
             Err(_e)=>Err(TradeWebError::ChannelError),

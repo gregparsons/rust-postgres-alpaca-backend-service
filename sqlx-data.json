@@ -592,7 +592,7 @@
     },
     "query": "\n            insert into alpaca_transaction_status(dtg, symbol, posn_shares)\n            values(now()::timestamptz, $1, $2)\n            ON CONFLICT (symbol) DO UPDATE\n                SET posn_shares = $2, dtg=now()::timestamptz;\n        "
   },
-  "3c8ba9f06883ee89bee3f798942dc9493b744a01f80c602ad76fae3919f959b2": {
+  "375e02df224561aac6f02ae9c2b8b9a8a61d96464601f2a0fd0bb58f325c4682": {
     "describe": {
       "columns": [
         {
@@ -634,6 +634,11 @@
           "name": "age_minute!",
           "ordinal": 7,
           "type_info": "Numeric"
+        },
+        {
+          "name": "sell_high_share_cents!",
+          "ordinal": 8,
+          "type_info": "Numeric"
         }
       ],
       "nullable": [
@@ -644,15 +649,14 @@
         null,
         null,
         null,
+        null,
         null
       ],
       "parameters": {
-        "Left": [
-          "Numeric"
-        ]
+        "Left": []
       }
     },
-    "query": "\n            select\n                stock_symbol as \"symbol!\"\n                , price as \"avg_entry_price!\"\n                , sell_qty as \"qty!\"\n                --, sell_qty_available as \"qty_available!\"\n                , unrealized_pl_per_share as \"unrealized_pl_per_share!\"\n                , cost as \"cost_basis!\"\n                , unrealized_pl_total as \"unrealized_pl_total!\"\n                , coalesce(trade_size,0.0) as \"trade_size!\"\n                , coalesce(age_min,0.0) as \"age_minute!\"\n            from fn_positions_to_sell_high($1) a\n            left join t_symbol b on lower(a.stock_symbol) = lower(b.symbol)\n        "
+    "query": "\n            select\n                stock_symbol as \"symbol!\"\n                , price as \"avg_entry_price!\"\n                , sell_qty as \"qty!\"\n                --, sell_qty_available as \"qty_available!\"\n                , unrealized_pl_per_share as \"unrealized_pl_per_share!\"\n                , cost as \"cost_basis!\"\n                , unrealized_pl_total as \"unrealized_pl_total!\"\n                , coalesce(trade_size,0.0) as \"trade_size!\"\n                , coalesce(age_min,0.0) as \"age_minute!\"\n                ,sell_high_share_cents as \"sell_high_share_cents!\"\n            from fn_positions_to_sell_high() a\n            left join t_symbol b on lower(a.stock_symbol) = lower(b.symbol)\n        "
   },
   "41e310b7a132e9b1fe68c9c9549392df44f6206231105591f371d00e75d6342b": {
     "describe": {
@@ -1285,6 +1289,72 @@
     },
     "query": "\n                select\n                    id as \"id!\"\n                    , client_order_id as \"client_order_id!\"\n                    , created_at as \"created_at!\"\n                    , updated_at as \"updated_at!\"\n                    , submitted_at as \"submitted_at!\"\n                    , filled_at\n                    , expired_at\n                    , canceled_at\n                    , failed_at\n                    , replaced_at\n                    , replaced_by\n                    , replaces\n                    , asset_id as \"asset_id!:Option<String>\"\n                    , symbol as \"symbol!:String\"\n                    , asset_class as \"asset_class!:Option<String>\"\n                    , notional as \"notional!:Option<BigDecimal>\"\n                    , coalesce(qty, 0.0) as \"qty!:BigDecimal\"\n                    , filled_qty as \"filled_qty!:Option<BigDecimal>\"\n                    , filled_avg_price as \"filled_avg_price!:Option<BigDecimal>\"\n                    , order_class as \"order_class!:Option<String>\"\n                    , order_type_v2 as \"order_type_v2!:OrderType\"\n                    , side as \"side!:TradeSide\"\n                    , time_in_force as \"time_in_force!:TimeInForce\"\n                    , limit_price as \"limit_price!:Option<BigDecimal>\"\n                    , stop_price as \"stop_price!:Option<BigDecimal>\"\n                    , status as \"status!\"\n                    , coalesce(extended_hours, false) as \"extended_hours!\"\n                    , trail_percent\n                    , trail_price\n                    , hwm\n                from alpaca_order\n                where filled_at is null\n                order by symbol asc\n            "
   },
+  "9504f12928e068ab869540b50825afadcfc7f0620a6c02de0644fa03b4ddc8f9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "symbol!",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "avg_entry_price!",
+          "ordinal": 1,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty!",
+          "ordinal": 2,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_pl_per_share!",
+          "ordinal": 3,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "cost_basis!",
+          "ordinal": 4,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "unrealized_pl_total!",
+          "ordinal": 5,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "trade_size!",
+          "ordinal": 6,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "age_minute!",
+          "ordinal": 7,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "sell_high_share_cents!",
+          "ordinal": 8,
+          "type_info": "Numeric"
+        }
+      ],
+      "nullable": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        null,
+        null,
+        null
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n            select\n                a.symbol as \"symbol!\"\n                ,price_posn_entry as \"avg_entry_price!\"\n                ,qty_posn as \"qty!\"\n                ,pl_posn_share as \"unrealized_pl_per_share!\"\n                ,basis as \"cost_basis!\"\n                ,pl_posn as \"unrealized_pl_total!\"\n                ,coalesce(trade_size,0.0) as \"trade_size!\"\n                ,coalesce(posn_age_sec / 60.0,0.0) as \"age_minute!\"\n\n                -- not used\n                ,0.0 as \"sell_high_share_cents!\"\n            from v_positions_aging_sell_at_loss a\n            left join t_symbol b on a.symbol = b.symbol;\n        "
+  },
   "97619bf5f57d753ca6ba7bc660611ead26547c67bccbacaaaf317abceab42a3b": {
     "describe": {
       "columns": [],
@@ -1716,66 +1786,6 @@
       }
     },
     "query": "\n            select\n                user_id, username, password\n            from users\n            where username = $1\n        "
-  },
-  "ca2b179a9d16dd1e2a905cfbfc021885ec9b5a8223dd1c92ef46d44a54dcbcae": {
-    "describe": {
-      "columns": [
-        {
-          "name": "symbol!",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "avg_entry_price!",
-          "ordinal": 1,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "qty!",
-          "ordinal": 2,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "unrealized_pl_per_share!",
-          "ordinal": 3,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "cost_basis!",
-          "ordinal": 4,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "unrealized_pl_total!",
-          "ordinal": 5,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "trade_size!",
-          "ordinal": 6,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "age_minute!",
-          "ordinal": 7,
-          "type_info": "Numeric"
-        }
-      ],
-      "nullable": [
-        true,
-        true,
-        true,
-        true,
-        true,
-        true,
-        null,
-        null
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n            select\n                a.symbol as \"symbol!\"\n                ,price_posn_entry as \"avg_entry_price!\"\n                ,qty_posn as \"qty!\"\n                ,pl_posn_share as \"unrealized_pl_per_share!\"\n                ,basis as \"cost_basis!\"\n                ,pl_posn as \"unrealized_pl_total!\"\n                ,coalesce(trade_size,0.0) as \"trade_size!\"\n                ,coalesce(posn_age_sec / 60.0,0.0) as \"age_minute!\"\n            from v_positions_aging_sell_at_loss a\n            left join t_symbol b on a.symbol = b.symbol;\n        "
   },
   "cbbf8ab72f26935d3fed0b0706bfe4ca8395ed2efe3bf48e5ef45135d11c896a": {
     "describe": {

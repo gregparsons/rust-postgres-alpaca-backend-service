@@ -77,7 +77,7 @@ pub enum DbMsg {
     PositionDeleteAll,
     PositionLocalGet{sender: oneshot::Sender<Vec<PositionLocal>>},
     PositionSaveToDb { position:Position },
-    PositionListShowingProfit{ pl_filter: BigDecimal, sender_tx: oneshot::Sender<Vec<SellPosition>>},
+    PositionListShowingProfit{ /*pl_filter: BigDecimal,*/ sender_tx: oneshot::Sender<Vec<SellPosition>>},
     PositionListShowingAge{sender_tx: Sender<Vec<SellPosition>>},
 
     OrderLogEntrySave{entry: OrderLogEntry},
@@ -327,8 +327,8 @@ async fn process_message(msg:DbMsg, pool: PgPool){
             let _ = position_save_to_db(&position, &pool).await;
         },
 
-        DbMsg::PositionListShowingProfit{ pl_filter, sender_tx} => {
-            if let Ok(position_list_showing_profit) = position_list_showing_profit(pl_filter, pool).await {
+        DbMsg::PositionListShowingProfit{ /*pl_filter,*/ sender_tx} => {
+            if let Ok(position_list_showing_profit) = position_list_showing_profit(/*pl_filter, */pool).await {
                 match sender_tx.send(position_list_showing_profit){
                     Ok(_)=>{},
                     Err(e)=>{
@@ -1423,7 +1423,7 @@ async fn position_save_to_db(position:&Position, pool:&PgPool) -> Result<PgQuery
 
 
 /// positions with a market value per share higher than their purchase price per share.
-pub async fn position_list_showing_profit(pl_filter:BigDecimal, pool: PgPool) ->Result<Vec<SellPosition>,PollerError>{
+pub async fn position_list_showing_profit(/*pl_filter:BigDecimal, */pool: PgPool) ->Result<Vec<SellPosition>,PollerError>{
     let result = sqlx::query_as!(SellPosition,r#"
             select
                 stock_symbol as "symbol!"
@@ -1435,9 +1435,10 @@ pub async fn position_list_showing_profit(pl_filter:BigDecimal, pool: PgPool) ->
                 , unrealized_pl_total as "unrealized_pl_total!"
                 , coalesce(trade_size,0.0) as "trade_size!"
                 , coalesce(age_min,0.0) as "age_minute!"
-            from fn_positions_to_sell_high($1) a
+                ,sell_high_share_cents as "sell_high_share_cents!"
+            from fn_positions_to_sell_high() a
             left join t_symbol b on lower(a.stock_symbol) = lower(b.symbol)
-        "#, pl_filter).fetch_all(&pool).await;
+        "# /*, pl_filter*/).fetch_all(&pool).await;
     match result {
         Ok(positions)=>Ok(positions),
         Err(_e)=> Err(PollerError::Sqlx)
@@ -1456,6 +1457,9 @@ pub async fn position_list_showing_age(pool: PgPool) ->Result<Vec<SellPosition>,
                 ,pl_posn as "unrealized_pl_total!"
                 ,coalesce(trade_size,0.0) as "trade_size!"
                 ,coalesce(posn_age_sec / 60.0,0.0) as "age_minute!"
+
+                -- not used
+                ,0.0 as "sell_high_share_cents!"
             from v_positions_aging_sell_at_loss a
             left join t_symbol b on a.symbol = b.symbol;
         "#).fetch_all(&pool).await;
