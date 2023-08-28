@@ -36,7 +36,7 @@ impl AlpacaWebsocket {
     //     AlpacaWebsocket::ws_connect(tx_db, stream_type, symbols, &settings);
     // }
 
-    pub  fn run(tx_db: Sender<DbMsg>, stream_type: &WebsocketMessageFormat, symbols: Vec<String>, settings: Settings) {
+    pub fn run(tx_db: Sender<DbMsg>, stream_type: &WebsocketMessageFormat, symbols: Vec<String>, settings: Settings) {
 
         let settings = &settings;
 
@@ -130,6 +130,10 @@ impl AlpacaWebsocket {
 
                                         Ok(WebsocketMessage::Listening(listen_list))=>{
                                             tracing::info!("[ws_connect][binary] listening to: {:?}", listen_list.streams);
+
+                                            // send directly vice using AlpacaTransaction::Clean which requires a copy of tx_db and is just an extra step
+                                            let _ = tx_db.send(DbMsg::TransactionClean);
+
                                         },
 
                                         // decrement the alpaca_transaction_status entry's posn_shares when a sell/fill is received

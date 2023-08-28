@@ -83,6 +83,7 @@ pub enum DbMsg {
     OrderLogEntrySave{entry: OrderLogEntry},
 
     TransactionGet {symbol:Option<String>, sender: oneshot::Sender<Vec<Transaction>>},
+    TransactionClean,
     TransactionDeleteOne{ symbol:String },
     TransactionDeleteAll,
     TransactionInsertPosition { position:Position },
@@ -128,6 +129,8 @@ impl DbActor {
     pub fn run(&self, rt: Handle) /*-> JoinHandle<()> */{
 
         let rx = self.rx.clone();
+
+
         let pool = self.pool.clone();
 
         tracing::debug!("[run]");
@@ -137,6 +140,8 @@ impl DbActor {
             // tracing::debug!("[run] loop");
 
             let pool = pool.clone();
+            let tx_db = self.tx.clone();
+
             crossbeam::channel::select! {
 
                 // TODO: potentially handle a separate channel that controls startup and shutdown of this db actor
@@ -150,7 +155,9 @@ impl DbActor {
                             // blocking not required for sqlx and reqwest async libraries
                             let _x = rt.spawn(async {
                                 tracing::debug!("[run] tokio spawn process_message: {:?}", &msg);
-                                process_message(msg, pool).await;
+
+
+                                process_message(msg, pool, tx_db).await;
                             });
 
                         },
@@ -169,7 +176,7 @@ impl DbActor {
     }
 }
 
-async fn process_message(msg:DbMsg, pool: PgPool){
+async fn process_message(msg:DbMsg, pool: PgPool, tx_db: Sender<DbMsg>){
 
     // this will dump settings (and API keys) to the log
     // tracing::debug!("[process_message] DbMsg: {:?}", &msg);
@@ -396,6 +403,13 @@ async fn process_message(msg:DbMsg, pool: PgPool){
             let _ = transaction_delete_all(&pool).await;
         },
 
+        DbMsg::TransactionClean=>{
+            match transaction_clean(&pool).await{
+                Ok(_)=>{},
+                Err(e)=> tracing::error!("[DbMsg::TransactionClean] transaction_clean failed: {:?}", &e),
+            }
+        }
+
         DbMsg::TransactionDeleteOne{symbol} => {
             let _ = transaction_delete_one(&symbol, pool).await;
         },
@@ -436,7 +450,7 @@ async fn process_message(msg:DbMsg, pool: PgPool){
                 tracing::info!("[DbMsg::OrderLogEvent][Fill][Sell] {}:{:?}", &event.order.symbol, &event.order.filled_qty);
                 if let Some(qty) = event.order.filled_qty{
                     let _ = AlpacaTransaction::decrement(&event.order.symbol.clone(), qty, &pool).await;
-                    let _ = AlpacaTransaction::clean(&pool).await;
+                    let _ = AlpacaTransaction::clean(tx_db);
                 }
             }
         },
@@ -1466,6 +1480,25 @@ pub async fn position_list_showing_age(pool: PgPool) ->Result<Vec<SellPosition>,
     match result {
         Ok(positions)=>Ok(positions),
         Err(_e)=> Err(PollerError::Sqlx)
+    }
+}
+
+/// Clear entries that have zero shares with pending orders or active positions from the alpaca_transaction_status table.
+/// Used after every "fill" event received from the account websocket stream.
+/// TODO: use on startup and periodically to re-sync with the websocket.
+async fn transaction_clean(pool:&PgPool)->Result<(), TradeWebError>{
+    tracing::debug!("[transaction_clean]");
+    match sqlx::query!(
+            r#"
+                delete from alpaca_transaction_status
+                where posn_shares <= 0.0
+            "#
+        ).execute(pool).await{
+        Ok(_)=>{
+            tracing::info!("[transaction_clean] done");
+            Ok(())
+        },
+        Err(_e)=>Err(TradeWebError::DeleteFailed), // or db error
     }
 }
 

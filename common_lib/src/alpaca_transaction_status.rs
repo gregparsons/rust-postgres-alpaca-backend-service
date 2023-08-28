@@ -89,15 +89,10 @@ impl AlpacaTransaction{
 
     /// TODO: move to database; for now only called from within database crossbeam message anyway
     /// delete all "orders" without positions; start_buy() relies on the non-existence of a symbol to start an order
-    pub async fn clean(pool:&PgPool)->Result<(), TradeWebError>{
-        match sqlx::query!(
-            r#"
-                delete from alpaca_transaction_status
-                where posn_shares <= 0.0
-            "#
-        ).execute(pool).await{
-            Ok(_)=>Ok(()),
-            Err(_e)=>Err(TradeWebError::DeleteFailed), // or db error
+    pub fn clean(tx_db: Sender<DbMsg>){
+        match tx_db.send(DbMsg::TransactionClean){
+            Ok(_)=>{},
+            Err(e)=>tracing::error!("[clean] send error: {:?}", &e),
         }
     }
 

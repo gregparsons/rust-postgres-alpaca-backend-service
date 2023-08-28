@@ -117,8 +117,6 @@ impl AlpacaRest {
 
     }
 
-
-
     /// load activities from the REST api and put them in the Postgres database; filter by the most
     /// recent activity timestamp
     fn load_activities(settings:&Settings, tx_db:crossbeam_channel::Sender<DbMsg>){
@@ -142,7 +140,6 @@ impl AlpacaRest {
         }
     }
 
-
     /// load positions from the REST api and put them in the Postgres database
     fn load_positions(settings:&Settings, tx_db: crossbeam_channel::Sender<DbMsg>){
 
@@ -153,10 +150,10 @@ impl AlpacaRest {
             Ok(positions) => {
 
                 // clear the database table
+                // "delete from alpaca_position"
                 Position::delete_all_db(tx_db.clone());
 
                 // save to database
-
                 for position in positions.iter() {
 
                     // save to the position table
