@@ -1019,84 +1019,6 @@
     },
     "query": "delete from alpaca_order"
   },
-  "8ffc2eac440f488cf52c0808d9389b7f88ab63a448a714f21d5c7c3df4d760e9": {
-    "describe": {
-      "columns": [
-        {
-          "name": "symbol!",
-          "ordinal": 0,
-          "type_info": "Varchar"
-        },
-        {
-          "name": "profit_closed!",
-          "ordinal": 1,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "pl_posn!",
-          "ordinal": 2,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "pl_posn_share!",
-          "ordinal": 3,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "posn_age_sec!",
-          "ordinal": 4,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "qty_posn!",
-          "ordinal": 5,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price_posn_entry!",
-          "ordinal": 6,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "basis!",
-          "ordinal": 7,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "price_market!",
-          "ordinal": 8,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "market_value!",
-          "ordinal": 9,
-          "type_info": "Numeric"
-        },
-        {
-          "name": "dtg!",
-          "ordinal": 10,
-          "type_info": "Timestamptz"
-        }
-      ],
-      "nullable": [
-        true,
-        true,
-        null,
-        null,
-        null,
-        true,
-        true,
-        null,
-        null,
-        null,
-        true
-      ],
-      "parameters": {
-        "Left": []
-      }
-    },
-    "query": "\n        select\n            symbol as \"symbol!\"\n            ,profit_closed as \"profit_closed!\"\n            ,coalesce(pl_posn,0.0) as \"pl_posn!\"\n            ,coalesce(pl_posn_share,0.0) as \"pl_posn_share!\"\n            ,coalesce(posn_age_sec, 0.0) as \"posn_age_sec!\"\n            ,qty_posn as \"qty_posn!\"\n            ,price_posn_entry as \"price_posn_entry!\"\n            ,coalesce(basis,0.0) as \"basis!\"\n            ,coalesce(price_market,0.0) as \"price_market!\"\n            ,coalesce(market_value,0.0) as \"market_value!\"\n            ,dtg as \"dtg!\"\n        from v_positions_from_activity\n    "
-  },
   "9321c48e63b3aa63c9a199651abb950eb7afb6e6c8376b33f10e2228ed996aff": {
     "describe": {
       "columns": [
@@ -1952,6 +1874,102 @@
       }
     },
     "query": "\n                select\n                    dtg::timestamp as \"dtg_utc!\"\n                    ,timezone('US/Pacific', dtg) as \"dtg_pacific!\"\n                    ,symbol as \"symbol!\"\n                    ,side as \"side!:TradeSide\"\n                    ,qty as \"qty!\"\n                    ,price as \"price!\"\n                    ,order_id as \"client_order_id!\"\n                from alpaca_activity\n                order by dtg desc\n            "
+  },
+  "dcbcffedd13e3f3a70a3a0dc845a11f5ca86049b5ac1b4ba00ecfbae6fd23ea2": {
+    "describe": {
+      "columns": [
+        {
+          "name": "symbol!",
+          "ordinal": 0,
+          "type_info": "Varchar"
+        },
+        {
+          "name": "profit_closed!",
+          "ordinal": 1,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "pl_posn!",
+          "ordinal": 2,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "share_cents_until_sale!",
+          "ordinal": 3,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "rating!",
+          "ordinal": 4,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "qty_posn!",
+          "ordinal": 5,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "pl_posn_share!",
+          "ordinal": 6,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "sell_high_share_cents!",
+          "ordinal": 7,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "posn_age_sec!",
+          "ordinal": 8,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_posn_entry!",
+          "ordinal": 9,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "basis!",
+          "ordinal": 10,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "price_market!",
+          "ordinal": 11,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "market_value!",
+          "ordinal": 12,
+          "type_info": "Numeric"
+        },
+        {
+          "name": "dtg!",
+          "ordinal": 13,
+          "type_info": "Timestamptz"
+        }
+      ],
+      "nullable": [
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "\n        select * from v_position_display\n    "
   },
   "dd28aa9f02a777950325daa93befa11c991d4e588bb0826ed8b59ed2f6eaf62c": {
     "describe": {
