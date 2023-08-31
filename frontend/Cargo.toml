@@ -29,6 +29,7 @@ reqwest = { version = "0.11.14", features = ["rustls-tls-webpki-roots", "json"] 
 
 actix-web = {version ="4.3.1", features=["rustls"]}
 actix-session = { version = "0.7.2", features = ["cookie-session"] }
+actix-files = "0.6.2"
 rustls = "0.20.8"
 rustls-pemfile = "1.0.3"
 

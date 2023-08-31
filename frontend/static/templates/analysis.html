@@ -1,0 +1,134 @@
+{{#*inline "page"}}
+<h2><p>{{title}}</p></h2>
+<style>
+    table {
+        font-family: arial, sans-serif;
+        border-collapse: collapse;
+        width: 100%;
+    }
+
+    td, th {
+        border: 1px solid #dddddd;
+        text-align: left;
+        padding: 8px;
+    }
+
+    tr:nth-child(even) {
+        background-color: #dddddd;
+    }
+</style>
+
+<div>
+    <canvas id="myChart"></canvas>
+</div>
+
+
+<!--<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>-->
+
+<script src="/js/chart.js"></script>
+<script>
+
+    console.log("hello?");
+
+    const json_array = "{{chart_data}}";
+    // console.log(json_array.replace(/&quot;/g, '\"'));
+    // console.log(json_string);
+    let json_data = JSON.parse(json_array.replace(/&quot;/g, '\"'));
+    console.log(json_data);
+
+    // json_data.forEach(function (x){
+    //     console.log("row:" + x.legend);
+    //
+    // });
+
+    let dates = json_data.map(function(x){ return x.dtg; });
+
+    console.log("date labels: " + dates);
+
+
+    // json_data.map((x)=>{
+    //     x.time_series.map((y)=>{
+    //         console.log("("+y.symbol+":"+y.avg_transaction_profit+")");
+    //     })
+    // });
+
+
+
+    var aapl_data = [];
+    json_data.forEach((x)=>{x.time_series.forEach((y)=>{if(y.symbol === 'aapl'){aapl_data.push(y.avg_transaction_profit);}});});
+    console.log("aapl_data: " + aapl_data);
+
+    var rivn_data = [];
+    json_data.forEach((x)=>{x.time_series.forEach((y)=>{if(y.symbol === 'tsla'){rivn_data.push(y.avg_transaction_profit);}});});
+    console.log("rivn_data: " + rivn_data);
+
+
+    var tsla_data = [];
+    json_data.forEach((x)=>{x.time_series.forEach((y)=>{if(y.symbol === 'tsla'){tsla_data.push(y.avg_transaction_profit);}});});
+    console.log("tsla_data: " + tsla_data);
+
+
+    const ctx = document.getElementById('myChart');
+       const data = {
+           labels: dates,
+           datasets: [
+               {
+                   label: 'aapl_data',
+                   data: aapl_data,
+               },
+               {
+                   label: 'rivn_data',
+                   data: rivn_data,
+               },
+               {
+                   label: 'tsla_data',
+                   data: tsla_data,
+               },
+           ]
+       };
+
+
+    const config = {
+        type: 'line',
+        data: data,
+        options: {
+            responsive: true,   // resize to fit browser window
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            stacked: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Average Transaction Profit (Dollars)'
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+
+                    // grid line settings
+                    grid: {
+                        drawOnChartArea: false, // only want the grid lines for one axis to show up
+                    },
+                },
+            }
+        }
+    };
+
+    new Chart(ctx, config);
+
+</script>
+
+<br>
+
+{{/inline}}
+{{> (lookup this "parent")}}

@@ -6,22 +6,22 @@ use std::str::FromStr;
 use crate::configuration::get_yaml_configuration;
 use actix_session::storage::CookieSessionStore;
 use actix_session::SessionMiddleware;
-use actix_web::{web, App, HttpServer};
+use actix_web::{web, App, HttpServer, Responder};
 use handlebars::Handlebars;
 use sqlx::PgPool;
 use common_lib::common_structs::ConfigLocation;
 use common_lib::db::DbMsg;
 use crate::account::get_account;
 use crate::activities::{get_activities, get_activity_for_symbol};
+use crate::analysis;
 use crate::dashboard::{get_dashboard, get_dashboard_with_symbol};
 use crate::edit_settings::{get_settings, get_settings_button};
 use crate::login::{get_login, get_logout, post_login};
-use crate::order::get_order;
 use crate::positions::get_positions;
-use crate::profit::{get_profit, get_profit_summary};
 use crate::symbols::{get_symbols, post_symbols};
 use crate::transactions::{get_transaction_for_symbol, get_transactions};
 use crate::utils::*;
+use actix_files::NamedFile;
 
 // this corresponds to the Dockerfile "COPY static /app/frontend/static"
 // static STATIC_FILE_DIR:&'static str = "./frontend/static/templates";
@@ -128,8 +128,8 @@ impl WebServer {
                 .route("/ping", web::get().to(get_ping))
                 // .route("/avg", web::get().to(get_avg))
                 // .route("/chart", web::get().to(get_chart))
-                .route("/profit", web::get().to(get_profit))
-                .route("/profit_summary", web::get().to(get_profit_summary))
+                // .route("/profit", web::get().to(get_profit))
+                // .route("/profit_summary", web::get().to(get_profit_summary))
                 .route("/account", web::get().to(get_account))
                 .route("/logout", web::get().to(get_logout))
                 .route("/symbols", web::get().to(get_symbols))
@@ -142,11 +142,10 @@ impl WebServer {
                 .route("/positions", web::get().to(get_positions))
                 .route("/settings/button/{name}", web::get().to(get_settings_button))
                 .route("/dashboard", web::get().to(get_dashboard))
-                .route(
-                    "/dashboard/{symbol}",
-                    web::get().to(get_dashboard_with_symbol),
-                )
-                .route("/order", web::get().to(get_order))
+                .route("/dashboard/{symbol}", web::get().to(get_dashboard_with_symbol))
+                .route("/analysis", web::get().to(analysis::get_analysis))
+                .route("/js/chart.js", web::get().to(get_chart_js))
+                // .route("/order", web::get().to(get_order))
             // .route("/order/{symbol}", web::get().to(get_orders))
         })
         .bind_rustls(("0.0.0.0", web_port), config)?
@@ -159,6 +158,18 @@ impl WebServer {
     }
 }
 
+/// chart.js
+/// https://www.chartjs.org/docs/latest/getting-started/installation.html
+async fn get_chart_js()-> impl Responder{
+
+    let config_location:ConfigLocation = ConfigLocation::from_str(&std::env::var("CONFIG_LOCATION").unwrap_or_else(|_| "not_docker".to_owned())).expect("CONFIG_LOCATION");
+
+    match config_location{
+        ConfigLocation::Docker => NamedFile::open_async("./static/js/chart.js").await,
+        ConfigLocation::NotDocker => NamedFile::open_async("frontend/static/js/chart.js").await
+    }
+
+}
 
 fn load_private_key(filename: &str) -> rustls::PrivateKey {
     let keyfile = fs::File::open(filename).expect("cannot open private key file");

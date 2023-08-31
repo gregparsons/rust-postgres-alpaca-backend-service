@@ -10,7 +10,7 @@ mod login;
 mod metrics;
 pub mod order;
 mod positions;
-mod profit;
+mod analysis;
 mod signup;
 mod symbols;
 mod utils;

@@ -7,9 +7,10 @@
 use bigdecimal::BigDecimal;
 use sqlx::postgres::PgQueryResult;
 use sqlx::{Error, PgPool};
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, NaiveDate, Utc};
 use crossbeam_channel::Sender;
 use reqwest::header::HeaderMap;
+use serde::{Deserialize, Serialize};
 use tokio::runtime::Handle;
 use tokio::sync::oneshot;
 use crate::settings::Settings;
@@ -65,6 +66,8 @@ pub enum DbMsg {
     ActivitySaveToDb { activity:Activity },
     ActivityGetAll{sender:oneshot::Sender<Vec<ActivityQuery>>},
     ActivityGetForSymbol { symbol:String, sender:oneshot::Sender<Vec<ActivityQuery>>},
+
+    AnalysisDailyProfitJson { sender: oneshot::Sender<Vec<ChartResult>>},
 
     SymbolListGetActive {sender_tx: Sender<Vec<String>> },
     SymbolListGetAll {sender_tx: Sender<Vec<String>> },
@@ -219,6 +222,20 @@ async fn process_message(msg:DbMsg, pool: PgPool, tx_db: Sender<DbMsg>){
             };
             let _ = sender.send(vec_activity);
         }
+
+        DbMsg::AnalysisDailyProfitJson { sender} => {
+            match analysis_avg_daily_profit(&pool).await{
+                Ok(vec_json) => {
+                    match sender.send(vec_json){
+                        Err(_e)=> tracing::error!("[DbMsg::AnalysisDailyProfitJson] reply send error: {:?}", &_e),
+                        _ => { /* reply send success */ }
+                    }
+                },
+                Err(e)=>tracing::error!("[DbMsg::AnalysisDailyProfitJson] error: {:?}", &e)
+            }
+        },
+
+
 
         // positions for display in the web UI
         DbMsg::PositionLocalGet{sender}=>{
@@ -1758,9 +1775,33 @@ async fn transaction_get(symbol:Option<String>, pool:PgPool)->Result<Vec<Transac
         filter_symbol
     ).fetch_all(&pool).await{
         Ok(transactions)=>Ok(transactions),
-        Err(e) => {
-            tracing::error!("[transaction_get] couldn't transactions from db: {:?}", &e);
+        Err(_e) => {
+            tracing::error!("[transaction_get] couldn't transactions from db: {:?}", &_e);
             Err(TradeWebError::SqlxError)
+        }
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ChartResult{
+    // chart_data: serde_json::Value
+    pub dtg: NaiveDate,
+    pub time_series: serde_json::Value
+}
+
+async fn analysis_avg_daily_profit(pool:&PgPool)->Result<Vec<ChartResult>, TradeWebError> {
+    match sqlx::query_as!(ChartResult,
+        // r#"select "chart_data!" from v_analysis_daily_profit"#
+        r#"select dtg as "dtg!", time_series as "time_series!" from v_analysis_daily_profit"#
+    ).fetch_all(pool).await {
+        Err(_) => Err(TradeWebError::SqlxError),
+        Ok(json) => {
+
+            // let json_string = json.chart_data.to_string();
+            tracing::debug!("[analysis_avg_daily_profit] json_len: {}", &json.len());
+            tracing::debug!("[analysis_avg_daily_profit] json: {:?}", &json);
+
+            Ok(json)
         }
     }
 }
