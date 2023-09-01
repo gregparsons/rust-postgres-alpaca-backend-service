@@ -19,7 +19,9 @@
 </style>
 
 <div>
-    <canvas id="myChart"></canvas>
+    <canvas id="chart_0"></canvas>
+    <br>
+    <canvas id="chart_1"></canvas>
 </div>
 
 
@@ -28,39 +30,26 @@
 <script src="/js/chart.js"></script>
 <script>
 
-    console.log("hello?");
-
-    const chart_columns = '{{chart_columns}}';
-    // console.log("chart_columns: " + chart_columns);
-    const json_columns = JSON.parse(chart_columns.replace(/&quot;/g, '\"'));
-    console.log("json_columns: " + json_columns);
-
-
-    const chart_data = "{{chart_data}}";
-    let json_chart = JSON.parse(chart_data.replace(/&quot;/g, '\"'));
-    console.log("chart_data: " + json_chart);
-
-
-    var chart_data_array = [];
-
-    json_chart.forEach(function (x){
-        // console.log("key:" + x.key);
-        // console.log("val:" + x.val);
-        chart_data_array.push({label: x.key, data: x.val});
+    // net profit
+    const chart_0_columns = '{{chart_0_columns}}';
+    const json_0_columns = JSON.parse(chart_0_columns.replace(/&quot;/g, '\"'));
+    const chart_0_data = "{{chart_0_data}}";
+    let json_0_chart = JSON.parse(chart_0_data.replace(/&quot;/g, '\"'));
+    let chart_0_data_array = [];
+    json_0_chart.forEach(function (x){
+        chart_0_data_array.push({label: x.key, data: x.val});
 
     });
 
+    const ctx_0 = document.getElementById('chart_0');
+    const data_0 = {
+        labels: json_0_columns, // dates,
+        datasets: chart_0_data_array,
+    };
 
-    const ctx = document.getElementById('myChart');
-       const data = {
-           labels: json_columns, // dates,
-           datasets: chart_data_array,
-       };
-
-
-    const config = {
+    const config_0 = {
         type: 'line',
-        data: data,
+        data: data_0,
         options: {
             responsive: true,   // resize to fit browser window
             interaction: {
@@ -71,7 +60,7 @@
             plugins: {
                 title: {
                     display: true,
-                    text: 'Profit (Dollars)'
+                    text: 'Net Transaction Profit'
                 }
             },
             scales: {
@@ -80,21 +69,56 @@
                     display: true,
                     position: 'right',
                 },
-                // y1: {
-                //     type: 'linear',
-                //     display: true,
-                //     position: 'left',
-                //
-                //     // grid line settings
-                //     grid: {
-                //         drawOnChartArea: false, // only want the grid lines for one axis to show up
-                //     },
-                // },
             }
         }
     };
 
-    new Chart(ctx, config);
+
+    // average profit per transaction
+    const chart_1_columns = '{{chart_1_columns}}';
+    const json_1_columns = JSON.parse(chart_1_columns.replace(/&quot;/g, '\"'));
+    const chart_1_data = "{{chart_1_data}}";
+    let json_1_chart = JSON.parse(chart_1_data.replace(/&quot;/g, '\"'));
+    let chart_1_data_array = [];
+    json_1_chart.forEach(function (x){
+        chart_1_data_array.push({label: x.key, data: x.val});
+
+    });
+
+    const ctx_1 = document.getElementById('chart_1');
+    const data_1 = {
+        labels: json_1_columns, // dates,
+        datasets: chart_1_data_array,
+    };
+
+    const config_1 = {
+        type: 'line',
+        data: data_1,
+        options: {
+            responsive: true,   // resize to fit browser window
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            stacked: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Average Transaction Profit'
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                },
+            }
+        }
+    };
+
+    new Chart(ctx_0, config_0);
+    new Chart(ctx_1, config_1);
 
 </script>
 
