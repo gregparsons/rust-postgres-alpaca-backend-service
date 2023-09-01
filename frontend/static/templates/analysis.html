@@ -59,7 +59,7 @@
     console.log("aapl_data: " + aapl_data);
 
     var rivn_data = [];
-    json_data.forEach((x)=>{x.time_series.forEach((y)=>{if(y.symbol === 'tsla'){rivn_data.push(y.avg_transaction_profit);}});});
+    json_data.forEach((x)=>{x.time_series.forEach((y)=>{if(y.symbol === 'rivn'){rivn_data.push(y.avg_transaction_profit);}});});
     console.log("rivn_data: " + rivn_data);
 
 
