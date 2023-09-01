@@ -30,61 +30,31 @@
 
     console.log("hello?");
 
-    const json_array = "{{chart_data}}";
-    // console.log(json_array.replace(/&quot;/g, '\"'));
-    // console.log(json_string);
-    let json_data = JSON.parse(json_array.replace(/&quot;/g, '\"'));
-    console.log(json_data);
-
-    // json_data.forEach(function (x){
-    //     console.log("row:" + x.legend);
-    //
-    // });
-
-    let dates = json_data.map(function(x){ return x.dtg; });
-
-    console.log("date labels: " + dates);
+    const chart_columns = '{{chart_columns}}';
+    // console.log("chart_columns: " + chart_columns);
+    const json_columns = JSON.parse(chart_columns.replace(/&quot;/g, '\"'));
+    console.log("json_columns: " + json_columns);
 
 
-    // json_data.map((x)=>{
-    //     x.time_series.map((y)=>{
-    //         console.log("("+y.symbol+":"+y.avg_transaction_profit+")");
-    //     })
-    // });
+    const chart_data = "{{chart_data}}";
+    let json_chart = JSON.parse(chart_data.replace(/&quot;/g, '\"'));
+    console.log("chart_data: " + json_chart);
 
 
+    var chart_data_array = [];
 
-    var aapl_data = [];
-    json_data.forEach((x)=>{x.time_series.forEach((y)=>{if(y.symbol === 'aapl'){aapl_data.push(y.avg_transaction_profit);}});});
-    console.log("aapl_data: " + aapl_data);
+    json_chart.forEach(function (x){
+        // console.log("key:" + x.key);
+        // console.log("val:" + x.val);
+        chart_data_array.push({label: x.key, data: x.val});
 
-    var rivn_data = [];
-    json_data.forEach((x)=>{x.time_series.forEach((y)=>{if(y.symbol === 'rivn'){rivn_data.push(y.avg_transaction_profit);}});});
-    console.log("rivn_data: " + rivn_data);
-
-
-    var tsla_data = [];
-    json_data.forEach((x)=>{x.time_series.forEach((y)=>{if(y.symbol === 'tsla'){tsla_data.push(y.avg_transaction_profit);}});});
-    console.log("tsla_data: " + tsla_data);
+    });
 
 
     const ctx = document.getElementById('myChart');
        const data = {
-           labels: dates,
-           datasets: [
-               {
-                   label: 'aapl_data',
-                   data: aapl_data,
-               },
-               {
-                   label: 'rivn_data',
-                   data: rivn_data,
-               },
-               {
-                   label: 'tsla_data',
-                   data: tsla_data,
-               },
-           ]
+           labels: json_columns, // dates,
+           datasets: chart_data_array,
        };
 
 
@@ -101,25 +71,25 @@
             plugins: {
                 title: {
                     display: true,
-                    text: 'Average Transaction Profit (Dollars)'
+                    text: 'Profit (Dollars)'
                 }
             },
             scales: {
                 y: {
                     type: 'linear',
                     display: true,
-                    position: 'left',
-                },
-                y1: {
-                    type: 'linear',
-                    display: true,
                     position: 'right',
-
-                    // grid line settings
-                    grid: {
-                        drawOnChartArea: false, // only want the grid lines for one axis to show up
-                    },
                 },
+                // y1: {
+                //     type: 'linear',
+                //     display: true,
+                //     position: 'left',
+                //
+                //     // grid line settings
+                //     grid: {
+                //         drawOnChartArea: false, // only want the grid lines for one axis to show up
+                //     },
+                // },
             }
         }
     };

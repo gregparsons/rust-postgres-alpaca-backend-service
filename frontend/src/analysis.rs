@@ -24,7 +24,8 @@ pub async fn get_analysis(tx_db: web::Data<crossbeam_channel::Sender<DbMsg>>, hb
         let tx_db = tx_db.into_inner().as_ref().clone();
 
         let (sender, rx) = oneshot::channel();
-        match tx_db.send(DbMsg::AnalysisDailyProfitJson {sender}){
+        // match tx_db.send(DbMsg::AnalysisDailyProfitJson_OLD {sender}){
+        match tx_db.send(DbMsg::AnalysisProfitDailyChart {sender}){
             Err(e)=>{
                 tracing::error!("[get_analysis] error getting chart data: {:?}",&e);
                 // String::new()
@@ -38,24 +39,24 @@ pub async fn get_analysis(tx_db: web::Data<crossbeam_channel::Sender<DbMsg>>, hb
                         // String::new()
                         redirect_home().await
                     },
-                    Ok(chart_result_vec)=>{
+                    Ok(chart_result)=>{
 
-                        tracing::debug!("[get_analysis] db result: {:?}", &chart_result_vec);
+                        tracing::debug!("[get_analysis] db result: {:?}", &chart_result);
+                        // TODO: remove unwrap
+                        let chart_columns = serde_json::to_string(&chart_result.columns).unwrap();
+                        tracing::debug!("[get_analysis] chart_columns: {}", &chart_columns);
 
+                        let chart_data = serde_json::to_string(&chart_result.chart_data).unwrap();
+                        tracing::debug!("[get_analysis] chart_data: {}", &chart_data);
 
-
-
-
-                        let json_string = serde_json::to_string(&chart_result_vec).unwrap();
-
-                        tracing::debug!("[get_analysis] json_string: {:?}", &chart_result_vec);
 
                         let data = json!({
                             "title": "Analysis",
                             "parent": "base0",
                             "is_logged_in": true,
                             "session_username": &session_username,
-                            "chart_data": json_string,
+                            "chart_columns": chart_columns,
+                            "chart_data": chart_data,
                         });
 
                         let body = hb.render("analysis", &data).unwrap();
@@ -66,7 +67,7 @@ pub async fn get_analysis(tx_db: web::Data<crossbeam_channel::Sender<DbMsg>>, hb
         }
 
     } else {
-        tracing::info!("[get_analysis] not logged redirecting home");
+        tracing::info!("[get_analysis] not logged in redirecting home");
         redirect_home().await
     }
 }
