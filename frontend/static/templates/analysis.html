@@ -19,9 +19,9 @@
 </style>
 
 <div>
-    <canvas id="chart_0"></canvas>
-    <br>
-    <canvas id="chart_1"></canvas>
+    <canvas id="chart_2"></canvas><br>
+    <canvas id="chart_0"></canvas><br>
+    <canvas id="chart_1"></canvas><br>
 </div>
 
 
@@ -29,6 +29,9 @@
 
 <script src="/js/chart.js"></script>
 <script>
+
+
+    // ********* chart 0 ***************************
 
     // net profit
     const chart_0_columns = '{{chart_0_columns}}';
@@ -73,6 +76,7 @@
         }
     };
 
+    // ********* chart 1 ***************************
 
     // average profit per transaction
     const chart_1_columns = '{{chart_1_columns}}';
@@ -117,8 +121,53 @@
         }
     };
 
+    // ********* chart 2 ***************************
+    // average profit per transaction
+    const chart_2_columns = '{{chart_2_columns}}';
+    const json_2_columns = JSON.parse(chart_2_columns.replace(/&quot;/g, '\"'));
+    const chart_2_data = "{{chart_2_data}}";
+    let json_2_chart = JSON.parse(chart_2_data.replace(/&quot;/g, '\"'));
+    let chart_2_data_array = [];
+    json_2_chart.forEach(function (x){
+        chart_2_data_array.push({label: x.key, data: x.val});
+
+    });
+
+    const ctx_2 = document.getElementById('chart_2');
+    const data_2 = {
+        labels: json_2_columns, // dates,
+        datasets: chart_2_data_array,
+    };
+
+    const config_2 = {
+        type: 'line',
+        data: data_2,
+        options: {
+            responsive: true,   // resize to fit browser window
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            stacked: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Profit'
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                },
+            }
+        }
+    };
+
     new Chart(ctx_0, config_0);
     new Chart(ctx_1, config_1);
+    new Chart(ctx_2, config_2);
 
 </script>
 

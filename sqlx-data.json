@@ -1779,6 +1779,30 @@
     },
     "query": "\n                select\n                    dtg::timestamp as \"dtg_utc!\"\n                    ,timezone('US/Pacific', dtg) as \"dtg_pacific!\"\n                    ,symbol as \"symbol!\"\n                    ,side as \"side!:TradeSide\"\n                    ,qty as \"qty!\"\n                    ,price as \"price!\"\n                    ,order_id as \"client_order_id!\"\n                from alpaca_activity\n                order by dtg desc\n            "
   },
+  "dbdea4a1a1ed9d69df93e1d2b0daac7b1fb78e1aaae988672afc5fd04efee694": {
+    "describe": {
+      "columns": [
+        {
+          "name": "columns!",
+          "ordinal": 0,
+          "type_info": "Json"
+        },
+        {
+          "name": "chart_data!",
+          "ordinal": 1,
+          "type_info": "Json"
+        }
+      ],
+      "nullable": [
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "select columns as \"columns!\", chart_data as \"chart_data!\" from v_chart_profit_daily"
+  },
   "dcbcffedd13e3f3a70a3a0dc845a11f5ca86049b5ac1b4ba00ecfbae6fd23ea2": {
     "describe": {
       "columns": [

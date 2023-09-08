@@ -70,6 +70,8 @@ pub enum DbMsg {
     AnalysisDailyProfitJsonOld { sender: oneshot::Sender<Vec<ChartResult>>},
     AnalysisProfitNetChart { sender: oneshot::Sender<Chart>},
     AnalysisProfitAvgChart { sender: oneshot::Sender<Chart>},
+    ChartProfitDaily { sender: oneshot::Sender<Chart>},
+
 
     SymbolListGetActive {sender_tx: Sender<Vec<String>> },
     SymbolListGetAll {sender_tx: Sender<Vec<String>> },
@@ -261,6 +263,17 @@ async fn process_message(msg:DbMsg, pool: PgPool, tx_db: Sender<DbMsg>){
             }
         },
 
+        DbMsg::ChartProfitDaily { sender} => {
+            match chart_profit_daily(&pool).await{
+                Ok(vec_json) => {
+                    match sender.send(vec_json){
+                        Err(_e)=> tracing::error!("[DbMsg::ChartProfitDaily] reply send error: {:?}", &_e),
+                        _ => { /* reply send success */ }
+                    }
+                },
+                Err(e)=>tracing::error!("[DbMsg::ChartProfitDaily] error: {:?}", &e)
+            }
+        },
 
 
 
@@ -1869,6 +1882,20 @@ async fn analysis_profit_net_chart(pool:&PgPool) ->Result<Chart, TradeWebError> 
 
             tracing::debug!("[analysis_net_profit_chart] json: {:?}", &json);
 
+            Ok(json)
+        }
+    }
+}
+
+/// Chart: profit by day
+/// TODO: this function is exactly the same as the two analysis queries above, just a different database view
+async fn chart_profit_daily(pool:&PgPool) ->Result<Chart, TradeWebError> {
+    match sqlx::query_as!(Chart,
+        r#"select columns as "columns!", chart_data as "chart_data!" from v_chart_profit_daily"#
+    ).fetch_one(pool).await {
+        Err(_) => Err(TradeWebError::SqlxError),
+        Ok(json) => {
+            tracing::debug!("[chart_profit_daily] json: {:?}", &json);
             Ok(json)
         }
     }

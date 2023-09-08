@@ -24,26 +24,30 @@ pub async fn get_analysis(tx_db: web::Data<crossbeam_channel::Sender<DbMsg>>, hb
         tracing::debug!("[get_analysis] logged in with session id: {}", &session_username);
 
         let tx_db = tx_db.into_inner().as_ref().clone();
-        let tx_db1 = tx_db.clone();
+        let tx_db_1 = tx_db.clone();
+        let tx_db_2 = tx_db.clone();
 
         // get both charts' data from database
-        let result_net = analysis_chart_net_profit(tx_db).await;
-        let result_avg = analysis_chart_avg_profit(tx_db1).await;
+        let chart_0_result = analysis_chart_net_profit(tx_db).await;
+        let chart_1_result = analysis_chart_avg_profit(tx_db_1).await;
+        let chart_2_result = chart_profit_daily(tx_db_2).await;
 
-        if result_net.is_ok() && result_avg.is_ok() {
+        if /*chart_0_result.is_ok() && chart_1_result.is_ok() &&*/ chart_2_result.is_ok() {
 
-            let net_profit = result_net.unwrap();
-            let avg_profit = result_avg.unwrap();
+            let chart_0 = chart_0_result.unwrap();
+            let chart_1 = chart_1_result.unwrap();
+            let chart_2 = chart_2_result.unwrap();
 
             // tracing::debug!("[get_analysis] db result: {:?}", &avg_profit);
             // TODO: remove unwrap
-            let chart_0_columns = serde_json::to_string(&net_profit.columns).unwrap();
-            // tracing::debug!("[get_analysis] chart_columns: {}", &chart_0_columns);
-            let chart_0_data = serde_json::to_string(&net_profit.chart_data).unwrap();
-            // tracing::debug!("[get_analysis] chart_data: {}", &chart_0_data);
+            let chart_0_columns = serde_json::to_string(&chart_0.columns).unwrap();
+            let chart_0_data = serde_json::to_string(&chart_0.chart_data).unwrap();
 
-            let chart_1_columns = serde_json::to_string(&avg_profit.columns).unwrap();
-            let chart_1_data = serde_json::to_string(&avg_profit.chart_data).unwrap();
+            let chart_1_columns = serde_json::to_string(&chart_1.columns).unwrap();
+            let chart_1_data = serde_json::to_string(&chart_1.chart_data).unwrap();
+
+            let chart_2_columns = serde_json::to_string(&chart_2.columns).unwrap();
+            let chart_2_data = serde_json::to_string(&chart_2.chart_data).unwrap();
 
 
             let data = json!({
@@ -55,6 +59,8 @@ pub async fn get_analysis(tx_db: web::Data<crossbeam_channel::Sender<DbMsg>>, hb
                 "chart_0_data": chart_0_data,
                 "chart_1_columns": chart_1_columns,
                 "chart_1_data": chart_1_data,
+                "chart_2_columns": chart_2_columns,
+                "chart_2_data": chart_2_data,
             });
 
             let body = hb.render("analysis", &data).unwrap();
@@ -115,26 +121,28 @@ async fn analysis_chart_avg_profit(tx_db:Sender<DbMsg>)->Result<Chart,TradeWebEr
     }
 }
 
+/// get the data for the daily profit totals
+/// TODO: all three of these chart functions are essentially duplicated code; convert to a enum/switch
+async fn chart_profit_daily(tx_db:Sender<DbMsg>)->Result<Chart,TradeWebError>{
+    let (sender, rx) = oneshot::channel();
+    match tx_db.send(DbMsg::ChartProfitDaily {sender}){
+        Err(e)=>{
+            tracing::error!("[chart_profit_daily] error getting chart data: {:?}",&e);
+            Err(TradeWebError::ChannelError)
+        },
+        Ok(_)=> {
+            // send okay
+            match rx.await {
+                Err(e) => {
+                    tracing::error!("[chart_profit_daily] receive error: {:?}",&e);
+                    Err(TradeWebError::ChannelError)
+                },
+                Ok(chart_result) => {
+                    Ok(chart_result)
+                }
+            }
+        }
+    }
+}
 
 
-// async fn analysis_chart(chart_mesg: DbMsg,tx_db:Sender<DbMsg>)->Result<Chart,TradeWebError>{
-//     let (sender, rx) = oneshot::channel();
-//     match tx_db.send(chart_mesg){
-//         Err(e)=>{
-//             tracing::error!("[analysis_chart_net_profit] error getting chart data: {:?}",&e);
-//             Err(TradeWebError::ChannelError)
-//         },
-//         Ok(_)=> {
-//             // send okay
-//             match rx.await {
-//                 Err(e) => {
-//                     tracing::error!("[analysis_chart_net_profit] receive error: {:?}",&e);
-//                     Err(TradeWebError::ChannelError)
-//                 },
-//                 Ok(chart_result) => {
-//                     Ok(chart_result)
-//                 }
-//             }
-//         }
-//     }
-// }

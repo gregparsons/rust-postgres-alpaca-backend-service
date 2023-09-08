@@ -30,6 +30,8 @@ struct LoginResult {
     password: String,
 }
 
+
+/// TODO: remove SQLX to db.rs
 pub async fn post_login(
     form: web::Form<FormData>,
     hb: web::Data<Handlebars<'_>>,
