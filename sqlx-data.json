@@ -1613,6 +1613,30 @@
     },
     "query": "\n            select\n                user_id, username, password\n            from users\n            where username = $1\n        "
   },
+  "ca4220303755526052845f061b55599c2d399ccf9940f8e5ccb5ad08681c5f50": {
+    "describe": {
+      "columns": [
+        {
+          "name": "columns!",
+          "ordinal": 0,
+          "type_info": "Json"
+        },
+        {
+          "name": "chart_data!",
+          "ordinal": 1,
+          "type_info": "Json"
+        }
+      ],
+      "nullable": [
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "select columns as \"columns!\", chart_data as \"chart_data!\" from v_value_traded"
+  },
   "cbbf8ab72f26935d3fed0b0706bfe4ca8395ed2efe3bf48e5ef45135d11c896a": {
     "describe": {
       "columns": [],

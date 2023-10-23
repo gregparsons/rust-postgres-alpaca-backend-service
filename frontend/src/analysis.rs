@@ -27,19 +27,24 @@ pub async fn get_analysis(tx_db: web::Data<crossbeam_channel::Sender<DbMsg>>, hb
         let tx_db_1 = tx_db.clone();
         let tx_db_2 = tx_db.clone();
         let tx_db_3 = tx_db.clone();
+        let tx_db_4 = tx_db.clone();
 
         // get both charts' data from database
         let chart_0_result = analysis_chart_net_profit(tx_db).await;
         let chart_1_result = analysis_chart_avg_profit(tx_db_1).await;
         let chart_2_result = chart_profit_daily(tx_db_2).await;
         let chart_3_result = chart_orders_daily(tx_db_3).await;
+        let chart_4_result = chart_value_traded(tx_db_4).await;
 
-        if /*chart_0_result.is_ok() && chart_1_result.is_ok() &&*/ chart_2_result.is_ok() {
+        if chart_0_result.is_ok() && chart_1_result.is_ok() && chart_2_result.is_ok() && chart_3_result.is_ok() && chart_4_result.is_ok() {
+
+            tracing::debug!("[get_analysis] all chart data ok");
 
             let chart_0 = chart_0_result.unwrap();
             let chart_1 = chart_1_result.unwrap();
             let chart_2 = chart_2_result.unwrap();
             let chart_3 = chart_3_result.unwrap();
+            let chart_4 = chart_4_result.unwrap();
 
             // tracing::debug!("[get_analysis] db result: {:?}", &avg_profit);
             // TODO: remove unwrap
@@ -55,6 +60,9 @@ pub async fn get_analysis(tx_db: web::Data<crossbeam_channel::Sender<DbMsg>>, hb
             let chart_3_columns = serde_json::to_string(&chart_3.columns).unwrap();
             let chart_3_data = serde_json::to_string(&chart_3.chart_data).unwrap();
 
+            let chart_4_columns = serde_json::to_string(&chart_4.columns).unwrap();
+            let chart_4_data = serde_json::to_string(&chart_4.chart_data).unwrap();
+
             let data = json!({
                 "title": "Analysis",
                 "parent": "base0",
@@ -68,6 +76,8 @@ pub async fn get_analysis(tx_db: web::Data<crossbeam_channel::Sender<DbMsg>>, hb
                 "chart_2_data": chart_2_data,
                 "chart_3_columns": chart_3_columns,
                 "chart_3_data": chart_3_data,
+                "chart_4_columns": chart_4_columns,
+                "chart_4_data": chart_4_data,
             });
 
             let body = hb.render("analysis", &data).unwrap();
@@ -75,7 +85,7 @@ pub async fn get_analysis(tx_db: web::Data<crossbeam_channel::Sender<DbMsg>>, hb
 
         } else {
             // TODO: figure out how to do a match with two results
-            tracing::info!("[get_analysis] database error getting chart data");
+            tracing::error!("[get_analysis] database error getting chart data");
             redirect_home().await
         }
     } else {
@@ -176,4 +186,27 @@ async fn chart_orders_daily(tx_db:Sender<DbMsg>)->Result<Chart,TradeWebError>{
     }
 }
 
+/// get the data for the daily profit totals
+/// TODO: all three of these chart functions are essentially duplicated code; convert to a enum/switch or macro
+async fn chart_value_traded(tx_db:Sender<DbMsg>)->Result<Chart,TradeWebError>{
+    let (sender, rx) = oneshot::channel();
+    match tx_db.send(DbMsg::ChartValueTraded {sender}){
+        Err(e)=>{
+            tracing::error!("[chart_value_traded] error getting chart data: {:?}",&e);
+            Err(TradeWebError::ChannelError)
+        },
+        Ok(_)=> {
+            // send okay
+            match rx.await {
+                Err(e) => {
+                    tracing::error!("[chart_value_traded] receive error: {:?}",&e);
+                    Err(TradeWebError::ChannelError)
+                },
+                Ok(chart_result) => {
+                    Ok(chart_result)
+                }
+            }
+        }
+    }
+}
 

@@ -73,6 +73,7 @@ pub enum DbMsg {
     AnalysisProfitAvgChart { sender: oneshot::Sender<Chart>},
     ChartProfitDaily { sender: oneshot::Sender<Chart>},
     ChartOrdersDaily { sender: oneshot::Sender<Chart>},
+    ChartValueTraded { sender: oneshot::Sender<Chart>},
 
 
     SymbolListGetActive {sender_tx: Sender<Vec<String>> },
@@ -286,6 +287,18 @@ async fn process_message(msg:DbMsg, pool: PgPool, tx_db: Sender<DbMsg>){
                     }
                 },
                 Err(e)=>tracing::error!("[DbMsg::ChartOrdersDaily] error: {:?}", &e)
+            }
+        },
+
+        DbMsg::ChartValueTraded { sender} => {
+            match chart_value_traded(&pool).await{
+                Ok(vec_json) => {
+                    match sender.send(vec_json){
+                        Err(_e)=> tracing::error!("[DbMsg::ChartValueTraded] reply send error: {:?}", &_e),
+                        _ => { /* reply send success */ }
+                    }
+                },
+                Err(e)=>tracing::error!("[DbMsg::ChartValueTraded] error: {:?}", &e)
             }
         },
 
@@ -1929,6 +1942,22 @@ async fn chart_orders_daily(pool:&PgPool) ->Result<Chart, TradeWebError> {
         },
         Ok(json) => {
             tracing::debug!("[chart_orders_daily] json: {:?}", &json);
+            Ok(json)
+        }
+    }
+}
+
+/// Chart: orders by day
+async fn chart_value_traded(pool:&PgPool) ->Result<Chart, TradeWebError> {
+    match sqlx::query_as!(Chart,
+        r#"select columns as "columns!", chart_data as "chart_data!" from v_value_traded"#
+    ).fetch_one(pool).await {
+        Err(e) => {
+            tracing::error!("[chart_value_traded] json error: {:?}", &e);
+            Err(TradeWebError::SqlxError)
+        },
+        Ok(json) => {
+            tracing::debug!("[chart_value_traded] json: {:?}", &json);
             Ok(json)
         }
     }

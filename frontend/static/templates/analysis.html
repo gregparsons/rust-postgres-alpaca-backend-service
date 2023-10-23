@@ -21,6 +21,7 @@
 <div>
     <canvas id="chart_2"></canvas><br>
     <canvas id="chart_3"></canvas><br>
+    <canvas id="chart_4"></canvas><br>
     <canvas id="chart_0"></canvas><br>
     <canvas id="chart_1"></canvas><br>
 </div>
@@ -31,7 +32,34 @@
 <script src="/js/chart.js"></script>
 <script>
 
-
+    function get_config(title, data){
+        let config = {
+            type: 'line',
+            data: data,
+            options: {
+                responsive: true,   // resize to fit browser window
+                interaction: {
+                    mode: 'index',
+                    intersect: false,
+                },
+                stacked: false,
+                plugins: {
+                    title: {
+                        display: true,
+                        text: title
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: 'right',
+                    },
+                }
+            }
+        };
+        return config;
+    }
     // ********* chart 0 ***************************
 
     // net profit
@@ -44,41 +72,11 @@
         chart_0_data_array.push({label: x.key, data: x.val});
 
     });
-
     const ctx_0 = document.getElementById('chart_0');
-    const data_0 = {
-        labels: json_0_columns, // dates,
-        datasets: chart_0_data_array,
-    };
-
-    const config_0 = {
-        type: 'line',
-        data: data_0,
-        options: {
-            responsive: true,   // resize to fit browser window
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
-            stacked: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Net Transaction Profit'
-                }
-            },
-            scales: {
-                y: {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                },
-            }
-        }
-    };
+    const data_0 = {labels: json_0_columns, datasets: chart_0_data_array};
+    let title_0 = 'Net Transaction Profit';
 
     // ********* chart 1 ***************************
-
     // average profit per transaction
     const chart_1_columns = '{{chart_1_columns}}';
     const json_1_columns = JSON.parse(chart_1_columns.replace(/&quot;/g, '\"'));
@@ -87,40 +85,10 @@
     let chart_1_data_array = [];
     json_1_chart.forEach(function (x){
         chart_1_data_array.push({label: x.key, data: x.val});
-
     });
-
     const ctx_1 = document.getElementById('chart_1');
-    const data_1 = {
-        labels: json_1_columns, // dates,
-        datasets: chart_1_data_array,
-    };
-
-    const config_1 = {
-        type: 'line',
-        data: data_1,
-        options: {
-            responsive: true,   // resize to fit browser window
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
-            stacked: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Average Transaction Profit'
-                }
-            },
-            scales: {
-                y: {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                },
-            }
-        }
-    };
+    const data_1 = {labels: json_1_columns, datasets: chart_1_data_array};
+    let title_1 = 'Average Transaction Profit';
 
     // ********* chart 2 ***************************
     // average profit per transaction
@@ -131,90 +99,56 @@
     let chart_2_data_array = [];
     json_2_chart.forEach(function (x){
         chart_2_data_array.push({label: x.key, data: x.val});
-
     });
-
     const ctx_2 = document.getElementById('chart_2');
     const data_2 = {
         labels: json_2_columns, // dates,
         datasets: chart_2_data_array,
     };
-
-    const config_2 = {
-        type: 'line',
-        data: data_2,
-        options: {
-            responsive: true,   // resize to fit browser window
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
-            stacked: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Profit'
-                }
-            },
-            scales: {
-                y: {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                },
-            }
-        }
-    };
+    let title_2 = 'Profit';
 
     // ********* chart 3 ***************************
     // average profit per transaction
     const chart_3_columns = '{{chart_3_columns}}';
-    const json_3_columns = JSON.parse(chart_2_columns.replace(/&quot;/g, '\"'));
+    const json_3_columns = JSON.parse(chart_3_columns.replace(/&quot;/g, '\"'));
     const chart_3_data = "{{chart_3_data}}";
-    let json_3_chart = JSON.parse(chart_2_data.replace(/&quot;/g, '\"'));
+    let json_3_chart = JSON.parse(chart_3_data.replace(/&quot;/g, '\"'));
     let chart_3_data_array = [];
-    json_2_chart.forEach(function (x){
-        chart_2_data_array.push({label: x.key, data: x.val});
-
+    json_3_chart.forEach(function (x){
+        chart_3_data_array.push({label: x.key, data: x.val});
     });
-
     const ctx_3 = document.getElementById('chart_3');
-    const data_3 = {
-        labels: json_3_columns, // dates,
-        datasets: chart_3_data_array,
-    };
+    const data_3 = {labels: json_3_columns, datasets: chart_3_data_array,};
+    let title_3 = 'Order Count';
 
-    const config_3 = {
-        type: 'line',
-        data: data_3,
-        options: {
-            responsive: true,   // resize to fit browser window
-            interaction: {
-                mode: 'index',
-                intersect: false,
-            },
-            stacked: false,
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Profit'
-                }
-            },
-            scales: {
-                y: {
-                    type: 'linear',
-                    display: true,
-                    position: 'right',
-                },
-            }
-        }
-    };
+    // ********* chart 4 ***************************
+    // average profit per transaction
+    const chart_4_columns = '{{chart_4_columns}}';
+    const json_4_columns = JSON.parse(chart_4_columns.replace(/&quot;/g, '\"'));
+    const chart_4_data = "{{chart_4_data}}";
+    let json_4_chart = JSON.parse(chart_4_data.replace(/&quot;/g, '\"'));
+    let chart_4_data_array = [];
+    json_4_chart.forEach(function (x){
+        chart_4_data_array.push({label: x.key, data: x.val});
+    });
+    const ctx_4 = document.getElementById('chart_4');
+    const data_4 = {labels: json_4_columns, datasets: chart_4_data_array,};
+    let title_4 = 'Value Traded';
 
+
+
+    let config_0 = get_config(title_0, data_0);
+    let config_1 = get_config(title_1, data_1);
+    let config_2 = get_config(title_2, data_2);
+    let config_3 = get_config(title_3, data_3);
+    let config_4 = get_config(title_3, data_4);
 
     new Chart(ctx_0, config_0);
     new Chart(ctx_1, config_1);
     new Chart(ctx_2, config_2);
     new Chart(ctx_3, config_3);
+    new Chart(ctx_4, config_4);
+
 
 </script>
 
