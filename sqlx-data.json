@@ -1715,6 +1715,30 @@
     },
     "query": "\n            select\n                symbol as \"symbol!\",\n                side as \"side!:TradeSide\",\n                profit,\n                elapsed_sec,\n                posn_age_sec,\n                qty_transaction as \"qty_transaction!\",\n                round(price_transaction,4) as \"price_transaction!\",\n                round(amt_transaction,4) as \"amt_transaction!\",\n                qty_posn as \"qty_posn!\",\n                round(price_posn_entry,4) as \"price_posn_entry!\",\n                posn_basis as \"posn_basis!\",\n                dtg as \"dtg!\",\n                Timezone('US/Pacific', dtg)::timestamp as \"dtg_pacific!\"\n            from\n                fn_transaction($1)\n        "
   },
+  "d059545a2336fda5e2b1aac587ee1e57a3d02c6e33e62fd227b672cb0304c7e9": {
+    "describe": {
+      "columns": [
+        {
+          "name": "columns!",
+          "ordinal": 0,
+          "type_info": "Json"
+        },
+        {
+          "name": "chart_data!",
+          "ordinal": 1,
+          "type_info": "Json"
+        }
+      ],
+      "nullable": [
+        true,
+        true
+      ],
+      "parameters": {
+        "Left": []
+      }
+    },
+    "query": "select columns as \"columns!\", chart_data as \"chart_data!\" from v_chart_trades_per_day"
+  },
   "d65fb26b1c74760e25207ef830b56c597aee490b8c9e647066e8609aa9952cb0": {
     "describe": {
       "columns": [],

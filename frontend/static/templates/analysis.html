@@ -20,6 +20,7 @@
 
 <div>
     <canvas id="chart_2"></canvas><br>
+    <canvas id="chart_3"></canvas><br>
     <canvas id="chart_0"></canvas><br>
     <canvas id="chart_1"></canvas><br>
 </div>
@@ -165,9 +166,55 @@
         }
     };
 
+    // ********* chart 3 ***************************
+    // average profit per transaction
+    const chart_3_columns = '{{chart_3_columns}}';
+    const json_3_columns = JSON.parse(chart_2_columns.replace(/&quot;/g, '\"'));
+    const chart_3_data = "{{chart_3_data}}";
+    let json_3_chart = JSON.parse(chart_2_data.replace(/&quot;/g, '\"'));
+    let chart_3_data_array = [];
+    json_2_chart.forEach(function (x){
+        chart_2_data_array.push({label: x.key, data: x.val});
+
+    });
+
+    const ctx_3 = document.getElementById('chart_3');
+    const data_3 = {
+        labels: json_3_columns, // dates,
+        datasets: chart_3_data_array,
+    };
+
+    const config_3 = {
+        type: 'line',
+        data: data_3,
+        options: {
+            responsive: true,   // resize to fit browser window
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            stacked: false,
+            plugins: {
+                title: {
+                    display: true,
+                    text: 'Profit'
+                }
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                },
+            }
+        }
+    };
+
+
     new Chart(ctx_0, config_0);
     new Chart(ctx_1, config_1);
     new Chart(ctx_2, config_2);
+    new Chart(ctx_3, config_3);
 
 </script>
 

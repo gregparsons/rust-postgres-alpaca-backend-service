@@ -67,10 +67,12 @@ pub enum DbMsg {
     ActivityGetAll{sender:oneshot::Sender<Vec<ActivityQuery>>},
     ActivityGetForSymbol { symbol:String, sender:oneshot::Sender<Vec<ActivityQuery>>},
 
+    // Dashboard and Analysis queries
     AnalysisDailyProfitJsonOld { sender: oneshot::Sender<Vec<ChartResult>>},
     AnalysisProfitNetChart { sender: oneshot::Sender<Chart>},
     AnalysisProfitAvgChart { sender: oneshot::Sender<Chart>},
     ChartProfitDaily { sender: oneshot::Sender<Chart>},
+    ChartOrdersDaily { sender: oneshot::Sender<Chart>},
 
 
     SymbolListGetActive {sender_tx: Sender<Vec<String>> },
@@ -272,6 +274,18 @@ async fn process_message(msg:DbMsg, pool: PgPool, tx_db: Sender<DbMsg>){
                     }
                 },
                 Err(e)=>tracing::error!("[DbMsg::ChartProfitDaily] error: {:?}", &e)
+            }
+        },
+
+        DbMsg::ChartOrdersDaily { sender} => {
+            match chart_orders_daily(&pool).await{
+                Ok(vec_json) => {
+                    match sender.send(vec_json){
+                        Err(_e)=> tracing::error!("[DbMsg::ChartOrdersDaily] reply send error: {:?}", &_e),
+                        _ => { /* reply send success */ }
+                    }
+                },
+                Err(e)=>tracing::error!("[DbMsg::ChartOrdersDaily] error: {:?}", &e)
             }
         },
 
@@ -1893,9 +1907,28 @@ async fn chart_profit_daily(pool:&PgPool) ->Result<Chart, TradeWebError> {
     match sqlx::query_as!(Chart,
         r#"select columns as "columns!", chart_data as "chart_data!" from v_chart_profit_daily"#
     ).fetch_one(pool).await {
-        Err(_) => Err(TradeWebError::SqlxError),
+        Err(e) => {
+            tracing::error!("[chart_profit_daily] json error: {:?}", &e);
+            Err(TradeWebError::SqlxError)
+        },
         Ok(json) => {
             tracing::debug!("[chart_profit_daily] json: {:?}", &json);
+            Ok(json)
+        }
+    }
+}
+
+/// Chart: orders by day
+async fn chart_orders_daily(pool:&PgPool) ->Result<Chart, TradeWebError> {
+    match sqlx::query_as!(Chart,
+        r#"select columns as "columns!", chart_data as "chart_data!" from v_chart_trades_per_day"#
+    ).fetch_one(pool).await {
+        Err(e) => {
+            tracing::error!("[chart_orders_daily] json error: {:?}", &e);
+            Err(TradeWebError::SqlxError)
+        },
+        Ok(json) => {
+            tracing::debug!("[chart_orders_daily] json: {:?}", &json);
             Ok(json)
         }
     }
